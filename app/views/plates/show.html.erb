@@ -1,0 +1,79 @@
+<% content_for :title, "Plate #{@plate.barcode}" %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">Plate <%= @plate.barcode %></h1>
+  <div>
+    <%= link_to 'Edit', edit_plate_path(@plate), class: "btn btn-outline-primary btn-sm me-2" %>
+    <%= link_to 'Back', plates_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">Storage Location</h5>
+    <p class="card-text mb-0">
+      Stack: <strong><%= @plate.location_stack %></strong>,
+      Position: <strong><%= @plate.location_position %></strong>
+    </p>
+  </div>
+</div>
+
+<h2 class="mb-3">Wells</h2>
+<div class="d-inline-block border rounded p-2 shadow-sm" style="background: #f8f9fa;">
+  <div class="d-grid" style="grid-template-columns: repeat(<%= @columns %>, 40px); gap: 6px;">
+    <% (1..@rows).each do |row| %>
+      <% (1..@columns).each do |col| %>
+        <% well = @wells.find { |w| w.well_row == row && w.well_column == col } %>
+        <% has_image = well&.images&.attached? %>
+        <button type="button" class="btn btn-sm text-white"
+          style="background-color: <%= has_image ? '#198754' : '#dc3545' %>; height: 40px;"
+          data-bs-toggle="modal" data-bs-target="#wellImagesModal"
+          data-well-id="<%= well&.id %>"
+          <%= "disabled" unless well %>>
+          <%= well ? well.well_label : "" %>
+        </button>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="wellImagesModal" tabindex="-1" aria-labelledby="wellImagesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="wellImagesModalLabel">Well Images</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="wellImagesContent">
+        <!-- Images will be injected here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const wellImagesModal = document.getElementById('wellImagesModal')
+  const wellImagesContent = document.getElementById('wellImagesContent')
+
+  wellImagesModal.addEventListener('show.bs.modal', event => {
+    const button = event.relatedTarget
+    const wellId = button.getAttribute('data-well-id')
+
+    if (!wellId) {
+      wellImagesContent.innerHTML = '<p>No well selected.</p>'
+      return
+    }
+
+    fetch(`/wells/${wellId}/images`) // we'll create this route/controller action
+      .then(response => response.text())
+      .then(html => {
+        wellImagesContent.innerHTML = html
+      })
+      .catch(() => {
+        wellImagesContent.innerHTML = '<p>Error loading images.</p>'
+      })
+  })
+})
+</script>

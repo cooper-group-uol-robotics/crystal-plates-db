@@ -1,0 +1,53 @@
+<% content_for :title, "Plates" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">Plates</h1>
+  <%= link_to "New Plate", new_plate_path, class: "btn btn-success" %>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+  <% @plates.each do |plate| %>
+    <div class="col">
+      <div class="card shadow-sm h-100 position-relative">
+        <div class="card-body">
+          <h5 class="card-title">Plate <%= plate.barcode %></h5>
+          <p class="card-text">
+            Stack: <strong><%= plate.location_stack %></strong><br>
+            Position: <strong><%= plate.location_position %></strong>
+          </p>
+
+          <!-- Removed the Show button -->
+
+          <%= link_to "Edit", edit_plate_path(plate), class: "btn btn-sm btn-outline-secondary ms-2" %>
+
+          <!-- Delete button triggers modal -->
+          <button type="button" class="btn btn-sm btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal-<%= plate.id %>">
+            Delete
+          </button>
+
+          <!-- Delete confirmation modal -->
+          <div class="modal fade" id="deleteModal-<%= plate.id %>" tabindex="-1" aria-labelledby="deleteModalLabel-<%= plate.id %>" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="deleteModalLabel-<%= plate.id %>">Confirm Delete</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  Are you sure you want to delete Plate <strong><%= plate.barcode %></strong>?
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <%= button_to "Delete", plate_path(plate), method: :delete, form_class: "d-inline", class: "btn btn-danger" %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stretched link to make whole card clickable -->
+          <%= link_to "", plate_path(plate), class: "stretched-link" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

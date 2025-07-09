@@ -1,0 +1,12 @@
+<% content_for :title, "Editing well" %>
+
+<h1>Editing well</h1>
+
+<%= render "form", well: @well %>
+
+<br>
+
+<div>
+  <%= link_to "Show this well", @well %> |
+  <%= link_to "Back to wells", wells_path %>
+</div>

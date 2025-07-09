@@ -1,0 +1,10 @@
+<p style="color: green"><%= notice %></p>
+
+<%= render @well %>
+
+<div>
+  <%= link_to "Edit this well", edit_well_path(@well) %> |
+  <%= link_to "Back to wells", wells_path %>
+
+  <%= button_to "Destroy this well", @well, method: :delete %>
+</div>

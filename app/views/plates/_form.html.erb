@@ -1,0 +1,31 @@
+<%= form_with(model: plate, local: true) do |form| %>
+  <% if plate.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(plate.errors.count, "error") %> prohibited this plate from being saved:</h4>
+      <ul>
+        <% plate.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= form.label :barcode, class: "form-label" %>
+    <%= form.text_field :barcode, class: "form-control", autofocus: true %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :location_stack, class: "form-label" %>
+    <%= form.text_field :location_stack, class: "form-control" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :location_position, class: "form-label" %>
+    <%= form.number_field :location_position, class: "form-control" %>
+  </div>
+
+  <div>
+    <%= form.submit class: "btn btn-primary" %>
+  </div>
+<% end %>

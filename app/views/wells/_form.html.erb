@@ -1,0 +1,32 @@
+<%= form_with(model: well) do |form| %>
+  <% if well.errors.any? %>
+    <div style="color: red">
+      <h2><%= pluralize(well.errors.count, "error") %> prohibited this well from being saved:</h2>
+
+      <ul>
+        <% well.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <%= form.label :plate_id, style: "display: block" %>
+    <%= form.text_field :plate_id %>
+  </div>
+
+  <div>
+    <%= form.label :well_row, style: "display: block" %>
+    <%= form.number_field :well_row %>
+  </div>
+
+  <div>
+    <%= form.label :well_column, style: "display: block" %>
+    <%= form.number_field :well_column %>
+  </div>
+
+  <div>
+    <%= form.submit %>
+  </div>
+<% end %>

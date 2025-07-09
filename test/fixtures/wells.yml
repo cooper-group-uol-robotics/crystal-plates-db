@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  plate: one
+  well_row: 1
+  well_column: 1
+  subwell: 1
+
+two:
+  plate: two
+  well_row: 1
+  well_column: 1
+  subwell: 1

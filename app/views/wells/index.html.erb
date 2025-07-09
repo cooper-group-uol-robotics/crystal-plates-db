@@ -1,0 +1,16 @@
+<p style="color: green"><%= notice %></p>
+
+<% content_for :title, "Wells" %>
+
+<h1>Wells</h1>
+
+<div id="wells">
+  <% @wells.each do |well| %>
+    <%= render well %>
+    <p>
+      <%= link_to "Show this well", well %>
+    </p>
+  <% end %>
+</div>
+
+<%= link_to "New well", new_well_path %>

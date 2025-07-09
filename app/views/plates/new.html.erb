@@ -1,0 +1,12 @@
+<% content_for :title, "New Plate" %>
+
+<div class="container my-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">New Plate</h1>
+    <%= link_to "Back to Plates", plates_path, class: "btn btn-outline-secondary" %>
+  </div>
+
+  <div class="card shadow-sm p-4">
+    <%= render "form", plate: @plate %>
+  </div>
+</div>
