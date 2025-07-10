@@ -1,11 +1,11 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  barcode: MyString
+  barcode: PLATE001
   location_position: 1
   location_stack: 1
 
 two:
-  barcode: MyString
-  location_position: 1
+  barcode: PLATE002
+  location_position: 2
   location_stack: 1

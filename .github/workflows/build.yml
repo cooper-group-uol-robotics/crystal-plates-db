@@ -1,0 +1,16 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches: [main]  # or any branch you want
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t yourappname:latest .

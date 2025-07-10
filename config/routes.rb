@@ -1,10 +1,13 @@
 Rails.application.routes.draw do
-  resources :wells, only: [] do
+  resources :wells do
     member do
       get :images
     end
   end
   resources :plates
+
+  # Pages routes
+  get "pages/home", to: "pages#home"
 
   root "plates#index"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

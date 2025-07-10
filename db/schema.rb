@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_09_182557) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_10_110903) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -58,11 +58,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_09_182557) do
     t.integer "stock_solution_id", null: false
     t.integer "chemical_id", null: false
     t.float "amount"
-    t.integer "unit"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "unit_id", null: false
     t.index ["chemical_id"], name: "index_stock_solution_components_on_chemical_id"
     t.index ["stock_solution_id"], name: "index_stock_solution_components_on_stock_solution_id"
+    t.index ["unit_id"], name: "index_stock_solution_components_on_unit_id"
   end
 
   create_table "stock_solutions", force: :cascade do |t|
@@ -103,8 +104,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_09_182557) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "stock_solution_components", "chemicals"
   add_foreign_key "stock_solution_components", "stock_solutions"
+  add_foreign_key "stock_solution_components", "units"
   add_foreign_key "well_contents", "stock_solutions"
   add_foreign_key "well_contents", "wells"
   add_foreign_key "wells", "plates"
 end
-
