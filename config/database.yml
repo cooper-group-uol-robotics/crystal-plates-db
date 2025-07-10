@@ -81,3 +81,27 @@ test:
 production:
   <<: *default
   database: db/production.sqlite3
+
+# Cache database configuration for Rails cache (solid_cache)
+cache:
+  development:
+    adapter: sqlite3
+    database: db/cache_development.sqlite3
+  test:
+    adapter: sqlite3
+    database: db/cache_test.sqlite3
+  production:
+    adapter: sqlite3
+    database: db/cache_production.sqlite3
+
+# Queue database configuration for Active Job (solid_queue)
+queue:
+  development:
+    adapter: sqlite3
+    database: db/queue_development.sqlite3
+  test:
+    adapter: sqlite3
+    database: db/queue_test.sqlite3
+  production:
+    adapter: sqlite3
+    database: db/queue_production.sqlite3
