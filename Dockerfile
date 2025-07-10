@@ -48,7 +48,9 @@ WORKDIR /rails
 COPY --from=build --chown=rails:rails "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build --chown=rails:rails /rails /rails
 
-RUN chmod +x /rails/bin/docker-entrypoint
+# Make entrypoint and Rails executables runnable
+RUN chmod +x /rails/bin/docker-entrypoint \
+    && find /rails/bin -type f -exec chmod +x {} +
 
 RUN mkdir -p db log storage tmp && \
     chown -R rails:rails db log storage tmp
