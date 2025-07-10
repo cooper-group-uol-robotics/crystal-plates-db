@@ -1,0 +1,226 @@
+<% content_for :title, "Location Grid" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">Carousel Grid View</h1>
+  <div>
+    <%= link_to "List View", locations_path, class: "btn btn-outline-secondary me-2" %>
+    <%= link_to "New Location", new_location_path, class: "btn btn-success" %>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Carousel Grid -->
+  <div class="col-lg-10">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-grid-3x3-gap me-2"></i>Carousel Positions (10 Carousels × 20 Hotel Positions)
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="carousel-grid-container" style="overflow-x: auto;">
+          <div class="carousel-grid">
+            <!-- Header row with hotel numbers -->
+            <div class="grid-header">
+              <div class="grid-cell grid-corner"></div>
+              <% (1..20).each do |hotel| %>
+                <div class="grid-header-cell">H<%= hotel %></div>
+              <% end %>
+            </div>
+            
+            <!-- Grid rows -->
+            <% (1..10).each do |carousel| %>
+              <div class="grid-row">
+                <div class="grid-row-header">C<%= carousel %></div>
+                <% (1..20).each do |hotel| %>
+                  <% cell_data = @carousel_grid[carousel][hotel] %>
+                  <% 
+                    cell_class = "grid-cell"
+                    cell_class += " occupied" if cell_data[:occupied]
+                    cell_class += " available" if cell_data[:location] && !cell_data[:occupied]
+                    cell_class += " empty" if !cell_data[:location]
+                  %>
+                  <div class="<%= cell_class %>" 
+                       data-carousel="<%= carousel %>" 
+                       data-hotel="<%= hotel %>"
+                       data-bs-toggle="tooltip"
+                       title="<%= cell_data[:occupied] ? "#{cell_data[:plate].barcode}" : cell_data[:location] ? "Available" : "No location defined" %>">
+                    <% if cell_data[:occupied] %>
+                      <%= link_to plate_path(cell_data[:plate]), class: "cell-link" do %>
+                        <i class="bi bi-square-fill"></i>
+                      <% end %>
+                    <% elsif cell_data[:location] %>
+                      <%= link_to location_path(cell_data[:location]), class: "cell-link" do %>
+                        <i class="bi bi-square"></i>
+                      <% end %>
+                    <% else %>
+                      <i class="bi bi-dash-square text-muted"></i>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="mt-3">
+          <small class="text-muted">
+            <i class="bi bi-square-fill text-warning me-2"></i>Occupied
+            <i class="bi bi-square text-success me-2 ms-3"></i>Available
+            <i class="bi bi-dash-square text-muted me-2 ms-3"></i>Not Defined
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Special Locations Sidebar -->
+  <div class="col-lg-2">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="card-title mb-0">Special Locations</h6>
+      </div>
+      <div class="card-body">
+        <% @other_locations.each do |location| %>
+          <% current_plate = location.plates.joins(:plate_locations)
+                                    .where(plate_locations: { id: PlateLocation.select('MAX(id)').group(:plate_id) })
+                                    .first %>
+          <div class="mb-3">
+            <%= link_to location_path(location), class: "text-decoration-none" do %>
+              <div class="special-location-card p-2 border rounded <%= current_plate ? 'border-warning bg-warning bg-opacity-10' : 'border-success bg-success bg-opacity-10' %>">
+                <div class="fw-bold small"><%= location.display_name %></div>
+                <% if current_plate %>
+                  <div class="text-warning small">
+                    <i class="bi bi-circle-fill me-1"></i>
+                    <%= current_plate.barcode %>
+                  </div>
+                <% else %>
+                  <div class="text-success small">
+                    <i class="bi bi-circle me-1"></i>Available
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.carousel-grid-container {
+  min-width: 100%;
+}
+
+.carousel-grid {
+  display: table;
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 0.8rem;
+}
+
+.grid-header {
+  display: table-row;
+}
+
+.grid-corner {
+  display: table-cell;
+  width: 40px;
+  height: 30px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  text-align: center;
+  vertical-align: middle;
+  font-weight: bold;
+}
+
+.grid-header-cell {
+  display: table-cell;
+  width: 35px;
+  height: 30px;
+  background: #e9ecef;
+  border: 1px solid #dee2e6;
+  text-align: center;
+  vertical-align: middle;
+  font-weight: bold;
+  font-size: 0.7rem;
+}
+
+.grid-row {
+  display: table-row;
+}
+
+.grid-row-header {
+  display: table-cell;
+  width: 40px;
+  height: 30px;
+  background: #e9ecef;
+  border: 1px solid #dee2e6;
+  text-align: center;
+  vertical-align: middle;
+  font-weight: bold;
+  font-size: 0.7rem;
+}
+
+.grid-cell {
+  display: table-cell;
+  width: 35px;
+  height: 30px;
+  border: 1px solid #dee2e6;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  position: relative;
+}
+
+.grid-cell.occupied {
+  background-color: #fff3cd;
+  border-color: #ffc107;
+}
+
+.grid-cell.available {
+  background-color: #d1e7dd;
+  border-color: #198754;
+}
+
+.grid-cell.empty {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.grid-cell:hover {
+  opacity: 0.8;
+  transform: scale(1.1);
+  z-index: 10;
+  position: relative;
+}
+
+.cell-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.special-location-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Bootstrap tooltips
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script>

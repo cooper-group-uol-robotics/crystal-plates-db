@@ -6,6 +6,12 @@ Rails.application.routes.draw do
   end
   resources :plates
 
+  resources :locations do
+    collection do
+      get :grid
+    end
+  end
+
   # Pages routes
   get "pages/home", to: "pages#home"
 

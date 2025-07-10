@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Rails Test Runner Script
+# This script runs the complete Rails test suite for the crystal-plates-db application
+
+echo "==============================================================================="
+echo "Running Crystal Plates Database Test Suite"
+echo "==============================================================================="
+echo ""
+
+# Change to the project directory
+cd "$(dirname "$0")"
+
+# Set test environment
+export RAILS_ENV=test
+
+echo "Setting up test database..."
+bundle exec rails db:test:prepare
+
+echo ""
+echo "Running all tests..."
+echo "==============================================================================="
+
+# Run all tests
+bundle exec rails test
+
+echo ""
+echo "==============================================================================="
+echo "Test run completed!"
+echo "==============================================================================="

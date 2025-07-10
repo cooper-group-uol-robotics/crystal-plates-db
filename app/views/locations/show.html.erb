@@ -1,0 +1,139 @@
+<% content_for :title, "Location #{@location.display_name}" %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">Location: <%= @location.display_name %></h1>
+  <div>
+    <%= link_to 'Edit', edit_location_path(@location), class: "btn btn-outline-primary btn-sm me-2" %>
+    <%= link_to 'Back to Grid', grid_locations_path, class: "btn btn-outline-secondary btn-sm me-2" %>
+    <%= link_to 'All Locations', locations_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Location Details -->
+  <div class="col-md-6">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-info-circle me-2"></i>Location Details
+        </h5>
+      </div>
+      <div class="card-body">
+        <% if @location.carousel_position && @location.hotel_position %>
+          <p class="mb-2">
+            <strong>Type:</strong> <span class="badge bg-primary">Carousel Position</span>
+          </p>
+          <p class="mb-2">
+            <strong>Carousel:</strong> <%= @location.carousel_position %>
+          </p>
+          <p class="mb-2">
+            <strong>Hotel Position:</strong> <%= @location.hotel_position %>
+          </p>
+        <% else %>
+          <p class="mb-2">
+            <strong>Type:</strong> <span class="badge bg-info">Special Location</span>
+          </p>
+          <p class="mb-2">
+            <strong>Name:</strong> <%= @location.name %>
+          </p>
+        <% end %>
+        
+        <p class="mb-0">
+          <strong>Status:</strong>
+          <% if @current_plates.any? %>
+            <span class="badge bg-warning text-dark">Occupied</span>
+          <% else %>
+            <span class="badge bg-success">Available</span>
+          <% end %>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Current Plates -->
+  <div class="col-md-6">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-layers me-2"></i>Current Plates
+        </h5>
+      </div>
+      <div class="card-body">
+        <% if @current_plates.any? %>
+          <% @current_plates.each do |plate| %>
+            <div class="d-flex justify-content-between align-items-center p-2 border rounded mb-2">
+              <div>
+                <strong><%= link_to plate.barcode, plate_path(plate), class: "text-decoration-none" %></strong>
+                <br>
+                <small class="text-muted">
+                  <%= pluralize(plate.wells.count, "well") %>
+                </small>
+              </div>
+              <div>
+                <%= link_to "View Plate", plate_path(plate), class: "btn btn-sm btn-outline-primary" %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-inbox display-4 d-block mb-2"></i>
+            <p class="mb-0">No plates currently at this location</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Location History -->
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">
+      <i class="bi bi-clock-history me-2"></i>Recent Movement History
+    </h5>
+  </div>
+  <div class="card-body">
+    <% if @location_history.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Plate</th>
+              <th>Action</th>
+              <th>Moved By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @location_history.each do |movement| %>
+              <tr>
+                <td>
+                  <%= movement.moved_at.strftime("%Y-%m-%d %H:%M") %>
+                  <br>
+                  <small class="text-muted"><%= time_ago_in_words(movement.moved_at) %> ago</small>
+                </td>
+                <td>
+                  <%= link_to movement.plate.barcode, plate_path(movement.plate), class: "fw-bold text-decoration-none" %>
+                </td>
+                <td>
+                  <span class="badge bg-info">
+                    <i class="bi bi-arrow-right me-1"></i>
+                    Moved to location
+                  </span>
+                </td>
+                <td>
+                  <span class="text-muted"><%= movement.moved_by %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center text-muted py-4">
+        <i class="bi bi-journal-x display-4 d-block mb-2"></i>
+        <p class="mb-0">No movement history for this location</p>
+      </div>
+    <% end %>
+  </div>
+</div>
