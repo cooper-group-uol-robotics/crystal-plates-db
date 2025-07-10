@@ -53,7 +53,8 @@ RUN chmod +x /rails/bin/docker-entrypoint \
     && find /rails/bin -type f -exec chmod +x {} +
 
 RUN mkdir -p db log storage tmp && \
-    chown -R rails:rails db log storage tmp
+    chown -R rails:rails db log storage \
+    chown rails:rails tmp
 
 USER rails:rails
 
