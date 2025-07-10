@@ -20,7 +20,8 @@ jobs:
         run: |
           docker rm -f crystal-plates-db || true
       - name: Debug RAILS_MASTER_KEY environment variable
-        run: echo "RAILS_MASTER_KEY is: $RAILS_MASTER_KEY"
+        run: |
+          echo "RAILS_MASTER_KEY is: $RAILS_MASTER_KEY"
         env:
           RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
       - name: Run Docker container
