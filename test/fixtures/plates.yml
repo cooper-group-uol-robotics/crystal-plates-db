@@ -2,10 +2,6 @@
 
 one:
   barcode: PLATE001
-  location_position: 1
-  location_stack: 1
 
 two:
   barcode: PLATE002
-  location_position: 2
-  location_stack: 1

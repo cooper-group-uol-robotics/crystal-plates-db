@@ -17,7 +17,7 @@ class PlatesControllerTest < ActionDispatch::IntegrationTest
 
   test "should create plate" do
     assert_difference("Plate.count") do
-      post plates_url, params: { plate: { barcode: "UNIQUE_TEST_BARCODE", location_position: @plate.location_position, location_stack: @plate.location_stack } }
+      post plates_url, params: { plate: { barcode: "UNIQUE_TEST_BARCODE" } }
     end
 
     assert_redirected_to plate_url(Plate.last)
@@ -34,7 +34,7 @@ class PlatesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should update plate" do
-    patch plate_url(@plate), params: { plate: { barcode: @plate.barcode, location_position: @plate.location_position, location_stack: @plate.location_stack } }
+    patch plate_url(@plate), params: { plate: { barcode: @plate.barcode } }
     assert_redirected_to plate_url(@plate)
   end
 

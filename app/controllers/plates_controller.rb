@@ -24,10 +24,14 @@ class PlatesController < ApplicationController
 
   # POST /plates or /plates.json
   def create
-    @plate = Plate.new(plate_params)
+    @plate = Plate.new(plate_params.except(:location_id))
 
     respond_to do |format|
       if @plate.save
+        # Move plate to location if specified
+        if plate_params[:location_id].present?
+          @plate.move_to_location(plate_params[:location_id], "system")
+        end
         format.html { redirect_to @plate, notice: "Plate was successfully created." }
         format.json { render :show, status: :created, location: @plate }
       else
@@ -40,7 +44,11 @@ class PlatesController < ApplicationController
   # PATCH/PUT /plates/1 or /plates/1.json
   def update
     respond_to do |format|
-      if @plate.update(plate_params)
+      if @plate.update(plate_params.except(:location_id))
+        # Move plate to location if specified and different from current
+        if plate_params[:location_id].present? && @plate.current_location&.id != plate_params[:location_id].to_i
+          @plate.move_to_location(plate_params[:location_id], "system")
+        end
         format.html { redirect_to @plate, notice: "Plate was successfully updated." }
         format.json { render :show, status: :ok, location: @plate }
       else
@@ -68,6 +76,6 @@ class PlatesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def plate_params
-      params.expect(plate: [ :barcode, :location_stack, :location_position ])
+      params.expect(plate: [ :barcode, :location_id ])
     end
 end

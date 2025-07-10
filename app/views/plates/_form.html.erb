@@ -16,13 +16,10 @@
   </div>
 
   <div class="mb-3">
-    <%= form.label :location_stack, class: "form-label" %>
-    <%= form.text_field :location_stack, class: "form-control" %>
-  </div>
-
-  <div class="mb-3">
-    <%= form.label :location_position, class: "form-label" %>
-    <%= form.number_field :location_position, class: "form-control" %>
+    <%= form.label :location_id, "Location", class: "form-label" %>
+    <%= form.select :location_id, options_from_collection_for_select(Location.all, :id, :display_name, plate.current_location&.id), 
+                    { prompt: "Select a location..." }, 
+                    { class: "form-select" } %>
   </div>
 
   <div>

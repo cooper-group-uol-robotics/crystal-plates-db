@@ -13,3 +13,20 @@ Unit.create!([
   { name: "milliliter", symbol: "ml", conversion_to_base: 1000.0 },
   { name: "gram", symbol: "g", conversion_to_base: 1000.0 }
 ])
+
+# Create locations for carousel positions 1-10 with hotel positions 1-20
+puts "Creating carousel and hotel positions..."
+(1..10).each do |carousel_pos|
+  (1..20).each do |hotel_pos|
+    Location.find_or_create_by!(
+      carousel_position: carousel_pos,
+      hotel_position: hotel_pos
+    )
+  end
+end
+
+# Create special locations
+puts "Creating special locations..."
+Location.find_or_create_by!(name: "imager")
+
+puts "Created #{Location.count} locations"

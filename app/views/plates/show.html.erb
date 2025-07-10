@@ -12,8 +12,11 @@
   <div class="card-body">
     <h5 class="card-title">Storage Location</h5>
     <p class="card-text mb-0">
-      Stack: <strong><%= @plate.location_stack %></strong>,
-      Position: <strong><%= @plate.location_position %></strong>
+      <% if @plate.current_location %>
+        Location: <strong><%= @plate.current_location.display_name %></strong>
+      <% else %>
+        Location: <strong>Not assigned</strong>
+      <% end %>
     </p>
   </div>
 </div>

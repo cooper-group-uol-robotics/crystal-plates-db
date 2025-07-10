@@ -1,0 +1,12 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+carousel_1_hotel_1:
+  carousel_position: 1
+  hotel_position: 1
+
+carousel_1_hotel_2:
+  carousel_position: 1
+  hotel_position: 2
+
+imager:
+  name: imager

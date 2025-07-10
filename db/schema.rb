@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_10_110903) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_10_141313) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -45,10 +45,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_10_110903) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "locations", force: :cascade do |t|
+    t.integer "carousel_position"
+    t.integer "hotel_position"
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "plate_locations", force: :cascade do |t|
+    t.integer "plate_id", null: false
+    t.integer "location_id", null: false
+    t.datetime "moved_at"
+    t.string "moved_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["location_id"], name: "index_plate_locations_on_location_id"
+    t.index ["plate_id"], name: "index_plate_locations_on_plate_id"
+  end
+
   create_table "plates", force: :cascade do |t|
     t.string "barcode"
-    t.integer "location_position"
-    t.integer "location_stack"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["barcode"], name: "index_plates_on_barcode", unique: true
@@ -102,6 +119,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_10_110903) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "plate_locations", "locations"
+  add_foreign_key "plate_locations", "plates"
   add_foreign_key "stock_solution_components", "chemicals"
   add_foreign_key "stock_solution_components", "stock_solutions"
   add_foreign_key "stock_solution_components", "units"
