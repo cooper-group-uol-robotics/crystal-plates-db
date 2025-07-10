@@ -13,6 +13,10 @@ class Plate < ApplicationRecord
         plate_locations.recent_first.first&.location
     end
 
+    def current_location_record
+        plate_locations.recent_first.first
+    end
+
     def location_history
         plate_locations.recent_first.includes(:location)
     end

@@ -20,9 +20,35 @@ Rails.application.routes.draw do
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
+
+  # API Routes
   namespace :api do
     namespace :v1 do
-      resources :plates, param: :id, only: [ :index, :show, :create ]
+      resources :plates, param: :barcode do
+        member do
+          post :move_to_location
+          get :location_history
+        end
+        resources :wells, only: [ :index, :show, :create, :update, :destroy ]
+      end
+
+      resources :locations do
+        collection do
+          get :grid
+          get :carousel
+          get :special
+        end
+        member do
+          get :current_plates
+          get :history
+        end
+      end
+
+      resources :wells, only: [ :index, :show, :create, :update, :destroy ]
+
+      # Utility endpoints
+      get :health, to: "health#show"
+      get :stats, to: "stats#show"
     end
   end
 
