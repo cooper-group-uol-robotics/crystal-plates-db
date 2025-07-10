@@ -13,4 +13,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t yourappname:latest .
+        run: docker build -t crystal-plates-db:latest .
