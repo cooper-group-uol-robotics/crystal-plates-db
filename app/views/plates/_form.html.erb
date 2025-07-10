@@ -87,14 +87,24 @@
       const otherRadio = document.getElementById('other_location');
       const carouselFields = document.getElementById('carousel_fields');
       const otherFields = document.getElementById('other_fields');
+      const carouselInputs = carouselFields.querySelectorAll('input');
+      const otherInputs = otherFields.querySelectorAll('select');
       
       function toggleFields() {
         if (carouselRadio.checked) {
           carouselFields.classList.remove('d-none');
           otherFields.classList.add('d-none');
+          
+          // Enable carousel inputs and disable other inputs
+          carouselInputs.forEach(input => input.disabled = false);
+          otherInputs.forEach(input => input.disabled = true);
         } else {
           carouselFields.classList.add('d-none');
           otherFields.classList.remove('d-none');
+          
+          // Disable carousel inputs and enable other inputs
+          carouselInputs.forEach(input => input.disabled = true);
+          otherInputs.forEach(input => input.disabled = false);
         }
       }
       
