@@ -98,14 +98,15 @@ class LocationsController < ApplicationController
   end
 
   def build_carousel_grid
-    # Create a 10x20 grid (carousel 1-10, hotel 1-20)
+    # Create a 20x10 grid (hotel 1-20, carousel 1-10)
+    # Structure: grid[hotel][carousel] for hotel positions on y-axis, carousel positions on x-axis
     grid = {}
 
     # Initialize empty grid
-    (1..10).each do |carousel|
-      grid[carousel] = {}
-      (1..20).each do |hotel|
-        grid[carousel][hotel] = {
+    (1..20).each do |hotel|
+      grid[hotel] = {}
+      (1..10).each do |carousel|
+        grid[hotel][carousel] = {
           location: nil,
           plate: nil,
           occupied: false
@@ -125,7 +126,7 @@ class LocationsController < ApplicationController
                               .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
                               .first
 
-      grid[carousel][hotel] = {
+      grid[hotel][carousel] = {
         location: location,
         plate: current_plate,
         occupied: current_plate.present?
