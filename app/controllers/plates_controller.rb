@@ -28,10 +28,12 @@ class PlatesController < ApplicationController
 
     respond_to do |format|
       if @plate.save
-        # Move plate to location if specified
-        if plate_params[:location_id].present?
-          @plate.move_to_location(plate_params[:location_id], "system")
+        # Handle location assignment
+        location = find_or_create_location_from_params
+        if location
+          @plate.move_to_location!(location, moved_by: "system")
         end
+
         format.html { redirect_to @plate, notice: "Plate was successfully created." }
         format.json { render :show, status: :created, location: @plate }
       else
@@ -45,10 +47,12 @@ class PlatesController < ApplicationController
   def update
     respond_to do |format|
       if @plate.update(plate_params.except(:location_id))
-        # Move plate to location if specified and different from current
-        if plate_params[:location_id].present? && @plate.current_location&.id != plate_params[:location_id].to_i
-          @plate.move_to_location(plate_params[:location_id], "system")
+        # Handle location assignment
+        location = find_or_create_location_from_params
+        if location && @plate.current_location&.id != location.id
+          @plate.move_to_location!(location, moved_by: "system")
         end
+
         format.html { redirect_to @plate, notice: "Plate was successfully updated." }
         format.json { render :show, status: :ok, location: @plate }
       else
@@ -77,5 +81,21 @@ class PlatesController < ApplicationController
     # Only allow a list of trusted parameters through.
     def plate_params
       params.expect(plate: [ :barcode, :location_id ])
+    end
+
+    def find_or_create_location_from_params
+      # Check if carousel position parameters are provided
+      if params[:carousel_position].present? && params[:hotel_position].present?
+        carousel_pos = params[:carousel_position].to_i
+        hotel_pos = params[:hotel_position].to_i
+
+        # Find existing carousel location
+        Location.find_by(carousel_position: carousel_pos, hotel_position: hotel_pos)
+      elsif params[:other_location_id].present?
+        # Find the selected other location
+        Location.find(params[:other_location_id])
+      else
+        nil
+      end
     end
 end

@@ -15,12 +15,96 @@
     <%= form.text_field :barcode, class: "form-control", autofocus: true %>
   </div>
 
-  <div class="mb-3">
-    <%= form.label :location_id, "Location", class: "form-label" %>
-    <%= form.select :location_id, options_from_collection_for_select(Location.all, :id, :display_name, plate.current_location&.id), 
-                    { prompt: "Select a location..." }, 
-                    { class: "form-select" } %>
+  <div class="mb-4">
+    <label class="form-label fw-bold">Location</label>
+    
+    <% 
+      current_location = plate.current_location
+      is_carousel = current_location&.carousel_position.present? && current_location&.hotel_position.present?
+      is_other = current_location&.name.present?
+    %>
+    
+    <!-- Radio buttons to choose location type -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="location_type" id="carousel_location" value="carousel" <%= is_carousel || current_location.nil? ? 'checked' : '' %>>
+              <label class="form-check-label fw-semibold" for="carousel_location">
+                <i class="bi bi-grid-3x3-gap me-2"></i>Carousel Position
+              </label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="location_type" id="other_location" value="other" <%= is_other ? 'checked' : '' %>>
+              <label class="form-check-label fw-semibold" for="other_location">
+                <i class="bi bi-geo-alt me-2"></i>Other Location
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carousel position fields -->
+    <div id="carousel_fields" class="card">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <label for="carousel_position" class="form-label">Carousel Position</label>
+            <input type="number" class="form-control" id="carousel_position" name="carousel_position" min="1" max="10" value="<%= current_location&.carousel_position || 1 %>">
+            <div class="form-text">Select carousel position (1-10)</div>
+          </div>
+          <div class="col-md-6">
+            <label for="hotel_position" class="form-label">Hotel Position</label>
+            <input type="number" class="form-control" id="hotel_position" name="hotel_position" min="1" max="20" value="<%= current_location&.hotel_position || 1 %>">
+            <div class="form-text">Select hotel position (1-20)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Other location dropdown -->
+    <div id="other_fields" class="card <%= is_other ? '' : 'd-none' %>">
+      <div class="card-body">
+        <label for="other_location_id" class="form-label">Select Location</label>
+        <select class="form-select" id="other_location_id" name="other_location_id">
+          <option value="">Select a location...</option>
+          <% Location.where(carousel_position: nil, hotel_position: nil).each do |location| %>
+            <option value="<%= location.id %>" <%= current_location&.id == location.id ? 'selected' : '' %>><%= location.display_name %></option>
+          <% end %>
+        </select>
+        <div class="form-text">Select from available special locations</div>
+      </div>
+    </div>
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const carouselRadio = document.getElementById('carousel_location');
+      const otherRadio = document.getElementById('other_location');
+      const carouselFields = document.getElementById('carousel_fields');
+      const otherFields = document.getElementById('other_fields');
+      
+      function toggleFields() {
+        if (carouselRadio.checked) {
+          carouselFields.classList.remove('d-none');
+          otherFields.classList.add('d-none');
+        } else {
+          carouselFields.classList.add('d-none');
+          otherFields.classList.remove('d-none');
+        }
+      }
+      
+      carouselRadio.addEventListener('change', toggleFields);
+      otherRadio.addEventListener('change', toggleFields);
+      
+      // Initialize on page load
+      toggleFields();
+    });
+  </script>
 
   <div>
     <%= form.submit class: "btn btn-primary" %>
