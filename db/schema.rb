@@ -107,3 +107,4 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_09_182557) do
   add_foreign_key "well_contents", "wells"
   add_foreign_key "wells", "plates"
 end
+

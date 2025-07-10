@@ -13,7 +13,7 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   namespace :api do
     namespace :v1 do
-      resources :plates, param: :id, only: [:index, :show, :create]
+      resources :plates, param: :id, only: [ :index, :show, :create ]
     end
   end
 

@@ -8,24 +8,21 @@
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
   <% @plates.each do |plate| %>
     <div class="col">
-      <div class="card shadow-sm h-100 position-relative">
-        <div class="card-body">
+      <div class="card shadow-sm h-100">
+        <div class="card-body position-relative">
           <h5 class="card-title">Plate <%= plate.barcode %></h5>
-          <p class="card-text">
+          <p class="card-text mb-2">
             Stack: <strong><%= plate.location_stack %></strong><br>
             Position: <strong><%= plate.location_position %></strong>
           </p>
 
-          <!-- Removed the Show button -->
+          <%= link_to "Edit", edit_plate_path(plate), class: "btn btn-sm btn-outline-secondary me-2", style: "position: relative; z-index: 2;" %>
 
-          <%= link_to "Edit", edit_plate_path(plate), class: "btn btn-sm btn-outline-secondary ms-2" %>
-
-          <!-- Delete button triggers modal -->
-          <button type="button" class="btn btn-sm btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal-<%= plate.id %>">
+          <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal-<%= plate.id %>" style="position: relative; z-index: 2;">
             Delete
           </button>
 
-          <!-- Delete confirmation modal -->
+          <!-- Delete Confirmation Modal -->
           <div class="modal fade" id="deleteModal-<%= plate.id %>" tabindex="-1" aria-labelledby="deleteModalLabel-<%= plate.id %>" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
               <div class="modal-content">
@@ -44,8 +41,7 @@
             </div>
           </div>
 
-          <!-- Stretched link to make whole card clickable -->
-          <%= link_to "", plate_path(plate), class: "stretched-link" %>
+          <%= link_to "", plate_path(plate), class: "stretched-link", style: "z-index: 1;" %>
         </div>
       </div>
     </div>

@@ -11,5 +11,5 @@ Unit.create!([
   { name: "milligram", symbol: "mg", conversion_to_base: 1.0 },
   { name: "microliter", symbol: "µl", conversion_to_base: 1.0 },
   { name: "milliliter", symbol: "ml", conversion_to_base: 1000.0 },
-  { name: "gram", symbol: "g", conversion_to_base: 1000.0 },
+  { name: "gram", symbol: "g", conversion_to_base: 1000.0 }
 ])

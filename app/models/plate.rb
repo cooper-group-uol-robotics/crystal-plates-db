@@ -26,8 +26,7 @@ class Plate < ApplicationRecord
         # Use insert_all or save all wells at once:
         Well.import wells_to_create   # bulk insert with activerecord-import gem, or:
 
-        # If you don't want an extra gem, just:
-        # wells_to_create.each(&:save!)
+      # If you don't want an extra gem, just:
+      # wells_to_create.each(&:save!)
     end
-    
 end

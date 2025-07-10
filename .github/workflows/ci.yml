@@ -57,5 +57,5 @@ jobs:
         env:
           RAILS_ENV: test
         run: |
-          bin/rails db:prepare
-          bin/rails test
+          ruby bin/rails db:prepare
+          ruby bin/rails test

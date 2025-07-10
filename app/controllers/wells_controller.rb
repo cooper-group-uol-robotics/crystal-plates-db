@@ -59,7 +59,7 @@ class WellsController < ApplicationController
 
   def images
     @well = Well.find(params[:id])
-    render partial: 'images', locals: { well: @well }
+    render partial: "images", locals: { well: @well }
   end
 
   private
@@ -72,6 +72,4 @@ class WellsController < ApplicationController
     def well_params
       params.require(:well).permit(:plate_id, :well_row, :well_column, :subwell)
     end
-
-
 end
