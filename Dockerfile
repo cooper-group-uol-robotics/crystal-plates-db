@@ -59,10 +59,12 @@ COPY --from=build /rails /rails
 RUN chmod +x /rails/bin/docker-entrypoint
 
 # Run and own only the runtime files as a non-root user for security
-RUN mkdir -p db log storage tmp && \
-    groupadd --system --gid 1000 rails && \
-    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
+RUN echo "Making dirs" && mkdir -p db log storage tmp && \
+    echo "Making group" && groupadd --system --gid 1000 rails && \
+    echo "Adding user" && useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
+    echo "Chowning" && chown -R rails:rails db log storage tmp && \
+    echo "Done"
+
 
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
