@@ -16,24 +16,25 @@
         <h5 class="card-title mb-0">
           <i class="bi bi-grid-3x3-gap me-2"></i>Carousel Positions (10 Carousels × 20 Hotel Positions)
         </h5>
+        <small class="text-muted">Carousel positions across (X-axis), Hotel positions up (Y-axis)</small>
       </div>
       <div class="card-body">
         <div class="carousel-grid-container" style="overflow-x: auto;">
           <div class="carousel-grid">
-            <!-- Header row with hotel numbers -->
+            <!-- Header row with carousel numbers -->
             <div class="grid-header">
               <div class="grid-cell grid-corner"></div>
-              <% (1..20).each do |hotel| %>
-                <div class="grid-header-cell">H<%= hotel %></div>
+              <% (1..10).each do |carousel| %>
+                <div class="grid-header-cell">C<%= carousel %></div>
               <% end %>
             </div>
             
             <!-- Grid rows -->
-            <% (1..10).each do |carousel| %>
+            <% (1..20).each do |hotel| %>
               <div class="grid-row">
-                <div class="grid-row-header">C<%= carousel %></div>
-                <% (1..20).each do |hotel| %>
-                  <% cell_data = @carousel_grid[carousel][hotel] %>
+                <div class="grid-row-header">H<%= hotel %></div>
+                <% (1..10).each do |carousel| %>
+                  <% cell_data = @carousel_grid[hotel][carousel] %>
                   <% 
                     cell_class = "grid-cell"
                     cell_class += " occupied" if cell_data[:occupied]
