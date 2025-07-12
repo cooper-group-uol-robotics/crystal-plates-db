@@ -10,6 +10,13 @@
     </div>
   <% end %>
 
+  <% 
+    # Determine initial state based on location data
+    is_carousel_type = (location.carousel_position.present? && location.hotel_position.present?) || 
+                       (location.new_record? && location.name.blank?)
+    is_special_type = location.name.present?
+  %>
+
   <div class="mb-4">
     <label class="form-label fw-bold">Location Type</label>
     
@@ -20,16 +27,16 @@
           <div class="col-md-6">
             <div class="form-check">
               <input class="form-check-input" type="radio" name="location_type" id="carousel_location" value="carousel" 
-                     <%= (location.carousel_position.present? && location.hotel_position.present?) || location.new_record? ? 'checked' : '' %>>
+                     <%= is_carousel_type ? 'checked' : '' %>>
               <label class="form-check-label fw-semibold" for="carousel_location">
-                <i class="bi bi-grid-3x3-gap me-2"></i>Carousel Position
+                <i class="bi bi-grid-3x3-gap me-2"></i>Carousel/Hotel Position
               </label>
             </div>
           </div>
           <div class="col-md-6">
             <div class="form-check">
               <input class="form-check-input" type="radio" name="location_type" id="special_location" value="special" 
-                     <%= location.name.present? ? 'checked' : '' %>>
+                     <%= is_special_type ? 'checked' : '' %>>
               <label class="form-check-label fw-semibold" for="special_location">
                 <i class="bi bi-geo-alt me-2"></i>Special Location
               </label>
@@ -40,17 +47,17 @@
     </div>
 
     <!-- Carousel position fields -->
-    <div id="carousel_fields" class="card">
+    <div id="carousel_fields" class="card mb-3">
       <div class="card-body">
         <div class="row">
           <div class="col-md-6">
-            <%= form.label :carousel_position, class: "form-label" %>
+            <%= form.label :carousel_position, "Carousel Position", class: "form-label" %>
             <%= form.number_field :carousel_position, class: "form-control", min: 1, max: 10, 
                                   value: location.carousel_position || 1 %>
             <div class="form-text">Select carousel position (1-10)</div>
           </div>
           <div class="col-md-6">
-            <%= form.label :hotel_position, class: "form-label" %>
+            <%= form.label :hotel_position, "Hotel Position", class: "form-label" %>
             <%= form.number_field :hotel_position, class: "form-control", min: 1, max: 20, 
                                   value: location.hotel_position || 1 %>
             <div class="form-text">Select hotel position (1-20)</div>
@@ -60,10 +67,11 @@
     </div>
 
     <!-- Special location fields -->
-    <div id="special_fields" class="card <%= location.name.present? ? '' : 'd-none' %>">
+    <div id="special_fields" class="card">
       <div class="card-body">
-        <%= form.label :name, class: "form-label" %>
-        <%= form.text_field :name, class: "form-control", placeholder: "Enter location name (e.g., 'imager', 'storage')" %>
+        <%= form.label :name, "Name", class: "form-label" %>
+        <%= form.text_field :name, class: "form-control", 
+                           placeholder: "Enter location name (e.g., 'imager', 'storage')" %>
         <div class="form-text">Enter a descriptive name for this special location</div>
       </div>
     </div>
@@ -74,37 +82,4 @@
   </div>
 <% end %>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const carouselRadio = document.getElementById('carousel_location');
-  const specialRadio = document.getElementById('special_location');
-  const carouselFields = document.getElementById('carousel_fields');
-  const specialFields = document.getElementById('special_fields');
-  const carouselInputs = carouselFields.querySelectorAll('input');
-  const specialInputs = specialFields.querySelectorAll('input');
-  
-  function toggleFields() {
-    if (carouselRadio.checked) {
-      carouselFields.classList.remove('d-none');
-      specialFields.classList.add('d-none');
-      
-      // Enable carousel inputs and disable special inputs
-      carouselInputs.forEach(input => input.disabled = false);
-      specialInputs.forEach(input => input.disabled = true);
-    } else {
-      carouselFields.classList.add('d-none');
-      specialFields.classList.remove('d-none');
-      
-      // Disable carousel inputs and enable special inputs
-      carouselInputs.forEach(input => input.disabled = true);
-      specialInputs.forEach(input => input.disabled = false);
-    }
-  }
-  
-  carouselRadio.addEventListener('change', toggleFields);
-  specialRadio.addEventListener('change', toggleFields);
-  
-  // Initialize on page load
-  toggleFields();
-});
-</script>
+<!-- JavaScript moved to stimulus controller or removed for testing -->

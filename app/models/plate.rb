@@ -4,10 +4,17 @@ class Plate < ApplicationRecord
     has_many :locations, through: :plate_locations
 
     validates :barcode, presence: true, uniqueness: true
-    # Remove old location validations - will be handled by Location model
-    # validates :location_position, inclusion: 1..10
-    # validates :location_stack, inclusion: 1..20
     after_create :create_wells!
+
+    # Scope to get plates that are currently at any location
+    scope :with_current_location, -> {
+      joins(:plate_locations).merge(PlateLocation.most_recent_for_each_plate)
+    }
+
+    # Scope to get plates currently at a specific location
+    scope :currently_at_location, ->(location) {
+      with_current_location.where(plate_locations: { location_id: location.id })
+    }
 
     def current_location
         plate_locations.recent_first.first&.location
@@ -21,12 +28,16 @@ class Plate < ApplicationRecord
         plate_locations.recent_first.includes(:location)
     end
 
-    def move_to_location!(location, moved_by: "system")
+    def move_to_location!(location)
         # Check if location is already occupied by another plate
-        # Find the most recent plate location for each plate at this location
+        # Find plates whose most recent location (anywhere) is this location
+        latest_locations_subquery = PlateLocation
+          .select("plate_id, MAX(id) as latest_id")
+          .group(:plate_id)
+
         occupied_by = PlateLocation.joins(:plate)
+                                  .joins("INNER JOIN (#{latest_locations_subquery.to_sql}) latest ON plate_locations.plate_id = latest.plate_id AND plate_locations.id = latest.latest_id")
                                   .where(location: location)
-                                  .where(id: PlateLocation.select("MAX(id)").where(location: location).group(:plate_id))
                                   .where.not(plate_id: self.id)
                                   .includes(:plate)
                                   .first
@@ -38,8 +49,7 @@ class Plate < ApplicationRecord
 
         plate_locations.create!(
             location: location,
-            moved_at: Time.current,
-            moved_by: moved_by
+            moved_at: Time.current
         )
     end
 

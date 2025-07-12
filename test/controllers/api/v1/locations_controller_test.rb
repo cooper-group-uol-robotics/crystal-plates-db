@@ -109,7 +109,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should not destroy occupied location" do
-    @plate.move_to_location!(@location, moved_by: "test")
+    @plate.move_to_location!(@location)
 
     assert_no_difference("Location.count") do
       delete api_v1_location_url(@location), as: :json
@@ -121,7 +121,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get current plates" do
-    @plate.move_to_location!(@location, moved_by: "test")
+    @plate.move_to_location!(@location)
 
     get current_plates_api_v1_location_url(@location), as: :json
     assert_response :success
@@ -132,7 +132,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get history" do
-    @plate.move_to_location!(@location, moved_by: "test")
+    @plate.move_to_location!(@location)
 
     get history_api_v1_location_url(@location), as: :json
     assert_response :success

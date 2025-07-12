@@ -2,51 +2,78 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h1 class="mb-0">Plates</h1>
-  <%= link_to "New Plate", new_plate_path, class: "btn btn-success" %>
+  <%= link_to "New plate", new_plate_path, class: "btn btn-success" %>
 </div>
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-  <% @plates.each do |plate| %>
-    <div class="col">
-      <div class="card shadow-sm h-100">
-        <div class="card-body position-relative">
-          <h5 class="card-title">Plate <%= plate.barcode %></h5>
-          <p class="card-text mb-2">
-            <% if plate.current_location %>
-              Location: <strong><%= plate.current_location.display_name %></strong>
-            <% else %>
-              Location: <strong>Not assigned</strong>
+<div class="card">
+  <div class="card-body">
+    <% if @plates.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>
+                <%= link_to plates_path(sort: 'barcode', direction: @sort_column == 'barcode' && @sort_direction == 'asc' ? 'desc' : 'asc'), 
+                            class: "text-decoration-none text-dark" do %>
+                  Barcode
+                  <% if @sort_column == 'barcode' %>
+                    <i class="bi bi-arrow-<%= @sort_direction == 'asc' ? 'up' : 'down' %>"></i>
+                  <% else %>
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  <% end %>
+                <% end %>
+              </th>
+              <th>Current Location</th>
+              <th>
+                <%= link_to plates_path(sort: 'created_at', direction: @sort_column == 'created_at' && @sort_direction == 'asc' ? 'desc' : 'asc'), 
+                            class: "text-decoration-none text-dark" do %>
+                  Created At At
+                  <% if @sort_column == 'created_at' %>
+                    <i class="bi bi-arrow-<%= @sort_direction == 'asc' ? 'up' : 'down' %>"></i>
+                  <% else %>
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  <% end %>
+                <% end %>
+              </th>
+              <th style="width: 200px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @plates.each do |plate| %>
+              <tr>
+                <td>
+                  <%= link_to plate.barcode, plate_path(plate), class: "fw-bold text-decoration-none" %>
+                </td>
+                <td>
+                  <% if plate.current_location %>
+                    <%= link_to plate.current_location.display_name, location_path(plate.current_location), class: "text-decoration-none" %>
+                  <% else %>
+                    <span class="text-muted">Not assigned</span>
+                  <% end %>
+                </td>
+                <td>
+                  <small class="text-muted"><%= plate.created_at.strftime("%m/%d/%Y") %></small>
+                </td>
+                <td>
+                  <div class="btn-group" role="group" aria-label="Plate actions">
+                    <%= link_to "Show", plate_path(plate), class: "btn btn-sm btn-outline-primary" %>
+                    <%= link_to "Edit", edit_plate_path(plate), class: "btn btn-sm btn-outline-secondary" %>
+                    <%= button_to "Delete", plate_path(plate), method: :delete,
+                                  class: "btn btn-sm btn-outline-danger",
+                                  form: { style: "display: inline-block;" },
+                                  data: { confirm: "Are you sure you want to delete Plate #{plate.barcode}?" } %>
+                  </div>
+                </td>
+              </tr>
             <% end %>
-          </p>
-
-          <%= link_to "Edit", edit_plate_path(plate), class: "btn btn-sm btn-outline-secondary me-2", style: "position: relative; z-index: 2;" %>
-
-          <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal-<%= plate.id %>" style="position: relative; z-index: 2;">
-            Delete
-          </button>
-
-          <!-- Delete Confirmation Modal -->
-          <div class="modal fade" id="deleteModal-<%= plate.id %>" tabindex="-1" aria-labelledby="deleteModalLabel-<%= plate.id %>" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title" id="deleteModalLabel-<%= plate.id %>">Confirm Delete</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                  Are you sure you want to delete Plate <strong><%= plate.barcode %></strong>?
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                  <%= button_to "Delete", plate_path(plate), method: :delete, form_class: "d-inline", class: "btn btn-danger" %>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <%= link_to "", plate_path(plate), class: "stretched-link", style: "z-index: 1;" %>
-        </div>
+          </tbody>
+        </table>
       </div>
-    </div>
-  <% end %>
+    <% else %>
+      <div class="text-center py-5">
+        <p class="text-muted mb-3">No plates found.</p>
+        <%= link_to "Create First Plate", new_plate_path, class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
 </div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_10_141313) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_12_111938) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -57,7 +57,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_10_141313) do
     t.integer "plate_id", null: false
     t.integer "location_id", null: false
     t.datetime "moved_at"
-    t.string "moved_by"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["location_id"], name: "index_plate_locations_on_location_id"

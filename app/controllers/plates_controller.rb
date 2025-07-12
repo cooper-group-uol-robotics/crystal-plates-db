@@ -3,7 +3,26 @@ class PlatesController < ApplicationController
 
   # GET /plates or /plates.json
   def index
-    @plates = Plate.all
+    # Handle sorting
+    sort_column = params[:sort] || "barcode"
+    sort_direction = params[:direction] || "asc"
+
+    # Validate sort parameters
+    allowed_columns = %w[barcode created_at]
+    sort_column = "barcode" unless allowed_columns.include?(sort_column)
+    sort_direction = "asc" unless %w[asc desc].include?(sort_direction)
+
+    case sort_column
+    when "barcode"
+      @plates = Plate.includes(plate_locations: :location).order("barcode #{sort_direction}")
+    when "created_at"
+      @plates = Plate.includes(plate_locations: :location).order("created_at #{sort_direction}")
+    else
+      @plates = Plate.includes(plate_locations: :location).order(:barcode)
+    end
+
+    @sort_column = sort_column
+    @sort_direction = sort_direction
   end
 
   # GET /plates/1 or /plates/1.json
@@ -16,6 +35,11 @@ class PlatesController < ApplicationController
   # GET /plates/new
   def new
     @plate = Plate.new
+
+    # If location_id is provided, pre-populate the location
+    if params[:location_id].present?
+      @preselected_location = Location.find(params[:location_id])
+    end
   end
 
   # GET /plates/1/edit
@@ -31,7 +55,7 @@ class PlatesController < ApplicationController
         # Handle location assignment
         location = find_or_create_location_from_params
         if location
-          @plate.move_to_location!(location, moved_by: "system")
+          @plate.move_to_location!(location)
         end
 
         format.html { redirect_to @plate, notice: "Plate was successfully created." }
@@ -50,7 +74,7 @@ class PlatesController < ApplicationController
         # Handle location assignment
         location = find_or_create_location_from_params
         if location && @plate.current_location&.id != location.id
-          @plate.move_to_location!(location, moved_by: "system")
+          @plate.move_to_location!(location)
         end
 
         format.html { redirect_to @plate, notice: "Plate was successfully updated." }

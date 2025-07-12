@@ -10,26 +10,27 @@ class LocationsIntegrationTest < ActionDispatch::IntegrationTest
 
   test "location index shows all locations with status" do
     # Move a plate to carousel location
-    @plate1.move_to_location!(@carousel_location, moved_by: "integration_test")
+    @plate1.move_to_location!(@carousel_location)
+    # Move another plate to a special location to test status display
+    @plate2.move_to_location!(@imager_location)
 
-    get locations_path
+    get grid_locations_path
     assert_response :success
 
     # Check for carousel locations section
     assert_select "h5", text: "Carousel Locations"
-    assert_select "table"
+    assert_select ".carousel-grid"
 
     # Check for special locations section
-    assert_select "h5", text: "Special Locations"
+    assert_select "h6", text: "Special Locations"
 
-    # Check for occupied/available badges
-    assert_select "span.badge.bg-warning", text: "Occupied"
-    assert_select "span.badge.bg-success", text: "Available"
+    # Check for occupied status (plate barcode should be shown)
+    assert_select ".text-warning", text: @plate2.barcode
   end
 
   test "location show displays complete information" do
     # Move plate to location
-    @plate1.move_to_location!(@carousel_location, moved_by: "integration_test")
+    @plate1.move_to_location!(@carousel_location)
 
     get location_path(@carousel_location)
     assert_response :success
@@ -54,8 +55,8 @@ class LocationsIntegrationTest < ActionDispatch::IntegrationTest
     Location.create!(carousel_position: 2, hotel_position: 2)
 
     # Move plates to different locations
-    @plate1.move_to_location!(@carousel_location, moved_by: "integration_test")
-    @plate2.move_to_location!(locations(:carousel_1_hotel_2), moved_by: "integration_test")
+    @plate1.move_to_location!(@carousel_location)
+    @plate2.move_to_location!(locations(:carousel_1_hotel_2))
 
     get grid_locations_path
     assert_response :success
@@ -140,20 +141,20 @@ class LocationsIntegrationTest < ActionDispatch::IntegrationTest
       delete location_path(empty_location)
     end
 
-    assert_redirected_to locations_path
+    assert_redirected_to grid_locations_path
     follow_redirect!
     assert_select ".alert-success", text: "Location was successfully deleted."
   end
 
   test "cannot delete occupied location" do
     # Move plate to location
-    @plate1.move_to_location!(@imager_location, moved_by: "integration_test")
+    @plate1.move_to_location!(@imager_location)
 
     assert_no_difference "Location.count" do
       delete location_path(@imager_location)
     end
 
-    assert_redirected_to locations_path
+    assert_redirected_to grid_locations_path
     follow_redirect!
     assert_select ".alert-danger", text: "Cannot delete location that currently contains plates."
   end
@@ -193,13 +194,13 @@ class LocationsIntegrationTest < ActionDispatch::IntegrationTest
     Location.create!(name: "storage")
     Location.create!(name: "freezer")
 
-    get locations_path
+    get grid_locations_path
     assert_response :success
 
     # Should show all location types
-    assert_select "td", text: "1"  # Carousel position
-    assert_select "h6", text: "imager"  # Special locations are shown in card titles
-    assert_select "h6", text: "storage"
-    assert_select "h6", text: "freezer"
+    assert_select ".grid-header-cell", text: "C1"  # Carousel position header
+    assert_select ".fw-bold.small", text: "imager"  # Special locations are shown in special-location-card
+    assert_select ".fw-bold.small", text: "storage"
+    assert_select ".fw-bold.small", text: "freezer"
   end
 end

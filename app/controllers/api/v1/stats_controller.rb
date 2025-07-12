@@ -31,7 +31,7 @@ module Api::V1
 
     def occupied_locations_count
       Location.joins(:plate_locations)
-              .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
+              .merge(PlateLocation.most_recent_for_each_plate)
               .distinct
               .count
     end
@@ -54,10 +54,7 @@ module Api::V1
     end
 
     def plates_with_location_count
-      Plate.joins(:plate_locations)
-           .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
-           .distinct
-           .count
+      Plate.with_current_location.distinct.count
     end
 
     def plates_without_location_count

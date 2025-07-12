@@ -3,6 +3,3 @@
 // ./bin/rails generate stimulus controllerName
 
 import { application } from "./application"
-
-import PlateGridController from "./plate_grid_controller"
-application.register("plate-grid", PlateGridController)

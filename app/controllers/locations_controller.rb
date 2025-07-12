@@ -3,19 +3,12 @@ class LocationsController < ApplicationController
 
   # GET /locations
   def index
-    @carousel_locations = Location.where.not(carousel_position: nil, hotel_position: nil)
-                                   .order(:carousel_position, :hotel_position)
-    @other_locations = Location.where(carousel_position: nil, hotel_position: nil)
-                               .order(:name)
-
-    # Create grid data structure for carousel locations
-    @carousel_grid = build_carousel_grid
+    redirect_to grid_locations_path
   end
 
   # GET /locations/1
   def show
-    @current_plates = @location.plates.joins(:plate_locations)
-                               .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
+    @current_plates = @location.current_plates
     @location_history = @location.plate_locations.recent_first.includes(:plate).limit(20)
   end
 
@@ -58,13 +51,11 @@ class LocationsController < ApplicationController
 
   # DELETE /locations/1
   def destroy
-    if @location.plates.joins(:plate_locations)
-                .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
-                .exists?
-      redirect_to locations_path, alert: "Cannot delete location that currently contains plates."
+    if @location.current_plates.exists?
+      redirect_to grid_locations_path, alert: "Cannot delete location that currently contains plates."
     else
       @location.destroy!
-      redirect_to locations_path, notice: "Location was successfully deleted."
+      redirect_to grid_locations_path, notice: "Location was successfully deleted."
     end
   end
 
@@ -72,7 +63,7 @@ class LocationsController < ApplicationController
   def grid
     @carousel_grid = build_carousel_grid
     @other_locations = Location.where(carousel_position: nil, hotel_position: nil)
-                               .includes(plate_locations: :plate)
+                               .with_current_plate_data
                                .order(:name)
   end
 
@@ -116,20 +107,18 @@ class LocationsController < ApplicationController
 
     # Fill grid with actual location data and current plates
     Location.where.not(carousel_position: nil, hotel_position: nil)
-            .includes(plate_locations: :plate)
+            .with_current_plate_data
             .each do |location|
       carousel = location.carousel_position
       hotel = location.hotel_position
 
-      # Find current plate at this location
-      current_plate = location.plates.joins(:plate_locations)
-                              .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
-                              .first
+      # Use preloaded current plate
+      current_plate = location.current_plates.first
 
       grid[hotel][carousel] = {
         location: location,
         plate: current_plate,
-        occupied: current_plate.present?
+        occupied: location.has_current_plate?
       }
     end
 

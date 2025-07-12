@@ -1,114 +1,53 @@
 <% content_for :title, "Locations" %>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="mb-0">Location Management</h1>
-  <div>
-    <%= link_to "Grid View", grid_locations_path, class: "btn btn-info me-2" %>
-    <%= link_to "New Location", new_location_path, class: "btn btn-success" %>
-  </div>
-</div>
+<h1>Locations</h1>
 
-<div class="row">
-  <!-- Carousel Locations -->
-  <div class="col-lg-8">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="card-title mb-0">
-          <i class="bi bi-grid-3x3-gap me-2"></i>Carousel Locations
-        </h5>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-sm table-hover">
-            <thead>
-              <tr>
-                <th>Carousel</th>
-                <th>Hotel</th>
-                <th>Status</th>
-                <th>Current Plate</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @carousel_locations.each do |location| %>
-                <% current_plate = location.plates.joins(:plate_locations)
-                                          .where(plate_locations: { id: PlateLocation.select('MAX(id)').group(:plate_id) })
-                                          .first %>
-                <tr class="<%= current_plate ? 'table-warning' : 'table-light' %>">
-                  <td><%= location.carousel_position %></td>
-                  <td><%= location.hotel_position %></td>
-                  <td>
-                    <% if current_plate %>
-                      <span class="badge bg-warning text-dark">Occupied</span>
-                    <% else %>
-                      <span class="badge bg-success">Available</span>
-                    <% end %>
-                  </td>
-                  <td>
-                    <% if current_plate %>
-                      <%= link_to current_plate.barcode, plate_path(current_plate), class: "fw-bold text-decoration-none" %>
-                    <% else %>
-                      <span class="text-muted">—</span>
-                    <% end %>
-                  </td>
-                  <td>
-                    <%= link_to "View", location_path(location), class: "btn btn-sm btn-outline-primary" %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Other Locations -->
-  <div class="col-lg-4">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="card-title mb-0">
-          <i class="bi bi-geo-alt me-2"></i>Special Locations
-        </h5>
-      </div>
-      <div class="card-body">
-        <% if @other_locations.any? %>
-          <% @other_locations.each do |location| %>
-            <% current_plate = location.plates.joins(:plate_locations)
-                                      .where(plate_locations: { id: PlateLocation.select('MAX(id)').group(:plate_id) })
-                                      .first %>
-            <div class="card mb-2 <%= current_plate ? 'border-warning' : 'border-success' %>">
-              <div class="card-body py-2">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <h6 class="card-title mb-1"><%= location.display_name %></h6>
-                    <% if current_plate %>
-                      <small class="text-warning">
-                        <i class="bi bi-circle-fill me-1"></i>
-                        <%= link_to current_plate.barcode, plate_path(current_plate), class: "text-decoration-none" %>
-                      </small>
-                    <% else %>
-                      <small class="text-success">
-                        <i class="bi bi-circle me-1"></i>Available
-                      </small>
-                    <% end %>
-                  </div>
-                  <div>
-                    <%= link_to "View", location_path(location), class: "btn btn-sm btn-outline-primary" %>
-                    <% unless current_plate %>
-                      <%= link_to "Delete", location_path(location), method: :delete, 
-                                  class: "btn btn-sm btn-outline-danger",
-                                  data: { confirm: "Are you sure?" } %>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            </div>
+<h5>Carousel Locations</h5>
+<table>
+  <thead>
+    <tr>
+      <th>Carousel</th>
+      <th>Hotel Position</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @carousel_locations.each do |location| %>
+      <tr>
+        <td><%= location.carousel_position %></td>
+        <td><%= location.hotel_position %></td>
+        <td>
+          <% if location.has_current_plate? %>
+            <span class="badge bg-warning">Occupied</span>
+          <% else %>
+            <span class="badge bg-success">Available</span>
           <% end %>
-        <% else %>
-          <p class="text-muted">No special locations defined.</p>
-        <% end %>
-      </div>
-    </div>
-  </div>
-</div>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<h5>Special Locations</h5>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @special_locations.each do |location| %>
+      <tr>
+        <td><%= location.name %></td>
+        <td>
+          <% if location.has_current_plate? %>
+            <span class="badge bg-warning">Occupied</span>
+          <% else %>
+            <span class="badge bg-success">Available</span>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

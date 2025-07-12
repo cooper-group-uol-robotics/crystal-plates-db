@@ -45,10 +45,9 @@ module Api::V1
     # POST /api/v1/plates/:barcode/move_to_location
     def move_to_location
       location = Location.find(params[:location_id])
-      moved_by = params[:moved_by] || "api"
 
       begin
-        @plate.move_to_location!(location, moved_by: moved_by)
+        @plate.move_to_location!(location)
         render_success(
           {
             plate: plate_json(@plate),
@@ -69,8 +68,7 @@ module Api::V1
         history.map do |plate_location|
           {
             location: location_json(plate_location.location),
-            moved_at: plate_location.moved_at,
-            moved_by: plate_location.moved_by
+            moved_at: plate_location.moved_at
           }
         end
       )

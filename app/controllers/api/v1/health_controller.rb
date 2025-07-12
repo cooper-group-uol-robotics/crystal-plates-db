@@ -18,7 +18,8 @@ module Api::V1
 
     def database_status
       begin
-        ActiveRecord::Base.connection.execute("SELECT 1")
+        # Use Rails' connection check instead of raw SQL
+        ActiveRecord::Base.connection.active?
         "connected"
       rescue
         "disconnected"

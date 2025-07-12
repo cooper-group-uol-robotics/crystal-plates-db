@@ -10,4 +10,13 @@ class Well < ApplicationRecord
     letter = ROW_LETTERS[row_index] || "?"
     "#{letter}#{well_column}"
   end
+
+  # Alias for compatibility with system tests
+  def column
+    well_column
+  end
+
+  def row
+    well_row
+  end
 end

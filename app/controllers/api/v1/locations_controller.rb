@@ -77,9 +77,7 @@ module Api::V1
 
     # DELETE /api/v1/locations/:id
     def destroy
-      if @location.plates.joins(:plate_locations)
-                  .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
-                  .exists?
+      if @location.current_plates.exists?
         render_error("Cannot delete location that currently contains plates", status: :unprocessable_entity)
       else
         @location.destroy!
@@ -89,8 +87,7 @@ module Api::V1
 
     # GET /api/v1/locations/:id/current_plates
     def current_plates
-      plates = @location.plates.joins(:plate_locations)
-                        .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
+      plates = @location.current_plates
       render_success(plates.map { |plate| plate_summary(plate) })
     end
 
@@ -101,8 +98,7 @@ module Api::V1
         history.map do |plate_location|
           {
             plate: plate_summary(plate_location.plate),
-            moved_at: plate_location.moved_at,
-            moved_by: plate_location.moved_by
+            moved_at: plate_location.moved_at
           }
         end
       )
@@ -146,8 +142,7 @@ module Api::V1
       }
 
       if include_details
-        current_plates = location.plates.joins(:plate_locations)
-                                .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
+        current_plates = location.current_plates
         result[:current_plates] = current_plates.map { |plate| plate_summary(plate) }
         result[:is_occupied] = current_plates.any?
         result[:plates_count] = current_plates.count
@@ -184,9 +179,7 @@ module Api::V1
         carousel = location.carousel_position
         hotel = location.hotel_position
 
-        current_plate = location.plates.joins(:plate_locations)
-                                .where(plate_locations: { id: PlateLocation.select("MAX(id)").group(:plate_id) })
-                                .first
+        current_plate = location.current_plates.first
 
         grid[hotel][carousel] = {
           location: location,

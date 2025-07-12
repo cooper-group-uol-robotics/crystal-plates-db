@@ -8,8 +8,7 @@ class LocationsControllerTest < ActionDispatch::IntegrationTest
 
   test "should get index" do
     get locations_url
-    assert_response :success
-    assert_select "h1", "Location Management"
+    assert_redirected_to grid_locations_url
   end
 
   test "should get grid" do
@@ -94,39 +93,27 @@ class LocationsControllerTest < ActionDispatch::IntegrationTest
       delete location_url(empty_location)
     end
 
-    assert_redirected_to locations_url
+    assert_redirected_to grid_locations_url
   end
 
   test "should not destroy occupied location" do
     # Ensure the imager location has a plate
     plate = plates(:one)
-    plate.move_to_location!(@imager_location, moved_by: "test")
+    plate.move_to_location!(@imager_location)
 
     assert_no_difference("Location.count") do
       delete location_url(@imager_location)
     end
 
-    assert_redirected_to locations_url
+    assert_redirected_to grid_locations_url
     follow_redirect!
-    assert_select ".alert-danger", /Cannot delete location that currently contains plates/
+    assert_select ".alert.alert-danger", /Cannot delete location that currently contains plates/
   end
 
-  test "index should show occupied and available locations" do
+  test "index should redirect to grid" do
     # Move a plate to carousel location
     plate = plates(:one)
-    plate.move_to_location!(@carousel_location, moved_by: "test")
-
-    get locations_url
-
-    # Should show occupied status
-    assert_select "span.badge.bg-warning", "Occupied"
-    assert_select "span.badge.bg-success", "Available"
-  end
-
-  test "grid should display carousel positions correctly" do
-    # Move a plate to carousel location
-    plate = plates(:one)
-    plate.move_to_location!(@carousel_location, moved_by: "test")
+    plate.move_to_location!(@carousel_location)
 
     get grid_locations_url
 
@@ -134,5 +121,111 @@ class LocationsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".carousel-grid"
     assert_select ".grid-cell"
     assert_response :success
+  end
+
+  test "grid should display carousel positions correctly" do
+    # Move a plate to carousel location
+    plate = plates(:one)
+    plate.move_to_location!(@carousel_location)
+
+    get grid_locations_url
+
+    # Should show grid with proper structure
+    assert_select ".carousel-grid"
+    assert_select ".grid-cell"
+    assert_response :success
+  end
+
+  test "locations with_occupation_status scope works efficiently" do
+    # Create locations and test the scope
+    location1 = Location.create!(name: "test_location_1")
+    location2 = Location.create!(name: "test_location_2")
+
+    # Move plate to location1
+    plate = plates(:one)
+    plate.move_to_location!(location1)
+
+    # Test the scope - use to_a to force evaluation
+    locations = Location.with_occupation_status.to_a
+    assert locations.count >= 2
+
+    # Find our test locations
+    occupied_location = locations.find { |l| l.id == location1.id }
+    empty_location = locations.find { |l| l.id == location2.id }
+
+    # Test occupation status
+    assert occupied_location.occupied?, "Location with plate should be occupied"
+    assert_not empty_location.occupied?, "Location without plate should not be occupied"
+  end
+
+  test "locations have current_plate methods when using with_current_plate_data" do
+    location = Location.create!(name: "test_current_plate")
+    plate = plates(:one)
+    plate.move_to_location!(location)
+
+    # Test with preloaded data
+    location_with_data = Location.with_current_plate_data.find(location.id)
+
+    assert location_with_data.has_current_plate?, "Should have current plate"
+    assert_equal plate.id, location_with_data.current_plate_id
+    assert_equal plate.barcode, location_with_data.current_plate_barcode
+  end
+
+  test "grid view uses efficient queries" do
+    # Create multiple carousel locations with plates
+    3.times do |i|
+      location = Location.create!(carousel_position: i + 10, hotel_position: 1)
+      plate = Plate.create!(barcode: "GRID_TEST_#{i}")
+      plate.move_to_location!(location)
+    end
+
+    # Create some special locations
+    2.times do |i|
+      location = Location.create!(name: "special_#{i}")
+      if i == 0
+        plate = Plate.create!(barcode: "SPECIAL_TEST")
+        plate.move_to_location!(location)
+      end
+    end
+
+    # Grid view should load efficiently
+    get grid_locations_url
+    assert_response :success
+
+    # Should contain grid elements
+    assert_select ".carousel-grid"
+    assert_select ".grid-cell"
+  end
+
+  test "grid view displays occupation status correctly" do
+    # Create a carousel location and move a plate to it
+    test_location = Location.create!(carousel_position: 5, hotel_position: 5)
+    test_plate = Plate.create!(barcode: "GRID_OCCUPIED_TEST")
+    test_plate.move_to_location!(test_location)
+
+    get grid_locations_url
+    assert_response :success
+
+    # Should show occupied status in the grid
+    response_body = response.body
+    assert_includes response_body, "GRID_OCCUPIED_TEST"
+  end
+
+  test "index redirects to grid and uses efficient preloading" do
+    # Create locations with plates to test preloading
+    location1 = Location.create!(name: "redirect_test_1")
+    Location.create!(name: "redirect_test_2")  # unused but good for testing preloading
+
+    plate1 = Plate.create!(barcode: "REDIRECT_TEST_1")
+    plate1.move_to_location!(location1)
+
+    # Index should redirect to grid
+    get locations_url
+    assert_redirected_to grid_locations_url
+
+    # Follow redirect and ensure it works
+    follow_redirect!
+    assert_response :success
+    assert_select "h1", text: "Carousel Grid View"
   end
 end

@@ -56,8 +56,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
 
   test "should move plate to location" do
     post move_to_location_api_v1_plate_url(@plate.barcode), params: {
-      location_id: @location.id,
-      moved_by: "api_test"
+      location_id: @location.id
     }, as: :json
 
     assert_response :success
@@ -69,7 +68,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get location history" do
-    @plate.move_to_location!(@location, moved_by: "test")
+    @plate.move_to_location!(@location)
 
     get location_history_api_v1_plate_url(@plate.barcode), as: :json
     assert_response :success
