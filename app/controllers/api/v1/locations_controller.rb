@@ -27,11 +27,12 @@ module Api::V1
     # GET /api/v1/locations/grid
     def grid
       grid_data = build_carousel_grid
+      dimensions = get_grid_dimensions
       formatted_grid = []
 
-      (1..20).each do |hotel|
+      dimensions[:hotel_range].each do |hotel|
         row = []
-        (1..10).each do |carousel|
+        dimensions[:carousel_range].each do |carousel|
           cell_data = grid_data[hotel][carousel]
           row << {
             carousel_position: carousel,
@@ -46,7 +47,14 @@ module Api::V1
 
       render_success({
         grid: formatted_grid,
-        dimensions: { carousel_positions: 10, hotel_positions: 20 }
+        dimensions: {
+          carousel_positions: dimensions[:max_carousel] - dimensions[:min_carousel] + 1,
+          hotel_positions: dimensions[:max_hotel] - dimensions[:min_hotel] + 1,
+          min_carousel: dimensions[:min_carousel],
+          max_carousel: dimensions[:max_carousel],
+          min_hotel: dimensions[:min_hotel],
+          max_hotel: dimensions[:max_hotel]
+        }
       })
     end
 
@@ -158,13 +166,31 @@ module Api::V1
       }
     end
 
+    def get_grid_dimensions
+      # Get all carousel locations from the database
+      locations = Location.where.not(carousel_position: nil, hotel_position: nil)
+      carousel_positions = locations.pluck(:carousel_position).compact
+      hotel_positions = locations.pluck(:hotel_position).compact
+
+      # Return the dimensions as a hash
+      {
+        min_carousel: carousel_positions.min || 1,
+        max_carousel: carousel_positions.max || 10,
+        min_hotel: hotel_positions.min || 1,
+        max_hotel: hotel_positions.max || 20,
+        carousel_range: (carousel_positions.min || 1)..(carousel_positions.max || 10),
+        hotel_range: (hotel_positions.min || 1)..(hotel_positions.max || 20)
+      }
+    end
+
     def build_carousel_grid
-      # Same logic as in the main LocationsController
+      # Get dynamic dimensions
+      dimensions = get_grid_dimensions
       grid = {}
 
-      (1..20).each do |hotel|
+      dimensions[:hotel_range].each do |hotel|
         grid[hotel] = {}
-        (1..10).each do |carousel|
+        dimensions[:carousel_range].each do |carousel|
           grid[hotel][carousel] = {
             location: nil,
             plate: nil,

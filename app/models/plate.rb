@@ -3,7 +3,8 @@ class Plate < ApplicationRecord
     has_many :plate_locations, dependent: :destroy
     has_many :locations, through: :plate_locations
 
-    validates :barcode, presence: true, uniqueness: true
+    validates :barcode, uniqueness: true
+    before_validation :generate_barcode_if_blank
     after_create :create_wells!
 
     # Scope to get plates that are currently at any location
@@ -62,6 +63,21 @@ class Plate < ApplicationRecord
     end
 
     private
+
+    def generate_barcode_if_blank
+        return if barcode.present?
+
+        # Generate a unique barcode
+        loop do
+            candidate_barcode = "#{Random.rand(60000000..69999999)}"
+
+            # Check if this barcode already exists
+            unless Plate.exists?(barcode: candidate_barcode)
+                self.barcode = candidate_barcode
+                break
+            end
+        end
+    end
 
     def create_wells!
         wells_to_create = []

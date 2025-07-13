@@ -55,13 +55,11 @@
                   <small class="text-muted"><%= plate.created_at.strftime("%m/%d/%Y") %></small>
                 </td>
                 <td>
-                  <div class="btn-group" role="group" aria-label="Plate actions">
-                    <%= link_to "Show", plate_path(plate), class: "btn btn-sm btn-outline-primary" %>
-                    <%= link_to "Edit", edit_plate_path(plate), class: "btn btn-sm btn-outline-secondary" %>
-                    <%= button_to "Delete", plate_path(plate), method: :delete,
-                                  class: "btn btn-sm btn-outline-danger",
-                                  form: { style: "display: inline-block;" },
-                                  data: { confirm: "Are you sure you want to delete Plate #{plate.barcode}?" } %>
+                  <div class="btn-group gap-2" role="group" aria-label="Plate actions">
+                  <%= link_to "Edit", edit_plate_path(plate), class: "btn btn-sm btn-outline-secondary rounded" %>
+                  <%= button_to "Delete", plate_path(plate), method: :delete,
+                    class: "btn btn-sm btn-outline-danger rounded",
+                    data: { confirm: "Are you sure you want to delete Plate #{plate.barcode}?" } %>
                   </div>
                 </td>
               </tr>

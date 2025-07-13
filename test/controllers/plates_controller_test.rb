@@ -145,6 +145,21 @@ class PlatesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to plate_url(Plate.last)
   end
 
+  test "should create plate without barcode and generate one automatically" do
+    assert_difference("Plate.count") do
+      post plates_url, params: { plate: { barcode: "" } }
+    end
+
+    created_plate = Plate.last
+    assert_not_nil created_plate.barcode
+    assert_not_equal "", created_plate.barcode
+
+    # Should follow the expected format
+    assert_match(/\APLT\d{14}[A-Z0-9]{4}\z/, created_plate.barcode)
+
+    assert_redirected_to plate_url(created_plate)
+  end
+
   test "should show plate" do
     get plate_url(@plate)
     assert_response :success

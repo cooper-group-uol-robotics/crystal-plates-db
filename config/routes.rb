@@ -9,6 +9,7 @@ Rails.application.routes.draw do
   resources :locations do
     collection do
       get :grid
+      post :initialise_carousel
     end
   end
 

@@ -14,10 +14,54 @@ class PlateTest < ActiveSupport::TestCase
     assert plate.save
   end
 
-  test "should not create plate without barcode" do
+  test "should generate barcode automatically when none provided" do
     plate = Plate.new
-    assert_not plate.valid?
-    assert_includes plate.errors[:barcode], "can't be blank"
+    assert plate.valid?
+    assert plate.save
+
+    # Should have generated a barcode
+    assert_not_nil plate.barcode
+    assert_not_equal "", plate.barcode
+
+    # Should follow the expected format: PLT + timestamp + random suffix
+    assert_match(/\APLT\d{14}[A-Z0-9]{4}\z/, plate.barcode)
+  end
+
+  test "should not override existing barcode when provided" do
+    custom_barcode = "CUSTOM123"
+    plate = Plate.new(barcode: custom_barcode)
+    assert plate.valid?
+    assert plate.save
+
+    # Should keep the custom barcode
+    assert_equal custom_barcode, plate.barcode
+  end
+
+  test "should generate unique barcodes for multiple plates" do
+    plate1 = Plate.create!
+    plate2 = Plate.create!
+
+    # Both should have generated barcodes
+    assert_not_nil plate1.barcode
+    assert_not_nil plate2.barcode
+
+    # Barcodes should be different
+    assert_not_equal plate1.barcode, plate2.barcode
+  end
+
+  test "should handle barcode generation with existing conflicts" do
+    # Create a plate with a specific barcode
+    existing_plate = Plate.create!(barcode: "EXISTING123")
+
+    # Create new plate - it should generate a unique barcode
+    new_plate = Plate.create!
+
+    assert_not_nil new_plate.barcode
+    assert_not_equal existing_plate.barcode, new_plate.barcode
+    assert new_plate.valid?
+
+    # Test that the generated barcode follows the expected pattern
+    assert_match(/\APLT\d{14}[A-Z0-9]{4}\z/, new_plate.barcode)
   end
 
   test "should not create plate with duplicate barcode" do

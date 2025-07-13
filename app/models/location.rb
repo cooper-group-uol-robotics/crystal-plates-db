@@ -4,6 +4,13 @@ class Location < ApplicationRecord
 
   # Method to get plates currently at this location using the new scope
   def current_plates
+    # Use cached data if available (set by controller to avoid N+1)
+    if instance_variable_defined?(:@cached_current_plate)
+      cached_plate = instance_variable_get(:@cached_current_plate)
+      return cached_plate ? [ cached_plate ] : []
+    end
+
+    # Fallback to database query
     Plate.joins(:plate_locations)
          .merge(PlateLocation.most_recent_for_each_plate)
          .where(plate_locations: { location_id: id })
@@ -26,8 +33,10 @@ class Location < ApplicationRecord
   # Scope to efficiently load occupation status - simplified since we're using methods
   scope :with_occupation_status, -> { all }
 
-  # Scope to preload current plate data - simplified since we're using methods
-  scope :with_current_plate_data, -> { all }
+  # Scope to preload current plate data to avoid N+1 queries
+  scope :with_current_plate_data, -> {
+    includes(:plate_locations, :plates)
+  }
 
   validates :carousel_position, numericality: { greater_than: 0 }, allow_nil: true
   validates :hotel_position, numericality: { greater_than: 0 }, allow_nil: true
@@ -67,6 +76,12 @@ class Location < ApplicationRecord
 
   # Check if there's a current plate
   def has_current_plate?
+    # Use cached data if available
+    if instance_variable_defined?(:@cached_has_current_plate)
+      return instance_variable_get(:@cached_has_current_plate)
+    end
+
+    # Fallback to database query
     current_plates.any?
   end
 

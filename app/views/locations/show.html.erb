@@ -4,14 +4,14 @@
   <h1 class="mb-0">Location: <%= @location.display_name %></h1>
   <div class="btn-group" role="group" aria-label="Location actions">
     <% if @current_plates.empty? %>
-      <%= link_to 'Create Plate Here', new_plate_path(location_id: @location.id), class: "btn btn-outline-success btn-sm" %>
+      <%= link_to 'New&nbsp;Plate'.html_safe, new_plate_path(location_id: @location.id), class: "btn btn-outline-success btn-sm" %>
     <% end %>
     <%= link_to 'Edit', edit_location_path(@location), class: "btn btn-outline-primary btn-sm" %>
     <%= button_to 'Delete', location_path(@location), method: :delete,
                   class: "btn btn-outline-danger btn-sm",
                   form: { style: "display: inline-block;" },
                   data: { confirm: "Are you sure you want to delete this location?" } %>
-    <%= link_to 'Back to Locations', grid_locations_path, class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to 'Back', grid_locations_path, class: "btn btn-outline-secondary btn-sm" %>
   </div>
 </div>
 
@@ -61,11 +61,10 @@
     <div class="card mb-4">
       <div class="card-header">
         <h5 class="card-title mb-0">
-          <i class="bi bi-layers me-2"></i>Current Plates
+          <i class="bi bi-layers me-2"></i>Current Plate
         </h5>
       </div>
       <div class="card-body">
-        <h3>Current Plates</h3>
         <% if @current_plates.any? %>
           <% @current_plates.each do |plate| %>
             <div class="d-flex justify-content-between align-items-center p-2 border rounded mb-2">
@@ -84,7 +83,7 @@
         <% else %>
           <div class="text-center text-muted py-4">
             <i class="bi bi-inbox display-4 d-block mb-2"></i>
-            <p class="mb-0">No plates currently at this location</p>
+            <p class="mb-0">No plate currently at this location</p>
           </div>
         <% end %>
       </div>

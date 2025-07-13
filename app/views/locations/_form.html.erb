@@ -52,15 +52,15 @@
         <div class="row">
           <div class="col-md-6">
             <%= form.label :carousel_position, "Carousel Position", class: "form-label" %>
-            <%= form.number_field :carousel_position, class: "form-control", min: 1, max: 10, 
+            <%= form.number_field :carousel_position, class: "form-control", min: 1, 
                                   value: location.carousel_position || 1 %>
-            <div class="form-text">Select carousel position (1-10)</div>
+            <div class="form-text">Select carousel position</div>
           </div>
           <div class="col-md-6">
             <%= form.label :hotel_position, "Hotel Position", class: "form-label" %>
-            <%= form.number_field :hotel_position, class: "form-control", min: 1, max: 20, 
+            <%= form.number_field :hotel_position, class: "form-control", min: 1, 
                                   value: location.hotel_position || 1 %>
-            <div class="form-text">Select hotel position (1-20)</div>
+            <div class="form-text">Select hotel position</div>
           </div>
         </div>
       </div>

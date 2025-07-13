@@ -9,97 +9,109 @@
 
 <div class="row">
   <!-- Carousel Grid -->
-  <div class="col-lg-10">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="card-title mb-0">
-          <i class="bi bi-grid-3x3-gap me-2"></i>Carousel Locations
-        </h5>
+  <div class="col-lg-8">
+    <% if @grid_dimensions.nil? %>
+      <div class="alert alert-warning">
+        <h5 class="mb-2">Carousel Not Initialised</h5>
+        <p>The carousel grid has not been initialised yet.</p>
+        <%= button_to "Initialise Carousel", initialise_carousel_locations_path, method: :post, class: "btn btn-primary" %>
       </div>
-      <div class="card-body">
-        <div class="carousel-grid-container" style="overflow-x: auto;">
-          <div class="carousel-grid">
-            <!-- Header row with carousel numbers -->
-            <div class="grid-header">
-              <div class="grid-cell grid-corner"></div>
-              <% (1..10).each do |carousel| %>
-                <div class="grid-header-cell">C<%= carousel %></div>
-              <% end %>
-            </div>
-            
-            <!-- Grid rows -->
-            <% (1..20).each do |hotel| %>
-              <div class="grid-row">
-                <div class="grid-row-header">H<%= hotel %></div>
-                <% (1..10).each do |carousel| %>
-                  <% cell_data = @carousel_grid[hotel][carousel] %>
-                  <% 
-                    cell_class = "grid-cell"
-                    cell_class += " occupied" if cell_data[:occupied]
-                    cell_class += " available" if cell_data[:location] && !cell_data[:occupied]
-                    cell_class += " empty" if !cell_data[:location]
-                  %>
-                  <div class="<%= cell_class %>" 
-                       data-carousel="<%= carousel %>" 
-                       data-hotel="<%= hotel %>"
-                       data-bs-toggle="tooltip"
-                       title="<%= cell_data[:occupied] ? "#{cell_data[:plate].barcode}" : cell_data[:location] ? "Available" : "No location defined" %>">
-                    <% if cell_data[:occupied] %>
-                      <%= link_to plate_path(cell_data[:plate]), class: "cell-link" do %>
-                        <small><%= cell_data[:plate].barcode %></small>
-                      <% end %>
-                    <% elsif cell_data[:location] %>
-                      <%= link_to location_path(cell_data[:location]), class: "cell-link" do %>
-                        <i class="bi bi-square"></i>
-                      <% end %>
-                    <% else %>
-                      <i class="bi bi-dash-square text-muted"></i>
-                    <% end %>
-                  </div>
+    <% else %>
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-grid-3x3-gap me-2"></i>Carousel Locations
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="carousel-grid-container" style="overflow-x: auto;">
+            <div class="carousel-grid">
+              <!-- Header row with carousel numbers -->
+              <div class="grid-header">
+                <div class="grid-cell grid-corner"></div>
+                <% @grid_dimensions[:carousel_range].each do |carousel| %>
+                  <div class="grid-header-cell">C<%= carousel %></div>
                 <% end %>
               </div>
-            <% end %>
+              
+              <!-- Grid rows -->
+              <% @grid_dimensions[:hotel_range].each do |hotel| %>
+                <div class="grid-row">
+                  <div class="grid-row-header">H<%= hotel %></div>
+                  <% @grid_dimensions[:carousel_range].each do |carousel| %>
+                    <% cell_data = @carousel_grid[hotel][carousel] %>
+                    <% 
+                      cell_class = "grid-cell"
+                      cell_class += " occupied" if cell_data[:occupied]
+                      cell_class += " available" if cell_data[:location] && !cell_data[:occupied]
+                      cell_class += " empty" if !cell_data[:location]
+                    %>
+                    <div class="<%= cell_class %>" 
+                         data-carousel="<%= carousel %>" 
+                         data-hotel="<%= hotel %>"
+                         data-bs-toggle="tooltip"
+                         title="<%= cell_data[:occupied] ? "#{cell_data[:plate].barcode}" : cell_data[:location] ? "Available" : "No location defined" %>">
+                      <% if cell_data[:location] %>
+                        <%= link_to location_path(cell_data[:location]), class: "cell-link" do %>
+                          <% if cell_data[:occupied] %>
+                            <small><%= cell_data[:plate].barcode %></small>
+                          <% else %>
+                            <i class="bi bi-square"></i>
+                          <% end %>
+                        <% end %>
+                      <% else %>
+                        <i class="bi bi-dash-square text-muted"></i>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+          <!-- Legend -->
+          <div class="mt-3">
+            <small class="text-muted">
+              <i class="bi bi-square-fill text-warning me-2"></i>Occupied
+              <i class="bi bi-square text-success me-2 ms-3"></i>Available
+              <i class="bi bi-dash-square text-muted me-2 ms-3"></i>Not Defined
+            </small>
           </div>
         </div>
-        
-        <!-- Legend -->
-        <div class="mt-3">
-          <small class="text-muted">
-            <i class="bi bi-square-fill text-warning me-2"></i>Occupied
-            <i class="bi bi-square text-success me-2 ms-3"></i>Available
-            <i class="bi bi-dash-square text-muted me-2 ms-3"></i>Not Defined
-          </small>
-        </div>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <!-- Special Locations Sidebar -->
-  <div class="col-lg-2">
+  <div class="col-lg-4">
     <div class="card">
       <div class="card-header">
-        <h6 class="card-title mb-0">Special Locations</h6>
+        <h5 class="card-title mb-0"><i class="bi bi-geo-alt me-2"></i>Special Locations</h5>
       </div>
       <div class="card-body">
-        <% @other_locations.each do |location| %>
-          <% current_plate = location.current_plates.first %>
-          <div class="mb-3">
-            <%= link_to location_path(location), class: "text-decoration-none" do %>
-              <div class="special-location-card p-2 border rounded <%= current_plate ? 'border-warning bg-warning bg-opacity-10' : 'border-success bg-success bg-opacity-10' %>">
-                <div class="fw-bold small"><%= location.display_name %></div>
-                <% if current_plate %>
-                  <div class="text-warning small">
-                    <i class="bi bi-circle-fill me-1"></i>
-                    <%= current_plate.barcode %>
-                  </div>
-                <% else %>
-                  <div class="text-success small">
-                    <i class="bi bi-circle me-1"></i>Available
-                  </div>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
+        <% if @other_locations && @other_locations.any? %>
+          <% @other_locations.each do |location| %>
+            <% current_plate = location.current_plates.first %>
+            <div class="mb-3">
+              <%= link_to location_path(location), class: "text-decoration-none" do %>
+                <div class="special-location-card p-2 border rounded <%= current_plate ? 'border-warning bg-warning bg-opacity-10' : 'border-success bg-success bg-opacity-10' %>">
+                  <div class="fw-bold small"><%= location.display_name %></div>
+                  <% if current_plate %>
+                    <div class="text-warning small">
+                      <i class="bi bi-circle-fill me-1"></i>
+                      <%= current_plate.barcode %>
+                    </div>
+                  <% else %>
+                    <div class="text-success small">
+                      <i class="bi bi-circle me-1"></i>Available
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-muted small">No special locations defined.</p>
         <% end %>
       </div>
     </div>

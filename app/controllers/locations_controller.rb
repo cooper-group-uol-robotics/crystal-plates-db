@@ -61,10 +61,20 @@ class LocationsController < ApplicationController
 
   # GET /locations/grid
   def grid
+    @grid_dimensions = get_grid_dimensions
     @carousel_grid = build_carousel_grid
     @other_locations = Location.where(carousel_position: nil, hotel_position: nil)
-                               .with_current_plate_data
+                               .includes(:plate_locations, :plates)
                                .order(:name)
+
+    # Preload all current plate data to avoid N+1 queries
+    preload_current_plates_for_locations(@other_locations)
+  end
+
+  # POST /locations/initialise_carousel
+  def initialise_carousel
+    perform_carousel_initialization
+    redirect_to grid_locations_path, notice: "Carousel grid has been initialized successfully."
   end
 
   private
@@ -89,14 +99,16 @@ class LocationsController < ApplicationController
   end
 
   def build_carousel_grid
-    # Create a 20x10 grid (hotel 1-20, carousel 1-10)
-    # Structure: grid[hotel][carousel] for hotel positions on y-axis, carousel positions on x-axis
-    grid = {}
+    # Get dynamic dimensions
+    dimensions = get_grid_dimensions
 
-    # Initialize empty grid
-    (1..20).each do |hotel|
+    # Return empty grid if no dimensions available
+    return {} if dimensions.nil?
+
+    grid = {}
+    dimensions[:hotel_range].each do |hotel|
       grid[hotel] = {}
-      (1..10).each do |carousel|
+      dimensions[:carousel_range].each do |carousel|
         grid[hotel][carousel] = {
           location: nil,
           plate: nil,
@@ -105,23 +117,84 @@ class LocationsController < ApplicationController
       end
     end
 
-    # Fill grid with actual location data and current plates
-    Location.where.not(carousel_position: nil, hotel_position: nil)
-            .with_current_plate_data
-            .each do |location|
+    # Load all carousel locations with their current plates in a single query
+    carousel_locations = Location.where.not(carousel_position: nil, hotel_position: nil)
+                                .includes(:plate_locations, :plates)
+
+    # Preload current plates data
+    preload_current_plates_for_locations(carousel_locations)
+
+    carousel_locations.each do |location|
       carousel = location.carousel_position
       hotel = location.hotel_position
-
-      # Use preloaded current plate
-      current_plate = location.current_plates.first
+      current_plate = location.instance_variable_get(:@cached_current_plate)
 
       grid[hotel][carousel] = {
         location: location,
         plate: current_plate,
-        occupied: location.has_current_plate?
+        occupied: current_plate.present?
       }
     end
 
     grid
+  end
+
+  def preload_current_plates_for_locations(locations)
+    return if locations.empty?
+
+    # Get all location IDs
+    location_ids = locations.map(&:id)
+
+    # Find the most recent plate location for each plate, filtered to our locations
+    latest_plate_locations_subquery = PlateLocation
+      .select("plate_id, MAX(id) as latest_id")
+      .group(:plate_id)
+
+    current_plates_data = PlateLocation
+      .joins(:plate)
+      .joins("INNER JOIN (#{latest_plate_locations_subquery.to_sql}) latest ON plate_locations.plate_id = latest.plate_id AND plate_locations.id = latest.latest_id")
+      .where(location_id: location_ids)
+      .includes(:plate)
+      .group_by(&:location_id)
+
+    # Cache the current plate for each location to avoid repeated queries
+    locations.each do |location|
+      plate_location = current_plates_data[location.id]&.first
+      current_plate = plate_location&.plate
+      location.instance_variable_set(:@cached_current_plate, current_plate)
+      location.instance_variable_set(:@cached_has_current_plate, current_plate.present?)
+    end
+  end
+
+  def get_grid_dimensions
+    # Get all carousel locations from the database
+    locations = Location.where.not(carousel_position: nil, hotel_position: nil)
+    carousel_positions = locations.pluck(:carousel_position).compact
+    hotel_positions = locations.pluck(:hotel_position).compact
+
+    # Return the dimensions as a hash
+    if locations.empty?
+      nil
+    else
+      {
+        min_carousel: carousel_positions.min,
+        max_carousel: carousel_positions.max,
+        min_hotel: hotel_positions.min,
+        max_hotel: hotel_positions.max,
+        carousel_range: (carousel_positions.min)..(carousel_positions.max),
+        hotel_range: (hotel_positions.min)..(hotel_positions.max)
+      }
+    end
+  end
+
+  def perform_carousel_initialization
+    (1..10).each do |carousel_pos|
+      (1..20).each do |hotel_pos|
+        Location.find_or_create_by!(
+          carousel_position: carousel_pos,
+          hotel_position: hotel_pos
+        )
+      end
+    end
   end
 end
