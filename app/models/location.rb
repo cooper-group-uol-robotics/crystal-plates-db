@@ -32,6 +32,10 @@ class Location < ApplicationRecord
   validates :carousel_position, numericality: { greater_than: 0 }, allow_nil: true
   validates :hotel_position, numericality: { greater_than: 0 }, allow_nil: true
   validates :name, presence: true, if: -> { carousel_position.nil? && hotel_position.nil? }
+  validates :name, uniqueness: { case_sensitive: false }, if: -> { name.present? && carousel_position.nil? && hotel_position.nil? }
+
+  # Ensure uniqueness of carousel position and hotel position combination
+  validates :carousel_position, uniqueness: { scope: :hotel_position }, if: -> { carousel_position.present? && hotel_position.present? }
 
   # Ensure either name is present OR both carousel and hotel positions are present
   validate :name_or_positions_present

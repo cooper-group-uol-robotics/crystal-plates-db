@@ -64,6 +64,52 @@ class LocationsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to location_url(location)
   end
 
+  test "should not create duplicate carousel position" do
+    # Try to create a location with same position as existing fixture
+    assert_no_difference("Location.count") do
+      post locations_url, params: {
+        location: {
+          carousel_position: @carousel_location.carousel_position,
+          hotel_position: @carousel_location.hotel_position
+        },
+        location_type: "carousel"
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_select ".alert", /error/i
+  end
+
+  test "should not create duplicate special location name" do
+    # Try to create a location with same name as existing fixture
+    assert_no_difference("Location.count") do
+      post locations_url, params: {
+        location: {
+          name: @imager_location.name
+        },
+        location_type: "special"
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_select ".alert", /error/i
+  end
+
+  test "should not create duplicate special location name case insensitive" do
+    # Try to create a location with same name in different case
+    assert_no_difference("Location.count") do
+      post locations_url, params: {
+        location: {
+          name: @imager_location.name.upcase
+        },
+        location_type: "special"
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_select ".alert", /error/i
+  end
+
   test "should get edit" do
     get edit_location_url(@carousel_location)
     assert_response :success
@@ -83,6 +129,47 @@ class LocationsControllerTest < ActionDispatch::IntegrationTest
     @carousel_location.reload
     assert_equal 2, @carousel_location.carousel_position
     assert_equal 3, @carousel_location.hotel_position
+  end
+
+  test "should not update to duplicate carousel position" do
+    # Create a second carousel location
+    other_location = Location.create!(carousel_position: 9, hotel_position: 9)
+
+    # Try to update first location to have same position as second
+    patch location_url(@carousel_location), params: {
+      location: {
+        carousel_position: other_location.carousel_position,
+        hotel_position: other_location.hotel_position
+      },
+      location_type: "carousel"
+    }
+
+    assert_response :unprocessable_entity
+    assert_select ".alert", /error/i
+
+    # Ensure the location wasn't updated
+    @carousel_location.reload
+    assert_not_equal other_location.carousel_position, @carousel_location.carousel_position
+  end
+
+  test "should not update to duplicate special location name" do
+    # Create another special location
+    other_location = Location.create!(name: "other_special")
+
+    # Try to update imager location to have same name
+    patch location_url(@imager_location), params: {
+      location: {
+        name: other_location.name
+      },
+      location_type: "special"
+    }
+
+    assert_response :unprocessable_entity
+    assert_select ".alert", /error/i
+
+    # Ensure the location wasn't updated
+    @imager_location.reload
+    assert_not_equal other_location.name, @imager_location.name
   end
 
   test "should destroy empty location" do

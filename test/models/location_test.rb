@@ -71,6 +71,94 @@ class LocationTest < ActiveSupport::TestCase
     assert location.valid?
   end
 
+  # Uniqueness constraint tests
+  test "should not allow duplicate carousel and hotel position combination" do
+    # Create first location
+    Location.create!(carousel_position: 15, hotel_position: 10)
+
+    # Try to create second location with same positions
+    location2 = Location.new(carousel_position: 15, hotel_position: 10)
+    assert_not location2.valid?
+    assert_includes location2.errors[:carousel_position], "has already been taken"
+  end
+
+  test "should allow same carousel position with different hotel position" do
+    Location.create!(carousel_position: 15, hotel_position: 10)
+
+    location2 = Location.new(carousel_position: 15, hotel_position: 11)
+    assert location2.valid?
+    assert location2.save
+  end
+
+  test "should allow same hotel position with different carousel position" do
+    Location.create!(carousel_position: 15, hotel_position: 10)
+
+    location2 = Location.new(carousel_position: 16, hotel_position: 10)
+    assert location2.valid?
+    assert location2.save
+  end
+
+  test "should not allow duplicate special location names" do
+    # Create first special location
+    Location.create!(name: "special_storage")
+
+    # Try to create second location with same name
+    location2 = Location.new(name: "special_storage")
+    assert_not location2.valid?
+    assert_includes location2.errors[:name], "has already been taken"
+  end
+
+  test "should not allow duplicate special location names case insensitive" do
+    # Create first special location
+    Location.create!(name: "Special_Storage")
+
+    # Try to create second location with same name in different case
+    location2 = Location.new(name: "special_storage")
+    assert_not location2.valid?
+    assert_includes location2.errors[:name], "has already been taken"
+
+    # Try with all caps
+    location3 = Location.new(name: "SPECIAL_STORAGE")
+    assert_not location3.valid?
+    assert_includes location3.errors[:name], "has already been taken"
+  end
+
+  test "should allow same name for carousel location and special location when carousel has positions" do
+    # This tests that the uniqueness validation only applies when name is present
+    # and the location is a special location (no carousel/hotel positions)
+    Location.create!(name: "test_name")
+
+    # Creating a carousel location with the same name should be allowed
+    # (though it's not typical usage)
+    carousel_location = Location.new(name: "test_name", carousel_position: 5, hotel_position: 10)
+    assert carousel_location.valid?
+    assert carousel_location.save
+  end
+
+  test "database enforces uniqueness constraints" do
+    # Test that database-level constraints work
+    Location.create!(carousel_position: 20, hotel_position: 15)
+
+    # Bypass Rails validations to test database constraint
+    assert_raises(ActiveRecord::RecordNotUnique) do
+      Location.connection.execute(
+        "INSERT INTO locations (carousel_position, hotel_position, created_at, updated_at) VALUES (20, 15, datetime('now'), datetime('now'))"
+      )
+    end
+  end
+
+  test "database enforces special location name uniqueness" do
+    # Test that database-level constraints work for names
+    Location.create!(name: "db_test_location")
+
+    # Bypass Rails validations to test database constraint
+    assert_raises(ActiveRecord::RecordNotUnique) do
+      Location.connection.execute(
+        "INSERT INTO locations (name, created_at, updated_at) VALUES ('db_test_location', datetime('now'), datetime('now'))"
+      )
+    end
+  end
+
   test "display_name should return name for special locations" do
     assert_equal "imager", @imager_location.display_name
   end
@@ -110,25 +198,9 @@ class LocationTest < ActiveSupport::TestCase
     end
   end
 
-  test "should allow creation of duplicate carousel/hotel combinations" do
-    # This tests that we don't have uniqueness constraints (in case multiple plates
-    # have been in the same location at different times)
-    location1 = Location.create!(carousel_position: 5, hotel_position: 10)
-    location2 = Location.create!(carousel_position: 5, hotel_position: 10)
-
-    assert location1.persisted?
-    assert location2.persisted?
-    assert_not_equal location1.id, location2.id
-  end
-
-  test "should allow creation of duplicate names" do
-    location1 = Location.create!(name: "storage")
-    location2 = Location.create!(name: "storage")
-
-    assert location1.persisted?
-    assert location2.persisted?
-    assert_not_equal location1.id, location2.id
-  end
+  # These tests are removed because we now enforce uniqueness constraints
+  # test "should allow creation of duplicate carousel/hotel combinations" - REMOVED
+  # test "should allow creation of duplicate names" - REMOVED
 
   # Test optimization methods
   test "occupied? method works correctly" do
@@ -151,14 +223,14 @@ class LocationTest < ActiveSupport::TestCase
     assert location_with_status.occupied?, "Location should be occupied when loaded with scope"
 
     # Test empty location
-    empty_location = Location.create!(name: "empty_test")
+    empty_location = Location.create!(name: "empty_test_occupation")
     location_empty_with_status = Location.with_occupation_status.find(empty_location.id)
     assert_not location_empty_with_status.occupied?, "Empty location should not be occupied when loaded with scope"
   end
 
   test "current_plate_id method works correctly" do
     # Test empty location
-    empty_location = Location.create!(name: "empty_test")
+    empty_location = Location.create!(name: "empty_test_plate_id")
     assert_nil empty_location.current_plate_id, "Empty location should have no current plate ID"
 
     # Move plate to location
@@ -170,7 +242,7 @@ class LocationTest < ActiveSupport::TestCase
 
   test "current_plate_barcode method works correctly" do
     # Test empty location
-    empty_location = Location.create!(name: "empty_test")
+    empty_location = Location.create!(name: "empty_test_barcode")
     assert_nil empty_location.current_plate_barcode, "Empty location should have no current plate barcode"
 
     # Move plate to location
@@ -182,7 +254,7 @@ class LocationTest < ActiveSupport::TestCase
 
   test "has_current_plate? method works correctly" do
     # Test empty location
-    empty_location = Location.create!(name: "empty_test")
+    empty_location = Location.create!(name: "empty_test_has_plate")
     assert_not empty_location.has_current_plate?, "Empty location should not have current plate"
 
     # Move plate to location
@@ -361,9 +433,9 @@ class LocationTest < ActiveSupport::TestCase
   end
 
   test "carousel location should allow new plate after previous plate moves away" do
-    # Create two carousel locations
-    location_a = Location.create!(carousel_position: 1, hotel_position: 1)
-    location_b = Location.create!(carousel_position: 2, hotel_position: 1)
+    # Create two carousel locations with unique positions
+    location_a = Location.create!(carousel_position: 3, hotel_position: 3)
+    location_b = Location.create!(carousel_position: 3, hotel_position: 4)
 
     # Step 1: Create first plate in carousel location A
     plate1 = Plate.create!(barcode: "CAROUSEL_001")
@@ -419,11 +491,11 @@ class LocationTest < ActiveSupport::TestCase
   end
 
   test "complex movement scenario with multiple plates and locations" do
-    # Create multiple locations
-    storage = Location.create!(name: "storage")
-    imager = Location.create!(name: "imager")
-    carousel_1_1 = Location.create!(carousel_position: 1, hotel_position: 1)
-    carousel_1_2 = Location.create!(carousel_position: 1, hotel_position: 2)
+    # Create multiple locations with unique names and positions
+    storage = Location.create!(name: "complex_storage")
+    imaging_station = Location.create!(name: "complex_imaging")
+    carousel_5_5 = Location.create!(carousel_position: 5, hotel_position: 5)
+    carousel_5_6 = Location.create!(carousel_position: 5, hotel_position: 6)
 
     # Create multiple plates
     plate_a = Plate.create!(barcode: "COMPLEX_A")
@@ -432,45 +504,45 @@ class LocationTest < ActiveSupport::TestCase
 
     # Initial movements
     plate_a.move_to_location!(storage)
-    plate_b.move_to_location!(imager)
-    plate_c.move_to_location!(carousel_1_1)
+    plate_b.move_to_location!(imaging_station)
+    plate_c.move_to_location!(carousel_5_5)
 
     # Verify initial state
-    [ storage, imager, carousel_1_1, carousel_1_2 ].each(&:reload)
+    [ storage, imaging_station, carousel_5_5, carousel_5_6 ].each(&:reload)
     assert storage.occupied?
-    assert imager.occupied?
-    assert carousel_1_1.occupied?
-    assert_not carousel_1_2.occupied?
+    assert imaging_station.occupied?
+    assert carousel_5_5.occupied?
+    assert_not carousel_5_6.occupied?
 
     # Move plates around
-    plate_a.move_to_location!(carousel_1_2)  # storage -> carousel_1_2
-    plate_c.move_to_location!(storage)       # carousel_1_1 -> storage
+    plate_a.move_to_location!(carousel_5_6)  # storage -> carousel_5_6
+    plate_c.move_to_location!(storage)       # carousel_5_5 -> storage
 
     # Verify intermediate state
-    [ storage, imager, carousel_1_1, carousel_1_2 ].each(&:reload)
+    [ storage, imaging_station, carousel_5_5, carousel_5_6 ].each(&:reload)
     assert storage.occupied?     # now has plate_c
-    assert imager.occupied?      # still has plate_b
-    assert_not carousel_1_1.occupied?  # now empty
-    assert carousel_1_2.occupied?      # now has plate_a
+    assert imaging_station.occupied?      # still has plate_b
+    assert_not carousel_5_5.occupied?  # now empty
+    assert carousel_5_6.occupied?      # now has plate_a
 
     assert_equal plate_c.id, storage.current_plate_id
-    assert_equal plate_b.id, imager.current_plate_id
-    assert_equal plate_a.id, carousel_1_2.current_plate_id
+    assert_equal plate_b.id, imaging_station.current_plate_id
+    assert_equal plate_a.id, carousel_5_6.current_plate_id
 
-    # Try to place plate_b in now-empty carousel_1_1 - should succeed
-    plate_b.move_to_location!(carousel_1_1)
+    # Try to place plate_b in now-empty carousel_5_5 - should succeed
+    plate_b.move_to_location!(carousel_5_5)
 
     # Final verification
-    [ storage, imager, carousel_1_1, carousel_1_2 ].each(&:reload)
+    [ storage, imaging_station, carousel_5_5, carousel_5_6 ].each(&:reload)
     assert storage.occupied?        # plate_c
-    assert_not imager.occupied?     # now empty
-    assert carousel_1_1.occupied?   # now has plate_b
-    assert carousel_1_2.occupied?   # still has plate_a
+    assert_not imaging_station.occupied?     # now empty
+    assert carousel_5_5.occupied?   # now has plate_b
+    assert carousel_5_6.occupied?   # still has plate_a
 
     assert_equal plate_c.id, storage.current_plate_id
-    assert_equal plate_b.id, carousel_1_1.current_plate_id
-    assert_equal plate_a.id, carousel_1_2.current_plate_id
-    assert_nil imager.current_plate_id
+    assert_equal plate_b.id, carousel_5_5.current_plate_id
+    assert_equal plate_a.id, carousel_5_6.current_plate_id
+    assert_nil imaging_station.current_plate_id
   end
 
   test "historical movements should not affect current occupancy" do
