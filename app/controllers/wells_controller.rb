@@ -59,7 +59,13 @@ class WellsController < ApplicationController
 
   def images
     @well = Well.find(params[:id])
-    render partial: "images", locals: { well: @well }
+    @images = @well.images.includes(file_attachment: :blob).recent
+    render partial: "images", locals: { well: @well, images: @images }
+  rescue ActiveRecord::RecordNotFound
+    render plain: "Well not found", status: 404
+  rescue => e
+    Rails.logger.error "Error in wells#images: #{e.message}"
+    render plain: "Error loading images", status: 500
   end
 
   private

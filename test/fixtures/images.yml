@@ -1,0 +1,25 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  well: one
+  pixel_size_x_mm: 0.001
+  pixel_size_y_mm: 0.001
+  reference_x_mm: 10.0
+  reference_y_mm: 20.0
+  reference_z_mm: 5.0
+  pixel_width: 1000
+  pixel_height: 800
+  description: "Test image one"
+  captured_at: <%= 1.hour.ago %>
+
+two:
+  well: one
+  pixel_size_x_mm: 0.0015
+  pixel_size_y_mm: 0.0015
+  reference_x_mm: 15.0
+  reference_y_mm: 25.0
+  reference_z_mm: 5.5
+  pixel_width: 800
+  pixel_height: 600
+  description: "Test image two"
+  captured_at: <%= 30.minutes.ago %>

@@ -1,0 +1,103 @@
+<% content_for :title, "Image Details" %>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">Image for Well <%= @well.well_label %></h4>
+          <div>
+            <%= link_to 'Edit', edit_well_image_path(@well, @image), class: 'btn btn-outline-primary btn-sm me-2' %>
+            <%= button_to 'Delete', well_image_path(@well, @image), method: :delete, 
+                          class: 'btn btn-outline-danger btn-sm',
+                          form: { style: "display: inline-block;" },
+                          data: { confirm: "Are you sure you want to delete this image?" } %>
+          </div>
+        </div>
+        <div class="card-body">
+          <% if @image.file.attached? %>
+            <div class="text-center mb-4">
+              <% begin %>
+                <%= image_tag @image.file.variant(resize_to_limit: [600, 600]), class: "img-fluid img-thumbnail" %>
+              <% rescue => e %>
+                <div class="alert alert-warning">
+                  <p><strong>Could not display image preview:</strong> <%= e.message %></p>
+                  <p>You can still <%= link_to 'download the original file', @image.file, target: '_blank' %></p>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <h5>Image Properties</h5>
+              <table class="table table-sm">
+                <tr>
+                  <td><strong>Dimensions:</strong></td>
+                  <td><%= @image.pixel_width %>×<%= @image.pixel_height %> pixels</td>
+                </tr>
+                <tr>
+                  <td><strong>Physical Size:</strong></td>
+                  <td><%= sprintf("%.3f", @image.physical_width_mm) %>×<%= sprintf("%.3f", @image.physical_height_mm) %> mm</td>
+                </tr>
+                <tr>
+                  <td><strong>Pixel Size:</strong></td>
+                  <td><%= sprintf("%.6f", @image.pixel_size_x_mm) %>×<%= sprintf("%.6f", @image.pixel_size_y_mm) %> mm/pixel</td>
+                </tr>
+                <% if @image.captured_at %>
+                <tr>
+                  <td><strong>Captured:</strong></td>
+                  <td><%= @image.captured_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+                </tr>
+                <% end %>
+              </table>
+            </div>
+            
+            <div class="col-md-6">
+              <h5>Spatial Coordinates</h5>
+              <table class="table table-sm">
+                <tr>
+                  <td><strong>Reference Point:</strong></td>
+                  <td>(<%= sprintf("%.3f", @image.reference_x_mm) %>, <%= sprintf("%.3f", @image.reference_y_mm) %>, <%= sprintf("%.3f", @image.reference_z_mm) %>)</td>
+                </tr>
+                <tr>
+                  <td><strong>Bounding Box:</strong></td>
+                  <td>
+                    X: <%= sprintf("%.3f", @image.bounding_box[:min_x]) %> to <%= sprintf("%.3f", @image.bounding_box[:max_x]) %><br>
+                    Y: <%= sprintf("%.3f", @image.bounding_box[:min_y]) %> to <%= sprintf("%.3f", @image.bounding_box[:max_y]) %>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          
+          <% if @image.description.present? %>
+            <div class="mt-3">
+              <h5>Description</h5>
+              <p><%= @image.description %></p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Well Information</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Well:</strong> <%= @well.well_label %></p>
+          <p><strong>Plate:</strong> <%= @well.plate.barcode %></p>
+          <p><strong>Total Images:</strong> <%= @well.images.count %></p>
+          <%= link_to 'View All Images', well_path(@well), class: 'btn btn-outline-primary btn-sm' %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3 text-center">
+  <%= link_to 'Back to Well', @well, class: 'btn btn-secondary' %>
+  <%= link_to 'Back to Plate', @well.plate, class: 'btn btn-outline-secondary' %>
+</div>

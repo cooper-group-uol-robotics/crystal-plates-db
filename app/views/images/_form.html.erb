@@ -1,0 +1,101 @@
+<%= form_with(model: [@well, image], local: true, multipart: true) do |form| %>
+  <% if image.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(image.errors.count, "error") %> prohibited this image from being saved:</h4>
+      <ul>
+        <% image.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= form.label :file, "Image File", class: "form-label" %>
+    <%= form.file_field :file, class: "form-control", accept: "image/*", required: true %>
+    <div class="form-text">Select an image file (JPEG, PNG, etc.)</div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="mb-3">
+        <%= form.label :pixel_size_x_mm, "Pixel Size X (mm/pixel)", class: "form-label" %>
+        <%= form.number_field :pixel_size_x_mm, class: "form-control", step: 0.000001, required: true %>
+        <div class="form-text">Physical width of one pixel in millimeters</div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="mb-3">
+        <%= form.label :pixel_size_y_mm, "Pixel Size Y (mm/pixel)", class: "form-label" %>
+        <%= form.number_field :pixel_size_y_mm, class: "form-control", step: 0.000001, required: true %>
+        <div class="form-text">Physical height of one pixel in millimeters</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-4">
+      <div class="mb-3">
+        <%= form.label :reference_x_mm, "Reference Point X (mm)", class: "form-label" %>
+        <%= form.number_field :reference_x_mm, class: "form-control", step: 0.000001, required: true %>
+        <div class="form-text">X coordinate of reference point</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="mb-3">
+        <%= form.label :reference_y_mm, "Reference Point Y (mm)", class: "form-label" %>
+        <%= form.number_field :reference_y_mm, class: "form-control", step: 0.000001, required: true %>
+        <div class="form-text">Y coordinate of reference point</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="mb-3">
+        <%= form.label :reference_z_mm, "Reference Point Z (mm)", class: "form-label" %>
+        <%= form.number_field :reference_z_mm, class: "form-control", step: 0.000001, required: true %>
+        <div class="form-text">Z coordinate of reference point</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="alert alert-info">
+        <strong>Image Dimensions:</strong> The pixel width and height will be automatically detected from your uploaded image file. You only need to specify them manually if auto-detection fails.
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="mb-3">
+        <%= form.label :pixel_width, "Image Width (pixels)", class: "form-label" %>
+        <%= form.number_field :pixel_width, class: "form-control", min: 1, placeholder: "Auto-detected from file" %>
+        <div class="form-text">Leave blank to auto-detect from uploaded file</div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="mb-3">
+        <%= form.label :pixel_height, "Image Height (pixels)", class: "form-label" %>
+        <%= form.number_field :pixel_height, class: "form-control", min: 1, placeholder: "Auto-detected from file" %>
+        <div class="form-text">Leave blank to auto-detect from uploaded file</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :captured_at, "Capture Time", class: "form-label" %>
+    <%= form.datetime_local_field :captured_at, class: "form-control", value: Time.current.strftime("%Y-%m-%dT%H:%M") %>
+    <div class="form-text">When this image was captured</div>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :description, "Description", class: "form-label" %>
+    <%= form.text_area :description, class: "form-control", rows: 3 %>
+    <div class="form-text">Optional description or notes about this image</div>
+  </div>
+
+  <div class="d-flex justify-content-end">
+    <%= link_to 'Cancel', @well.plate, class: 'btn btn-secondary me-2' %>
+    <%= form.submit "Save Image", class: "btn btn-primary" %>
+  </div>
+<% end %>

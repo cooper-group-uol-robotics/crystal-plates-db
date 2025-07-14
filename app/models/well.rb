@@ -1,7 +1,7 @@
 class Well < ApplicationRecord
   belongs_to :plate
   has_many :well_content, dependent: :destroy
-  has_many_attached :images
+  has_many :images, dependent: :destroy
 
   ROW_LETTERS = ("A".."Z").to_a.freeze
 
@@ -18,5 +18,15 @@ class Well < ApplicationRecord
 
   def row
     well_row
+  end
+
+  # Check if well has any images
+  def has_images?
+    images.any?
+  end
+
+  # Get the most recent image
+  def latest_image
+    images.recent.first
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_13_094320) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_14_142544) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -43,6 +43,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_13_094320) do
     t.integer "sciformation_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "images", force: :cascade do |t|
+    t.integer "well_id", null: false
+    t.decimal "pixel_size_x_mm", precision: 10, scale: 6, null: false
+    t.decimal "pixel_size_y_mm", precision: 10, scale: 6, null: false
+    t.decimal "reference_x_mm", precision: 12, scale: 6, null: false
+    t.decimal "reference_y_mm", precision: 12, scale: 6, null: false
+    t.decimal "reference_z_mm", precision: 12, scale: 6, null: false
+    t.integer "pixel_width"
+    t.integer "pixel_height"
+    t.string "description"
+    t.datetime "captured_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["captured_at"], name: "index_images_on_captured_at"
+    t.index ["well_id"], name: "index_images_on_well_id"
   end
 
   create_table "locations", force: :cascade do |t|
@@ -120,6 +137,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_13_094320) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "images", "wells"
   add_foreign_key "plate_locations", "locations"
   add_foreign_key "plate_locations", "plates"
   add_foreign_key "stock_solution_components", "chemicals"

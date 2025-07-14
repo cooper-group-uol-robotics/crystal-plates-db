@@ -3,6 +3,7 @@ Rails.application.routes.draw do
     member do
       get :images
     end
+    resources :images, except: [ :index ]
   end
   resources :plates
 

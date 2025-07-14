@@ -1,9 +1,55 @@
-<% if well.images.attached? %>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Well Images (<%= images.count %>)</h5>
+  <%= link_to 'Add Image', new_well_image_path(well), class: 'btn btn-primary btn-sm' %>
+</div>
+
+<% if images.any? %>
   <div class="d-flex flex-wrap gap-3 justify-content-center">
-    <% well.images.each do |image| %>
-      <%= image_tag image.variant(resize_to_limit: [400, 400]), class: "img-thumbnail" %>
+    <% images.each do |image| %>
+      <% if well.present? && image.present? %>
+        <div class="card" style="width: 300px;">
+          <%= link_to well_image_path(well, image) do %>
+            <% begin %>
+              <%= image_tag image.file.variant(resize_to_limit: [300, 300]), class: "card-img-top img-thumbnail" %>
+            <% rescue => e %>
+              <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                <span class="text-muted">Preview unavailable</span>
+              </div>
+            <% end %>
+          <% end %>
+          <div class="card-body p-2">
+            <div class="small text-muted">
+              <strong>Dimensions:</strong> 
+              <% if image.pixel_width && image.pixel_height %>
+                <%= image.pixel_width %>×<%= image.pixel_height %>px<br>
+                <strong>Physical:</strong> <%= sprintf("%.2f", image.physical_width_mm) %>×<%= sprintf("%.2f", image.physical_height_mm) %>mm<br>
+              <% else %>
+                Auto-detecting...<br>
+              <% end %>
+              <strong>Pixel Size:</strong> <%= sprintf("%.4f", image.pixel_size_x_mm) %>×<%= sprintf("%.4f", image.pixel_size_y_mm) %>mm/px<br>
+              <% if image.captured_at %>
+                <strong>Captured:</strong> <%= image.captured_at.strftime("%m/%d %H:%M") %><br>
+              <% end %>
+              <% if image.description.present? %>
+                <strong>Description:</strong> <%= truncate(image.description, length: 50) %>
+              <% end %>
+            </div>
+            <div class="mt-2 d-flex justify-content-between">
+              <%= link_to 'View', well_image_path(well, image), class: 'btn btn-outline-primary btn-xs' %>
+              <%= link_to 'Edit', edit_well_image_path(well, image), class: 'btn btn-outline-secondary btn-xs' %>
+              <%= button_to 'Delete', well_image_path(well, image), method: :delete, 
+                            class: 'btn btn-outline-danger btn-xs',
+                            form: { style: "display: inline-block;" },
+                            data: { confirm: "Delete this image?" } %>
+            </div>
+          </div>
+        </div>
+      <% end %>
     <% end %>
   </div>
 <% else %>
-  <p>No images attached to this well.</p>
+  <div class="text-center py-4">
+    <p class="text-muted">No images attached to this well.</p>
+    <%= link_to 'Add First Image', new_well_image_path(well), class: 'btn btn-primary' %>
+  </div>
 <% end %>

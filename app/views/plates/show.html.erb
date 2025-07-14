@@ -31,7 +31,7 @@
     <% (1..@rows).each do |row| %>
       <% (1..@columns).each do |col| %>
         <% well = @wells.find { |w| w.well_row == row && w.well_column == col } %>
-        <% has_image = well&.images&.attached? %>
+        <% has_image = well&.has_images? %>
         <button type="button" class="btn btn-sm text-white"
           style="background-color: <%= has_image ? '#198754' : '#dc3545' %>; height: 40px;"
           data-bs-toggle="modal" data-bs-target="#wellImagesModal"
