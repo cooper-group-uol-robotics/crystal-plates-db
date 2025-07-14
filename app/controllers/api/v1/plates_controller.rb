@@ -81,7 +81,11 @@ module Api::V1
     end
 
     def plate_params
-      params.require(:plate).permit(:barcode)
+      if params[:plate].present?
+        params.require(:plate).permit(:barcode)
+      else
+        {}
+      end
     end
 
     def plate_json(plate, include_wells: false)

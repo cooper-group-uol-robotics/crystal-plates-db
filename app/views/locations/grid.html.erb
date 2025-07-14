@@ -53,8 +53,8 @@
                          title="<%= cell_data[:occupied] ? "#{cell_data[:plate].barcode}" : cell_data[:location] ? "Available" : "No location defined" %>">
                       <% if cell_data[:location] %>
                         <%= link_to location_path(cell_data[:location]), class: "cell-link" do %>
-                          <% if cell_data[:occupied] %>
-                            <small><%= cell_data[:plate].barcode %></small>
+                            <% if cell_data[:occupied] %>
+                            <small class="px-1 py-1 d-inline-block"><%= cell_data[:plate].barcode %></small>
                           <% else %>
                             <i class="bi bi-square"></i>
                           <% end %>

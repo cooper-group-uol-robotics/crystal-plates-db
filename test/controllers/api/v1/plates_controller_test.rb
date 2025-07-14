@@ -86,14 +86,16 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     assert json_response.key?("error")
   end
 
-  test "should handle validation errors" do
-    post api_v1_plates_url, params: {
-      plate: { barcode: "" }
-    }, as: :json
+  test "should create plate with generated barcode if not supplied" do
+    assert_difference("Plate.count") do
+      post api_v1_plates_url, params: {
+        plate: {}
+      }, as: :json
+    end
 
-    assert_response :unprocessable_entity
+    assert_response :created
     json_response = JSON.parse(response.body)
-    assert json_response.key?("error")
-    assert json_response.key?("details")
+    assert json_response["data"]["barcode"].present?
+    assert_not_equal "", json_response["data"]["barcode"]
   end
 end

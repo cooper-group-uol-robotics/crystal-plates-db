@@ -9,7 +9,7 @@ class PlateTest < ActiveSupport::TestCase
   end
 
   test "should create plate with valid barcode" do
-    plate = Plate.new(barcode: "VALID123")
+    plate = Plate.new(barcode: "12345678")
     assert plate.valid?
     assert plate.save
   end
@@ -24,7 +24,7 @@ class PlateTest < ActiveSupport::TestCase
     assert_not_equal "", plate.barcode
 
     # Should follow the expected format: PLT + timestamp + random suffix
-    assert_match(/\APLT\d{14}[A-Z0-9]{4}\z/, plate.barcode)
+    assert_match(/\A6\d{7}\z/, plate.barcode)
   end
 
   test "should not override existing barcode when provided" do
@@ -61,7 +61,7 @@ class PlateTest < ActiveSupport::TestCase
     assert new_plate.valid?
 
     # Test that the generated barcode follows the expected pattern
-    assert_match(/\APLT\d{14}[A-Z0-9]{4}\z/, new_plate.barcode)
+    assert_match(/\A6\d{7}\z/, new_plate.barcode)
   end
 
   test "should not create plate with duplicate barcode" do

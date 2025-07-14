@@ -155,7 +155,7 @@ class PlatesControllerTest < ActionDispatch::IntegrationTest
     assert_not_equal "", created_plate.barcode
 
     # Should follow the expected format
-    assert_match(/\APLT\d{14}[A-Z0-9]{4}\z/, created_plate.barcode)
+    assert_match(/\A6\d{7}\z/, created_plate.barcode)
 
     assert_redirected_to plate_url(created_plate)
   end

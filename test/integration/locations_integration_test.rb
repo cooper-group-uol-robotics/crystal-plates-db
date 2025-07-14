@@ -22,7 +22,7 @@ class LocationsIntegrationTest < ActionDispatch::IntegrationTest
     assert_select ".carousel-grid"
 
     # Check for special locations section
-    assert_select "h6", text: "Special Locations"
+    assert_select "h5", text: "Special Locations"
 
     # Check for occupied status (plate barcode should be shown)
     assert_select ".text-warning", text: @plate2.barcode
@@ -41,7 +41,7 @@ class LocationsIntegrationTest < ActionDispatch::IntegrationTest
     assert_select "strong", text: "Hotel Position:"
 
     # Check current plates section
-    assert_select "h5", text: "Current Plates"
+    assert_select "h5", text: "Location Details"
     assert_select "strong", text: @plate1.barcode
 
     # Check history section
