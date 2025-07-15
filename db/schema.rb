@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_15_134758) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_15_145738) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -89,7 +89,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_15_134758) do
     t.integer "rows", default: 8, null: false
     t.integer "columns", default: 12, null: false
     t.integer "subwells_per_well", default: 1, null: false
+    t.datetime "deleted_at"
     t.index ["barcode"], name: "index_plates_on_barcode", unique: true
+    t.index ["deleted_at"], name: "index_plates_on_deleted_at"
     t.check_constraint "columns > 0 AND columns <= 48", name: "plates_columns_range"
     t.check_constraint "rows > 0 AND rows <= 26", name: "plates_rows_range"
     t.check_constraint "subwells_per_well > 0 AND subwells_per_well <= 16", name: "plates_subwells_range"

@@ -1,0 +1,62 @@
+<% content_for :title, "Deleted Plates" %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">Deleted Plates</h1>
+  <div>
+    <%= link_to 'Back to Plates', plates_path, class: "btn btn-outline-secondary" %>
+  </div>
+</div>
+
+<% if @plates.any? %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    These plates have been deleted but can be restored. Use "Permanent Delete" to remove them completely.
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Barcode</th>
+          <th>Current Location</th>
+          <th>Deleted At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @plates.each do |plate| %>
+          <tr>
+            <td><%= plate.barcode %></td>
+            <td>
+              <% if plate.current_location %>
+                <%= plate.current_location.display_name %>
+              <% else %>
+                <span class="text-muted">Not assigned</span>
+              <% end %>
+            </td>
+            <td>
+              <span class="text-muted">
+                <%= time_ago_in_words(plate.deleted_at) %> ago
+              </span>
+            </td>
+            <td>
+              <%= button_to 'Restore', restore_plate_path(plate), method: :patch,
+                            class: "btn btn-success btn-sm me-2",
+                            form: { style: "display: inline-block;" },
+                            data: { confirm: "Are you sure you want to restore plate #{plate.barcode}?" } %>
+              <%= button_to 'Permanent Delete', permanent_delete_plate_path(plate), method: :delete,
+                            class: "btn btn-danger btn-sm",
+                            form: { style: "display: inline-block;" },
+                            data: { confirm: "Are you sure you want to permanently delete plate #{plate.barcode}? This cannot be undone!" } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% else %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    No deleted plates found.
+  </div>
+<% end %>

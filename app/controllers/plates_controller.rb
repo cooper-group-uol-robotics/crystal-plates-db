@@ -1,5 +1,6 @@
 class PlatesController < ApplicationController
   before_action :set_plate, only: %i[ show edit update destroy ]
+  before_action :set_deleted_plate, only: %i[ restore permanent_delete ]
 
   # GET /plates or /plates.json
   def index
@@ -154,7 +155,32 @@ class PlatesController < ApplicationController
     @plate.destroy!
 
     respond_to do |format|
-      format.html { redirect_to plates_path, status: :see_other, notice: "Plate was successfully destroyed." }
+      format.html { redirect_to plates_path, status: :see_other, notice: "Plate was successfully deleted." }
+      format.json { head :no_content }
+    end
+  end
+
+  # GET /plates/deleted
+  def deleted
+    @plates = Plate.only_deleted.includes(plate_locations: :location)
+  end
+
+  # PATCH /plates/1/restore
+  def restore
+    @plate.restore!
+
+    respond_to do |format|
+      format.html { redirect_to @plate, notice: "Plate was successfully restored." }
+      format.json { render :show, status: :ok, location: @plate }
+    end
+  end
+
+  # DELETE /plates/1/permanent_delete
+  def permanent_delete
+    @plate.really_destroy!
+
+    respond_to do |format|
+      format.html { redirect_to deleted_plates_path, status: :see_other, notice: "Plate was permanently deleted." }
       format.json { head :no_content }
     end
   end
@@ -163,6 +189,10 @@ class PlatesController < ApplicationController
     # Use callbacks to share common setup or constraints between actions.
     def set_plate
       @plate = Plate.find(params.expect(:id))
+    end
+
+    def set_deleted_plate
+      @plate = Plate.only_deleted.find(params.expect(:id))
     end
 
     # Only allow a list of trusted parameters through.

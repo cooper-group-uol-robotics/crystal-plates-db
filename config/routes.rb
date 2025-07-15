@@ -5,7 +5,15 @@ Rails.application.routes.draw do
     end
     resources :images, except: [ :index ]
   end
-  resources :plates
+  resources :plates do
+    collection do
+      get :deleted
+    end
+    member do
+      patch :restore
+      delete :permanent_delete
+    end
+  end
 
   resources :locations do
     collection do

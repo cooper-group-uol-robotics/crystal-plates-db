@@ -65,4 +65,6 @@ gem "react-rails", "~> 3.2"
 gem "activerecord-import"
 gem "importmap-rails"
 
+gem "paranoia", "~> 3.0"
+
 gem "solargraph"
