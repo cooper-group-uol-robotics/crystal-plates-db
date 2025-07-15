@@ -274,7 +274,8 @@ module Api
         empty_well = Well.create!(
           plate: @plate,
           well_row: 99,
-          well_column: 99
+          well_column: 99,
+          subwell: 1
         )
 
         get api_v1_well_images_url(empty_well), as: :json

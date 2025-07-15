@@ -5,7 +5,7 @@ class Well < ApplicationRecord
 
   validates :well_row, :well_column, presence: true
   validates :subwell, presence: true, numericality: { greater_than: 0 }
-  validates :well_row, :well_column, :subwell, uniqueness: { scope: :plate_id }
+  validates :subwell, uniqueness: { scope: [:plate_id, :well_row, :well_column] }
 
   scope :in_well, ->(row, column) { where(well_row: row, well_column: column) }
   scope :subwell_number, ->(number) { where(subwell: number) }

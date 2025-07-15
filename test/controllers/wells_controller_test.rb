@@ -17,7 +17,7 @@ class WellsControllerTest < ActionDispatch::IntegrationTest
 
   test "should create well" do
     assert_difference("Well.count") do
-      post wells_url, params: { well: { well_column: @well.well_column, plate_id: @well.plate_id, well_row: @well.well_row } }
+      post wells_url, params: { well: { well_column: 2, plate_id: @well.plate_id, well_row: 2, subwell: 1 } }
     end
 
     assert_redirected_to well_url(Well.last)
@@ -34,7 +34,7 @@ class WellsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should update well" do
-    patch well_url(@well), params: { well: { well_column: @well.well_column, plate_id: @well.plate_id, well_row: @well.well_row } }
+    patch well_url(@well), params: { well: { well_column: @well.well_column, plate_id: @well.plate_id, well_row: @well.well_row, subwell: @well.subwell } }
     assert_redirected_to well_url(@well)
   end
 

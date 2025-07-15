@@ -19,6 +19,6 @@
 <% if @well.has_images? %>
   <div class="mt-4">
     <h3>Images</h3>
-    <%= render partial: 'images', locals: { well: @well } %>
+    <%= render partial: 'images', locals: { well: @well, images: @well.images } %>
   </div>
 <% end %>
