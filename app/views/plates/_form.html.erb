@@ -18,12 +18,37 @@
   </div>
 
   <div class="mb-4">
+    <label class="form-label fw-bold">Plate Dimensions</label>
+    <div class="card">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4">
+            <label for="plate_rows" class="form-label">Number of Rows</label>
+            <input type="number" class="form-control" id="plate_rows" name="plate_rows" min="1" max="26" value="8">
+            <div class="form-text">Rows (A-Z, typically 8 or 16)</div>
+          </div>
+          <div class="col-md-4">
+            <label for="plate_columns" class="form-label">Number of Columns</label>
+            <input type="number" class="form-control" id="plate_columns" name="plate_columns" min="1" max="48" value="12">
+            <div class="form-text">Columns (1-48, typically 12 or 24)</div>
+          </div>
+          <div class="col-md-4">
+            <label for="plate_subwells_per_well" class="form-label">Subwells per Well</label>
+            <input type="number" class="form-control" id="plate_subwells_per_well" name="plate_subwells_per_well" min="1" max="16" value="1">
+            <div class="form-text">Number of subwells (typically 1, 4, or 16)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-4">
     <label class="form-label fw-bold">Location</label>
     
     <% 
       current_location = plate.current_location || @preselected_location
       is_carousel = current_location&.carousel_position.present? && current_location&.hotel_position.present?
-      is_other = current_location&.name.present?
+      is_other = current_location&.name.present? || (current_location.nil? && !is_carousel)
     %>
     
     <!-- Radio buttons to choose location type -->
@@ -32,7 +57,7 @@
         <div class="row">
           <div class="col-md-6">
             <div class="form-check">
-              <input class="form-check-input" type="radio" name="location_type" id="carousel_location" value="carousel" <%= is_carousel || (!is_other && current_location.nil?) ? 'checked' : '' %>>
+              <input class="form-check-input" type="radio" name="location_type" id="carousel_location" value="carousel" <%= is_carousel ? 'checked' : '' %>>
               <label class="form-check-label fw-semibold" for="carousel_location">
                 <i class="bi bi-grid-3x3-gap me-2"></i>Carousel Position
               </label>
@@ -40,9 +65,9 @@
           </div>
           <div class="col-md-6">
             <div class="form-check">
-              <input class="form-check-input" type="radio" name="location_type" id="other_location" value="other" <%= is_other ? 'checked' : '' %>>
-              <label class="form-check-label fw-semibold" for="other_location">
-                <i class="bi bi-geo-alt me-2"></i>Other Location
+              <input class="form-check-input" type="radio" name="location_type" id="special_location" value="special" <%= is_other ? 'checked' : '' %>>
+              <label class="form-check-label fw-semibold" for="special_location">
+                <i class="bi bi-geo-alt me-2"></i>Special Location
               </label>
             </div>
           </div>
@@ -68,11 +93,11 @@
       </div>
     </div>
 
-    <!-- Other location dropdown -->
-    <div id="other_fields" class="card <%= is_other ? '' : 'd-none' %>">
+    <!-- Special location dropdown -->
+    <div id="special_fields" class="card <%= is_other ? '' : 'd-none' %>">
       <div class="card-body">
-        <label for="other_location_id" class="form-label">Select Location</label>
-        <select class="form-select" id="other_location_id" name="other_location_id">
+        <label for="special_location_id" class="form-label">Select Location</label>
+        <select class="form-select" id="special_location_id" name="special_location_id">
           <option value="">Select a location...</option>
           <% Location.where(carousel_position: nil, hotel_position: nil).each do |location| %>
             <option value="<%= location.id %>" <%= current_location&.id == location.id ? 'selected' : '' %>><%= location.display_name %></option>
@@ -86,32 +111,38 @@
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const carouselRadio = document.getElementById('carousel_location');
-      const otherRadio = document.getElementById('other_location');
+      const specialRadio = document.getElementById('special_location');
       const carouselFields = document.getElementById('carousel_fields');
-      const otherFields = document.getElementById('other_fields');
+      const specialFields = document.getElementById('special_fields');
       const carouselInputs = carouselFields.querySelectorAll('input');
-      const otherInputs = otherFields.querySelectorAll('select');
+      const specialInputs = specialFields.querySelectorAll('select');
       
       function toggleFields() {
         if (carouselRadio.checked) {
           carouselFields.classList.remove('d-none');
-          otherFields.classList.add('d-none');
+          specialFields.classList.add('d-none');
           
-          // Enable carousel inputs and disable other inputs
+          // Enable carousel inputs and disable special inputs
           carouselInputs.forEach(input => input.disabled = false);
-          otherInputs.forEach(input => input.disabled = true);
+          specialInputs.forEach(input => input.disabled = true);
         } else {
+          // Default to special location (either explicitly checked or as fallback)
           carouselFields.classList.add('d-none');
-          otherFields.classList.remove('d-none');
+          specialFields.classList.remove('d-none');
           
-          // Disable carousel inputs and enable other inputs
+          // If neither is checked, select special location
+          if (!specialRadio.checked) {
+            specialRadio.checked = true;
+          }
+          
+          // Disable carousel inputs and enable special inputs
           carouselInputs.forEach(input => input.disabled = true);
-          otherInputs.forEach(input => input.disabled = false);
+          specialInputs.forEach(input => input.disabled = false);
         }
       }
       
       carouselRadio.addEventListener('change', toggleFields);
-      otherRadio.addEventListener('change', toggleFields);
+      specialRadio.addEventListener('change', toggleFields);
       
       // Initialize on page load
       toggleFields();

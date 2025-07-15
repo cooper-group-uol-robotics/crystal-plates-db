@@ -5,7 +5,9 @@ class Plate < ApplicationRecord
 
     validates :barcode, uniqueness: true
     before_validation :generate_barcode_if_blank
-    after_create :create_wells!
+    after_create :create_wells_from_attributes
+
+    attr_accessor :plate_rows, :plate_columns, :plate_subwells_per_well
 
     # Scope to get plates that are currently at any location
     scope :with_current_location, -> {
@@ -79,14 +81,29 @@ class Plate < ApplicationRecord
         end
     end
 
-    def create_wells!
+    def create_wells!(rows: 8, columns: 12, subwells_per_well: 1)
         wells_to_create = []
-        (1..8).each do |row|          # rows 1 to 8
-            (1..12).each do |column|    # columns 1 to 12
-                wells_to_create << { plate_id: id, well_row: row, well_column: column }
+        (1..rows).each do |row|
+            (1..columns).each do |column|
+                (1..subwells_per_well).each do |subwell|
+                    wells_to_create << {
+                        plate_id: id,
+                        well_row: row,
+                        well_column: column,
+                        subwell: subwell
+                    }
+                end
             end
         end
         # Use insert_all for bulk insert
         Well.insert_all(wells_to_create)
+    end
+
+    def create_wells_from_attributes
+        rows = plate_rows&.to_i || 8
+        columns = plate_columns&.to_i || 12
+        subwells = plate_subwells_per_well&.to_i || 1
+
+        create_wells!(rows: rows, columns: columns, subwells_per_well: subwells)
     end
 end

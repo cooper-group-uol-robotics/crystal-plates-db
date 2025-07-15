@@ -27,6 +27,11 @@
   </div>
 
   <div>
+    <%= form.label :subwell, "Subwell", style: "display: block" %>
+    <%= form.number_field :subwell, value: well.subwell || 1, min: 1 %>
+  </div>
+
+  <div>
     <%= form.submit %>
   </div>
 <% end %>

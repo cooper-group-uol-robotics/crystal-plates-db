@@ -12,9 +12,10 @@
 
   <% 
     # Determine initial state based on location data
-    is_carousel_type = (location.carousel_position.present? && location.hotel_position.present?) || 
-                       (location.new_record? && location.name.blank?)
-    is_special_type = location.name.present?
+    # For existing records, use their data to determine type
+    # For new records, default to special location
+    is_carousel_type = location.carousel_position.present? && location.hotel_position.present?
+    is_special_type = location.name.present? || (location.new_record? && !is_carousel_type)
   %>
 
   <div class="mb-4">
@@ -82,4 +83,42 @@
   </div>
 <% end %>
 
-<!-- JavaScript moved to stimulus controller or removed for testing -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const carouselRadio = document.getElementById('carousel_location');
+  const specialRadio = document.getElementById('special_location');
+  const carouselFields = document.getElementById('carousel_fields');
+  const specialFields = document.getElementById('special_fields');
+
+  function toggleFields() {
+    if (carouselRadio.checked) {
+      carouselFields.style.display = 'block';
+      specialFields.style.display = 'none';
+      
+      // Clear special location fields when switching to carousel
+      const nameField = document.querySelector('input[name="location[name]"]');
+      if (nameField) nameField.value = '';
+    } else {
+      // Default to special location (either explicitly checked or as fallback)
+      carouselFields.style.display = 'none';
+      specialFields.style.display = 'block';
+      
+      // If switching from carousel, clear carousel fields
+      if (!specialRadio.checked) {
+        specialRadio.checked = true;
+      }
+      
+      const carouselPosField = document.querySelector('input[name="location[carousel_position]"]');
+      const hotelPosField = document.querySelector('input[name="location[hotel_position]"]');
+      if (carouselPosField && carouselRadio.checked === false) carouselPosField.value = '';
+      if (hotelPosField && carouselRadio.checked === false) hotelPosField.value = '';
+    }
+  }
+
+  // Set initial state
+  toggleFields();
+
+  // Add event listeners
+  carouselRadio.addEventListener('change', toggleFields);
+  specialRadio.addEventListener('change', toggleFields);
+});</script>

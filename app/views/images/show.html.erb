@@ -5,7 +5,7 @@
     <div class="col-md-8">
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h4 class="mb-0">Image for Well <%= @well.well_label %></h4>
+          <h4 class="mb-0">Image for Well <%= @well.well_label_with_subwell %></h4>
           <div>
             <%= link_to 'Edit', edit_well_image_path(@well, @image), class: 'btn btn-outline-primary btn-sm me-2' %>
             <%= button_to 'Delete', well_image_path(@well, @image), method: :delete, 

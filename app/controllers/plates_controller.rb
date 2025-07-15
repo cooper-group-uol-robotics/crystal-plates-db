@@ -167,7 +167,11 @@ class PlatesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def plate_params
-      params.expect(plate: [ :barcode, :location_id ])
+      params.expect(plate: [ :barcode, :location_id ]).merge(
+        plate_rows: params[:plate_rows],
+        plate_columns: params[:plate_columns],
+        plate_subwells_per_well: params[:plate_subwells_per_well]
+      )
     end
 
     def find_or_create_location_from_params
@@ -178,9 +182,9 @@ class PlatesController < ApplicationController
 
         # Find existing carousel location
         Location.find_by(carousel_position: carousel_pos, hotel_position: hotel_pos)
-      elsif params[:other_location_id].present?
-        # Find the selected other location
-        Location.find(params[:other_location_id])
+      elsif params[:special_location_id].present?
+        # Find the selected special location
+        Location.find(params[:special_location_id])
       else
         nil
       end

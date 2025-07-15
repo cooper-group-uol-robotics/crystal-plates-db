@@ -1,17 +1,20 @@
 <div id="<%= dom_id well %>">
   <p>
+    <strong>Well:</strong>
+    <%= well.well_label_with_subwell %>
+  </p>
+
+  <p>
     <strong>Plate:</strong>
-    <%= well.plate_id %>
+    <%= link_to well.plate.barcode, well.plate %>
   </p>
 
   <p>
-    <strong>Row:</strong>
-    <%= well.well_row %>
-  </p>
-
-  <p>
-    <strong>Column:</strong>
-    <%= well.well_column %>
+    <strong>Position:</strong>
+    Row <%= well.well_row %>, Column <%= well.well_column %>
+    <% if well.subwell && well.subwell > 1 %>
+      , Subwell <%= well.subwell %>
+    <% end %>
   </p>
 
 </div>

@@ -27,18 +27,34 @@
 
 <h2 class="mb-3">Wells</h2>
 <div class="d-inline-block border rounded p-2 shadow-sm" style="background: #f8f9fa;">
-  <div class="d-grid" style="grid-template-columns: repeat(<%= @columns %>, 40px); gap: 6px;">
+  <div class="d-grid" style="grid-template-columns: repeat(<%= @columns %>, 80px); gap: 8px;">
     <% (1..@rows).each do |row| %>
       <% (1..@columns).each do |col| %>
-        <% well = @wells.find { |w| w.well_row == row && w.well_column == col } %>
-        <% has_image = well&.has_images? %>
-        <button type="button" class="btn btn-sm text-white"
-          style="background-color: <%= has_image ? '#198754' : '#dc3545' %>; height: 40px;"
-          data-bs-toggle="modal" data-bs-target="#wellImagesModal"
-          data-well-id="<%= well&.id %>"
-          <%= "disabled" unless well %>>
-          <%= well ? well.well_label : "" %>
-        </button>
+        <% wells_in_position = @wells.select { |w| w.well_row == row && w.well_column == col } %>
+        <div class="well-position border rounded p-1" style="background: white; min-height: 80px;">
+          <% if wells_in_position.any? %>
+            <div class="text-center mb-1" style="font-size: 10px; font-weight: bold;">
+              <%= wells_in_position.first.well_label %>
+            </div>
+            <div class="d-grid" style="grid-template-columns: repeat(<%= Math.sqrt(wells_in_position.length).ceil %>, 1fr); gap: 2px;">
+              <% wells_in_position.sort_by(&:subwell).each do |well| %>
+                <% has_image = well.has_images? %>
+                <button type="button" class="btn btn-sm text-white p-1"
+                  style="background-color: <%= has_image ? '#198754' : '#dc3545' %>; height: 25px; font-size: 9px;"
+                  data-bs-toggle="modal" data-bs-target="#wellImagesModal"
+                  data-well-id="<%= well.id %>"
+                  data-well-label="<%= well.well_label_with_subwell %>"
+                  title="<%= well.well_label_with_subwell %>">
+                  <%= well.subwell %>
+                </button>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center text-muted" style="padding-top: 25px; font-size: 10px;">
+              Empty
+            </div>
+          <% end %>
+        </div>
       <% end %>
     <% end %>
   </div>
@@ -63,15 +79,20 @@
 document.addEventListener('DOMContentLoaded', () => {
   const wellImagesModal = document.getElementById('wellImagesModal')
   const wellImagesContent = document.getElementById('wellImagesContent')
+  const modalTitle = document.getElementById('wellImagesModalLabel')
 
   wellImagesModal.addEventListener('show.bs.modal', event => {
     const button = event.relatedTarget
     const wellId = button.getAttribute('data-well-id')
+    const wellLabel = button.getAttribute('data-well-label')
 
     if (!wellId) {
       wellImagesContent.innerHTML = '<p>No well selected.</p>'
+      modalTitle.textContent = 'Well Images'
       return
     }
+
+    modalTitle.textContent = `Well ${wellLabel} Images`
 
     fetch(`/wells/${wellId}/images`) // we'll create this route/controller action
       .then(response => response.text())
