@@ -22,6 +22,9 @@ class PlatesController < ApplicationController
       @plates = Plate.includes(plate_locations: :location).order(:barcode)
     end
 
+    # Add pagination
+    @plates = @plates.page(params[:page]).per(25)
+
     @sort_column = sort_column
     @sort_direction = sort_direction
   end
@@ -163,6 +166,8 @@ class PlatesController < ApplicationController
   # GET /plates/deleted
   def deleted
     @plates = Plate.only_deleted.includes(plate_locations: :location)
+                  .order(:deleted_at)
+                  .page(params[:page]).per(25)
   end
 
   # PATCH /plates/1/restore

@@ -60,3 +60,15 @@
     No deleted plates found.
   </div>
 <% end %>
+
+<% if @plates.respond_to?(:current_page) && @plates.total_pages > 1 %>
+  <div class="d-flex justify-content-between align-items-center mt-4">
+    <div class="text-muted">
+      Showing <%= @plates.offset_value + 1 %> to <%= [@plates.offset_value + @plates.limit_value, @plates.total_count].min %> 
+      of <%= @plates.total_count %> deleted plates
+    </div>
+    <nav aria-label="Page navigation">
+      <%= paginate @plates, theme: :bootstrap_4 %>
+    </nav>
+  </div>
+<% end %>

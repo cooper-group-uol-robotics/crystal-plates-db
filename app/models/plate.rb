@@ -1,6 +1,6 @@
 class Plate < ApplicationRecord
     acts_as_paranoid
-    
+
     has_many :wells, dependent: :destroy
     has_many :plate_locations, dependent: :destroy
     has_many :locations, through: :plate_locations
@@ -64,6 +64,10 @@ class Plate < ApplicationRecord
 
     def columns
         wells.maximum(:well_column) || 12
+    end
+
+    def subwells_per_well
+        wells.maximum(:subwell) || 1
     end
 
     private

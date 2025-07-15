@@ -19,23 +19,53 @@
 
   <div class="mb-4">
     <label class="form-label fw-bold">Plate Dimensions</label>
+    <% if plate.persisted? %>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        Plate dimensions cannot be changed after creation to preserve existing well data.
+      </div>
+    <% end %>
     <div class="card">
       <div class="card-body">
         <div class="row">
           <div class="col-md-4">
             <label for="plate_rows" class="form-label">Number of Rows</label>
-            <input type="number" class="form-control" id="plate_rows" name="plate_rows" min="1" max="26" value="8">
-            <div class="form-text">Rows (A-Z, typically 8 or 16)</div>
+            <input type="number" class="form-control" id="plate_rows" name="plate_rows" min="1" max="26" 
+                   value="<%= plate.persisted? ? plate.rows : 8 %>"
+                   <%= plate.persisted? ? 'disabled' : '' %>>
+            <div class="form-text">
+              <% if plate.persisted? %>
+                Current: <%= plate.rows %> rows (A-<%= ("A".ord + plate.rows - 1).chr %>)
+              <% else %>
+                Rows (A-Z, typically 8 or 16)
+              <% end %>
+            </div>
           </div>
           <div class="col-md-4">
             <label for="plate_columns" class="form-label">Number of Columns</label>
-            <input type="number" class="form-control" id="plate_columns" name="plate_columns" min="1" max="48" value="12">
-            <div class="form-text">Columns (1-48, typically 12 or 24)</div>
+            <input type="number" class="form-control" id="plate_columns" name="plate_columns" min="1" max="48" 
+                   value="<%= plate.persisted? ? plate.columns : 12 %>"
+                   <%= plate.persisted? ? 'disabled' : '' %>>
+            <div class="form-text">
+              <% if plate.persisted? %>
+                Current: <%= plate.columns %> columns (1-<%= plate.columns %>)
+              <% else %>
+                Columns (1-48, typically 12 or 24)
+              <% end %>
+            </div>
           </div>
           <div class="col-md-4">
             <label for="plate_subwells_per_well" class="form-label">Subwells per Well</label>
-            <input type="number" class="form-control" id="plate_subwells_per_well" name="plate_subwells_per_well" min="1" max="16" value="1">
-            <div class="form-text">Number of subwells (typically 1, 4, or 16)</div>
+            <input type="number" class="form-control" id="plate_subwells_per_well" name="plate_subwells_per_well" min="1" max="16" 
+                   value="<%= plate.persisted? ? plate.subwells_per_well : 1 %>"
+                   <%= plate.persisted? ? 'disabled' : '' %>>
+            <div class="form-text">
+              <% if plate.persisted? %>
+                Current: <%= plate.subwells_per_well %> subwell<%= plate.subwells_per_well > 1 ? 's' : '' %> per well
+              <% else %>
+                Number of subwells (typically 1, 4, or 16)
+              <% end %>
+            </div>
           </div>
         </div>
       </div>
