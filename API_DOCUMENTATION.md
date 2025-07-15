@@ -193,6 +193,48 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **Description**: Delete a well
 - **Response**: Success message
 
+## Images API
+
+### List Well Images
+- **GET** `/api/v1/wells/:well_id/images`
+- **Description**: Get all images for a specific well
+- **Response**: Array of image objects
+
+### Get Image Details
+- **GET** `/api/v1/wells/:well_id/images/:id`
+- **Description**: Get detailed information about a specific image
+- **Response**: Detailed image object with metadata and file information
+
+### Upload Image
+- **POST** `/api/v1/wells/:well_id/images`
+- **Description**: Upload a new image to a well with spatial metadata
+- **Content-Type**: `multipart/form-data`
+- **Body Parameters**:
+  ```
+  image[file]: (file) Image file (JPEG, PNG, etc.)
+  image[pixel_size_x_mm]: (number) Physical width of one pixel in mm
+  image[pixel_size_y_mm]: (number) Physical height of one pixel in mm  
+  image[reference_x_mm]: (number) X coordinate of reference point in mm
+  image[reference_y_mm]: (number) Y coordinate of reference point in mm
+  image[reference_z_mm]: (number) Z coordinate of reference point in mm
+  image[pixel_width]: (integer, optional) Image width in pixels (auto-detected if not provided)
+  image[pixel_height]: (integer, optional) Image height in pixels (auto-detected if not provided)
+  image[description]: (string, optional) Description or notes
+  image[captured_at]: (datetime, optional) When image was captured (defaults to current time)
+  ```
+- **Response**: Created image object with auto-detected dimensions
+
+### Update Image
+- **PUT/PATCH** `/api/v1/wells/:well_id/images/:id`
+- **Description**: Update image metadata (file cannot be changed)
+- **Body Parameters**: Same as upload (excluding file)
+- **Response**: Updated image object
+
+### Delete Image
+- **DELETE** `/api/v1/wells/:well_id/images/:id`
+- **Description**: Delete an image and its file
+- **Response**: Success message
+
 ## Utility Endpoints
 
 ### Health Check
@@ -233,6 +275,24 @@ curl http://localhost:3000/api/v1/locations/grid
 ### Get system statistics
 ```bash
 curl http://localhost:3000/api/v1/stats
+```
+
+### Upload an image to a well
+```bash
+# Upload image with spatial metadata
+curl -X POST http://localhost:3000/api/v1/wells/123/images \
+  -F "image[file]=@/path/to/image.png" \
+  -F "image[pixel_size_x_mm]=0.1" \
+  -F "image[pixel_size_y_mm]=0.1" \
+  -F "image[reference_x_mm]=0" \
+  -F "image[reference_y_mm]=0" \
+  -F "image[reference_z_mm]=5.0" \
+  -F "image[description]=Crystal formation at 24 hours"
+```
+
+### Get images for a well
+```bash
+curl http://localhost:3000/api/v1/wells/123/images
 ```
 
 ## Error Codes

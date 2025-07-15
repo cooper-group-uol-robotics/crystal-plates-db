@@ -31,7 +31,9 @@ Rails.application.routes.draw do
           post :move_to_location
           get :location_history
         end
-        resources :wells, only: [ :index, :show, :create, :update, :destroy ]
+        resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
+          resources :images, only: [ :index, :show, :create, :update, :destroy ]
+        end
       end
 
       resources :locations do
@@ -46,7 +48,9 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :wells, only: [ :index, :show, :create, :update, :destroy ]
+      resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
+        resources :images, only: [ :index, :show, :create, :update, :destroy ]
+      end
 
       # Utility endpoints
       get :health, to: "health#show"

@@ -8,7 +8,7 @@ class Image < ApplicationRecord
   # Validations
   validates :pixel_size_x_mm, :pixel_size_y_mm, presence: true, numericality: { greater_than: 0 }
   validates :reference_x_mm, :reference_y_mm, :reference_z_mm, presence: true, numericality: true
-  validates :file, presence: true
+  validates :file, presence: true, on: :create
 
   # Validate that attached file is an image
   validate :file_is_image, if: -> { file.attached? }

@@ -13,7 +13,7 @@ one:
   captured_at: <%= 1.hour.ago %>
 
 two:
-  well: one
+  well: two
   pixel_size_x_mm: 0.0015
   pixel_size_y_mm: 0.0015
   reference_x_mm: 15.0
