@@ -34,3 +34,26 @@
 *.sqlite3
 *.sqlite3*
 
+# Ignore precompiled assets
+/public/assets/
+
+# Ignore built CSS and JS files
+/app/assets/builds/
+
+# Ignore node modules (if any)
+/node_modules/
+
+# Ignore yarn files
+yarn-error.log
+.yarn-integrity
+
+# Ignore editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
