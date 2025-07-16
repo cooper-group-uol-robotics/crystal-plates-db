@@ -17,9 +17,6 @@
     
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    
-    <!-- Turbo / Hotwire -->
-    <%= javascript_importmap_tags %>
   </head>
 
   <body class="bg-light">
@@ -35,6 +32,9 @@
           <ul class="navbar-nav me-auto">
             <li class="nav-item">
               <%= link_to "Plates", plates_path, class: "nav-link #{'active' if controller_name == 'plates'}" %>
+            </li>
+            <li class="nav-item">
+              <%= link_to "Chemicals", chemicals_path, class: "nav-link #{'active' if controller_name == 'chemicals'}" %>
             </li>
             <li class="nav-item">
               <%= link_to "Locations", locations_path, class: "nav-link #{'active' if controller_name == 'locations'}" %>

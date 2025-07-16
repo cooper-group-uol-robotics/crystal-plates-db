@@ -3,3 +3,13 @@
 // ./bin/rails generate stimulus controllerName
 
 import { application } from "./application"
+
+console.log("Loading Stimulus controllers...")
+
+import SciformationImportController from "./sciformation_import_controller"
+application.register("sciformation-import", SciformationImportController)
+console.log("Registered sciformation-import controller")
+
+import SmilesController from "./smiles_controller"
+application.register("smiles", SmilesController)
+console.log("Registered smiles controller")

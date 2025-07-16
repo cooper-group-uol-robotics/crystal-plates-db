@@ -1,0 +1,43 @@
+<% content_for :title, "New Chemical" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">New Chemical</h1>
+  <%= link_to "Back to Chemicals", chemicals_path, class: "btn btn-outline-secondary" %>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Chemical Information</h5>
+      </div>
+      <div class="card-body">
+        <%= render 'form', chemical: @chemical %>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Help</h5>
+      </div>
+      <div class="card-body">
+        <h6>Required Fields</h6>
+        <ul class="small">
+          <li><strong>Name:</strong> Chemical name</li>
+          <li><strong>SMILES:</strong> Chemical structure</li>
+          <li><strong>Sciformation ID:</strong> External database ID</li>
+        </ul>
+        
+        <h6 class="mt-3">Optional Fields</h6>
+        <ul class="small">
+          <li><strong>CAS Number:</strong> Chemical registry number</li>
+          <li><strong>Barcode:</strong> Physical container barcode</li>
+          <li><strong>Amount:</strong> Quantity available</li>
+          <li><strong>Storage:</strong> Physical storage location</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

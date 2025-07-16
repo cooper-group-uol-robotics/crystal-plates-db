@@ -1,0 +1,362 @@
+<% content_for :title, "Chemicals" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">Chemicals</h1>
+  <div>
+    <%= link_to "Import from Sciformation", "#", class: "btn btn-outline-primary me-2", 
+                'data-bs-toggle': 'modal', 'data-bs-target': '#importModal' %>
+    <%= link_to "New chemical", new_chemical_path, class: "btn btn-success" %>
+  </div>
+</div>
+
+<!-- Search Form -->
+<div class="card mb-4">
+  <div class="card-body">
+    <%= form_with url: chemicals_path, method: :get, local: true, class: "d-flex gap-2" do |f| %>
+      <%= f.text_field :search, value: @search_query, placeholder: "Search by name, CAS, or barcode...", 
+                       class: "form-control flex-grow-1" %>
+      <%= f.submit "Search", class: "btn btn-primary" %>
+      <% if @search_query.present? %>
+        <%= link_to "Clear", chemicals_path, class: "btn btn-outline-secondary" %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <% if @chemicals.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>
+                <%= link_to chemicals_path(sort: 'name', direction: @sort_column == 'name' && @sort_direction == 'asc' ? 'desc' : 'asc', page: params[:page], search: @search_query), 
+                            class: "text-decoration-none text-dark" do %>
+                  Name
+                  <% if @sort_column == 'name' %>
+                    <i class="bi bi-arrow-<%= @sort_direction == 'asc' ? 'up' : 'down' %>"></i>
+                  <% else %>
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  <% end %>
+                <% end %>
+              </th>
+              <th>Structure</th>
+              <th>
+                <%= link_to chemicals_path(sort: 'cas', direction: @sort_column == 'cas' && @sort_direction == 'asc' ? 'desc' : 'asc', page: params[:page], search: @search_query), 
+                            class: "text-decoration-none text-dark" do %>
+                  CAS Number
+                  <% if @sort_column == 'cas' %>
+                    <i class="bi bi-arrow-<%= @sort_direction == 'asc' ? 'up' : 'down' %>"></i>
+                  <% else %>
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  <% end %>
+                <% end %>
+              </th>
+              <th>
+                <%= link_to chemicals_path(sort: 'barcode', direction: @sort_column == 'barcode' && @sort_direction == 'asc' ? 'desc' : 'asc', page: params[:page], search: @search_query), 
+                            class: "text-decoration-none text-dark" do %>
+                  Barcode
+                  <% if @sort_column == 'barcode' %>
+                    <i class="bi bi-arrow-<%= @sort_direction == 'asc' ? 'up' : 'down' %>"></i>
+                  <% else %>
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  <% end %>
+                <% end %>
+              </th>
+              <th>Amount</th>
+              <th>Storage</th>
+              <th>
+                <%= link_to chemicals_path(sort: 'sciformation_id', direction: @sort_column == 'sciformation_id' && @sort_direction == 'asc' ? 'desc' : 'asc', page: params[:page], search: @search_query), 
+                            class: "text-decoration-none text-dark" do %>
+                  Sciformation ID
+                  <% if @sort_column == 'sciformation_id' %>
+                    <i class="bi bi-arrow-<%= @sort_direction == 'asc' ? 'up' : 'down' %>"></i>
+                  <% else %>
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  <% end %>
+                <% end %>
+              </th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @chemicals.each do |chemical| %>
+              <tr>
+                <td>
+                  <%= link_to chemical.name, chemical_path(chemical), class: "text-decoration-none" %>
+                </td>
+                <td class="text-center">
+                  <% if chemical.has_structure? %>
+                    <%= image_tag chemical.structure_image_url(width: 80, height: 80), 
+                                  alt: "Structure",
+                                  class: "img-fluid",
+                                  style: "max-width: 80px; max-height: 80px;",
+                                  onerror: "this.style.display='none'; this.nextElementSibling.style.display='block';" %>
+                    <div style="display: none;" class="text-muted small">Structure error</div>
+                  <% else %>
+                    <span class="text-muted small">No structure</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if chemical.cas.present? %>
+                    <code><%= chemical.cas %></code>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if chemical.barcode.present? %>
+                    <code><%= chemical.barcode %></code>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if chemical.amount.present? %>
+                    <%= chemical.amount %>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if chemical.storage.present? %>
+                    <small class="text-muted" title="<%= chemical.storage %>"><%= truncate(chemical.short_storage, length: 30) %></small>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if chemical.sciformation_id.present? %>
+                    <code><%= chemical.sciformation_id %></code>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <%= link_to chemical_path(chemical), class: "btn btn-outline-primary btn-sm" do %>
+                      <i class="bi bi-eye"></i>
+                    <% end %>
+                    <%= link_to edit_chemical_path(chemical), class: "btn btn-outline-secondary btn-sm" do %>
+                      <i class="bi bi-pencil"></i>
+                    <% end %>
+                    <%= link_to chemical_path(chemical), method: :delete, 
+                                data: { confirm: "Are you sure?" }, 
+                                class: "btn btn-outline-danger btn-sm" do %>
+                      <i class="bi bi-trash"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <% if @search_query.present? %>
+          <p class="text-muted mb-3">No chemicals found matching "<%= @search_query %>".</p>
+          <%= link_to "Clear search", chemicals_path, class: "btn btn-outline-primary me-2" %>
+        <% else %>
+          <p class="text-muted mb-3">No chemicals found.</p>
+        <% end %>
+        <%= link_to "Create First Chemical", new_chemical_path, class: "btn btn-primary" %>
+      </div>
+    <% end %>
+
+    <% if @chemicals.respond_to?(:current_page) && @chemicals.total_pages > 1 %>
+      <div class="d-flex justify-content-between align-items-center mt-4">
+        <div class="text-muted">
+          Showing <%= @chemicals.offset_value + 1 %> to <%= [@chemicals.offset_value + @chemicals.limit_value, @chemicals.total_count].min %> 
+          of <%= @chemicals.total_count %> chemicals
+        </div>
+        <nav aria-label="Page navigation">
+          <%= paginate @chemicals, theme: :bootstrap_4, params: { sort: @sort_column, direction: @sort_direction, search: @search_query } %>
+        </nav>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importModalLabel">Import from Sciformation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="instructions">
+          <p>Click the button below to import chemicals from Sciformation.</p>
+          <div class="alert alert-info">
+            <small>
+              <i class="fas fa-info-circle"></i>
+              You'll need to provide your Sciformation authentication cookie. Instructions will be provided to help you find it.
+            </small>
+          </div>
+        </div>
+        
+        <div id="loading" class="d-none">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Importing chemicals from Sciformation...</p>
+          </div>
+        </div>
+        
+        <div id="results" class="d-none">
+          <div class="alert alert-success">
+            <h6>Import completed successfully!</h6>
+            <div id="resultsSummary"></div>
+          </div>
+        </div>
+        
+        <div id="error" class="d-none">
+          <div class="alert alert-danger">
+            <h6>Import failed</h6>
+            <div id="errorMessage"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="importButton" onclick="startImport()">
+          Authenticate & Import
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function startImport() {
+  console.log("startImport called");
+  showInstructions();
+  await getCookieAndImport();
+}
+
+async function getCookieAndImport() {
+  try {
+    // Get the SCIFORMATION cookie from user
+    const cookie = await getSciFormationCookie();
+    
+    if (!cookie) {
+      showError("Import cancelled - no cookie provided.");
+      return;
+    }
+
+    // Start the import with the extracted cookie
+    showLoading();
+    await performImport(cookie);
+  } catch (error) {
+    console.error("Import error:", error);
+    showError(`Import failed: ${error.message}`);
+  }
+}
+
+async function getSciFormationCookie() {
+  const instructions = `
+To get your Sciformation cookie:
+
+1. Keep this dialog open
+2. Open a new tab and go to https://jfb.liverpool.ac.uk
+3. Log in if needed
+4. Press F12 to open Developer Tools
+5. Go to the "Application" or "Storage" tab
+6. Look for "Cookies" in the left sidebar
+7. Click on "https://jfb.liverpool.ac.uk"
+8. Find the cookie named "SCIFORMATION" 
+9. Copy its Value (the long string)
+10. Paste it below
+
+This is a one-time setup - the import will happen automatically once you paste the cookie.
+  `.trim();
+  
+  alert(instructions);
+  
+  const cookie = prompt("Paste your SCIFORMATION cookie value here:");
+  return cookie ? cookie.trim() : null;
+}
+
+async function performImport(cookie) {
+  try {
+    const response = await fetch("/chemicals/import_from_sciformation", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": getCSRFToken()
+      },
+      body: JSON.stringify({ sciformation_cookie: cookie })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.success) {
+      showResults(result);
+    } else {
+      showError(result.error || "Import failed for unknown reason");
+    }
+  } catch (error) {
+    throw new Error(`Network error: ${error.message}`);
+  }
+}
+
+function showInstructions() {
+  hideAll();
+  document.getElementById("instructions").classList.remove("d-none");
+}
+
+function showLoading() {
+  hideAll();
+  document.getElementById("loading").classList.remove("d-none");
+  document.getElementById("importButton").disabled = true;
+}
+
+function showResults(result) {
+  hideAll();
+  document.getElementById("results").classList.remove("d-none");
+  document.getElementById("importButton").disabled = false;
+  
+  const summary = `
+    <ul class="mb-0">
+      <li>Total records processed: ${result.total_records || 0}</li>
+      <li>New chemicals imported: ${result.imported || 0}</li>
+      <li>Existing chemicals updated: ${result.updated || 0}</li>
+      <li>Records skipped: ${result.skipped || 0}</li>
+      <li>Total chemicals in database: ${result.total_chemicals || 0}</li>
+    </ul>
+  `;
+  document.getElementById("resultsSummary").innerHTML = summary;
+  
+  // Refresh the page to show new chemicals
+  setTimeout(() => {
+    window.location.reload();
+  }, 3000);
+}
+
+function showError(message) {
+  hideAll();
+  document.getElementById("error").classList.remove("d-none");
+  document.getElementById("errorMessage").textContent = message;
+  document.getElementById("importButton").disabled = false;
+}
+
+function hideAll() {
+  document.getElementById("instructions").classList.add("d-none");
+  document.getElementById("loading").classList.add("d-none");
+  document.getElementById("results").classList.add("d-none");
+  document.getElementById("error").classList.add("d-none");
+}
+
+function getCSRFToken() {
+  const token = document.querySelector('meta[name="csrf-token"]');
+  return token ? token.getAttribute('content') : '';
+}
+</script>
