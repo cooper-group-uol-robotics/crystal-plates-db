@@ -1,0 +1,267 @@
+<%= form_with model: stock_solution, local: true do |form| %>
+  <style>
+    .chemical-search-dropdown {
+      z-index: 1050;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      background-color: white;
+    }
+    
+    .chemical-search-dropdown .dropdown-item {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: none;
+      text-align: left;
+      width: 100%;
+      cursor: pointer;
+    }
+    
+    .chemical-search-dropdown .dropdown-item:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .chemical-search-dropdown .dropdown-item:focus {
+      background-color: #e9ecef;
+    }
+  </style>
+  <% if stock_solution.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(stock_solution.errors.count, "error") %> prohibited this stock solution from being saved:</h4>
+      <ul>
+        <% stock_solution.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= form.label :name, class: "form-label" %>
+    <%= form.text_field :name, class: "form-control" %>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h5>Components</h5>
+    </div>
+    <div class="card-body">
+      <div id="stock-solution-components">
+        <%= form.fields_for :stock_solution_components do |component_form| %>
+          <div class="component-fields border p-3 mb-3 rounded">
+            <div class="row">
+              <div class="col-md-4">
+                <%= component_form.label :chemical_id, "Chemical", class: "form-label" %>
+                <div class="position-relative">
+                  <% field_index = component_form.index || rand(10000) %>
+                  <%= component_form.hidden_field :chemical_id, id: "chemical_id_#{field_index}" %>
+                  <% existing_chemical = component_form.object.chemical %>
+                  <input type="text" class="form-control" placeholder="Search by name, CAS, or barcode..." 
+                         value="<%= existing_chemical&.name %>"
+                         id="chemical_search_#{field_index}"
+                         oninput="searchChemicals(this, 'chemical_id_#{field_index}', 'results_#{field_index}')"
+                         onblur="setTimeout(() => hideResults('results_#{field_index}'), 200)">
+                  <div class="chemical-search-dropdown position-absolute w-100 d-none" 
+                       style="top: 100%; max-height: 200px; overflow-y: auto;"
+                       id="results_#{field_index}">
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <%= component_form.label :amount, class: "form-label" %>
+                <%= component_form.number_field :amount, step: :any, class: "form-control" %>
+              </div>
+              <div class="col-md-3">
+                <%= component_form.label :unit_id, "Unit", class: "form-label" %>
+                <%= component_form.collection_select :unit_id, Unit.order(:name), :id, :name, 
+                                                   { prompt: "Select a unit..." }, 
+                                                   { class: "form-select" } %>
+              </div>
+              <div class="col-md-2 d-flex align-items-end">
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      
+      <button type="button" class="btn btn-outline-secondary" onclick="addComponent()">
+        Add Component
+      </button>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <%= form.submit class: "btn btn-primary" %>
+    <% if stock_solution.persisted? %>
+      <%= link_to "Cancel", stock_solution_path(stock_solution), class: "btn btn-secondary" %>
+    <% else %>
+      <%= link_to "Cancel", stock_solutions_path, class: "btn btn-secondary" %>
+    <% end %>
+  </div>
+<% end %>
+
+<script>
+function addComponent() {
+  const container = document.getElementById('stock-solution-components');
+  const timestamp = new Date().getTime();
+  const newFields = `
+    <div class="component-fields border p-3 mb-3 rounded">
+      <div class="row">
+        <div class="col-md-4">
+          <label class="form-label">Chemical</label>
+          <div class="position-relative">
+            <input type="hidden" name="stock_solution[stock_solution_components_attributes][${timestamp}][chemical_id]" id="chemical_id_${timestamp}" />
+            <input type="text" class="form-control" placeholder="Search by name, CAS, or barcode..." 
+                   id="chemical_search_${timestamp}"
+                   oninput="searchChemicals(this, 'chemical_id_${timestamp}', 'results_${timestamp}')"
+                   onblur="setTimeout(() => hideResults('results_${timestamp}'), 200)">
+            <div class="chemical-search-dropdown position-absolute w-100 d-none" 
+                 style="top: 100%; max-height: 200px; overflow-y: auto;"
+                 id="results_${timestamp}">
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Amount</label>
+          <input type="number" step="any" name="stock_solution[stock_solution_components_attributes][${timestamp}][amount]" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Unit</label>
+          <select name="stock_solution[stock_solution_components_attributes][${timestamp}][unit_id]" class="form-select">
+            <option value="">Select a unit...</option>
+            <% Unit.order(:name).each do |unit| %>
+              <option value="<%= unit.id %>"><%= unit.name %></option>
+            <% end %>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeComponent(this)">Remove</button>
+        </div>
+      </div>
+    </div>
+  `;
+  container.insertAdjacentHTML('beforeend', newFields);
+}
+
+function removeComponent(button) {
+  button.closest('.component-fields').remove();
+}
+
+// Chemical search functionality
+let searchTimeout;
+
+function escapeQuotes(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
+function searchChemicals(inputElement, hiddenFieldId, resultsId) {
+  console.log('Search triggered for:', inputElement.value);
+  
+  const query = inputElement.value.trim();
+  const resultsDiv = document.getElementById(resultsId);
+  
+  // Clear previous timeout
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  
+  // Hide results if query is too short
+  if (query.length < 3) {
+    hideResults(resultsId);
+    return;
+  }
+  
+  // Show loading message
+  resultsDiv.innerHTML = '<div class="dropdown-item text-muted">Searching...</div>';
+  showResults(resultsId);
+  
+  // Debounce the search
+  searchTimeout = setTimeout(() => {
+    const searchUrl = '<%= search_api_v1_chemicals_path %>?q=' + encodeURIComponent(query);
+    console.log('Making request to:', searchUrl);
+    
+    fetch(searchUrl)
+      .then(response => response.json())
+      .then(chemicals => {
+        console.log('Search results:', chemicals);
+        displayResults(chemicals, resultsId, hiddenFieldId, inputElement);
+      })
+      .catch(error => {
+        console.error('Search failed:', error);
+        resultsDiv.innerHTML = '<div class="dropdown-item text-muted">Search failed</div>';
+        showResults(resultsId);
+      });
+  }, 300);
+}
+
+function displayResults(chemicals, resultsId, hiddenFieldId, inputElement) {
+  const resultsDiv = document.getElementById(resultsId);
+  
+  console.log('displayResults called with:');
+  console.log('- resultsId:', resultsId);
+  console.log('- hiddenFieldId:', hiddenFieldId);
+  console.log('- inputElement.id:', inputElement.id);
+  
+  if (chemicals.length === 0) {
+    resultsDiv.innerHTML = '<div class="dropdown-item text-muted">No chemicals found</div>';
+    showResults(resultsId);
+    return;
+  }
+  
+  const items = chemicals.map(chemical => {
+    return `<button type="button" class="dropdown-item" onclick="selectChemicalByElement(this, '${chemical.id}', '${escapeQuotes(chemical.name)}')">${chemical.display_text}</button>`;
+  }).join('');
+  
+  resultsDiv.innerHTML = items;
+  showResults(resultsId);
+}
+
+function selectChemicalByElement(buttonElement, chemicalId, chemicalName) {
+  console.log('Chemical selected:', chemicalName);
+  
+  // Find the parent container with the search components
+  const container = buttonElement.closest('.component-fields') || buttonElement.closest('.col-md-4');
+  
+  if (!container) {
+    console.error('Could not find parent container');
+    return;
+  }
+  
+  // Find the hidden field and input field within this container
+  const hiddenField = container.querySelector('input[type="hidden"]');
+  const inputElement = container.querySelector('input[type="text"]');
+  const resultsDiv = container.querySelector('.chemical-search-dropdown');
+  
+  console.log('Found elements:');
+  console.log('- hiddenField:', hiddenField);
+  console.log('- inputElement:', inputElement);
+  
+  if (!hiddenField) {
+    console.error('Hidden field not found in container');
+    return;
+  }
+  
+  if (!inputElement) {
+    console.error('Input element not found in container');
+    return;
+  }
+  
+  hiddenField.value = chemicalId;
+  inputElement.value = chemicalName;
+  
+  // Hide results
+  if (resultsDiv) {
+    resultsDiv.classList.add('d-none');
+  }
+}
+
+function showResults(resultsId) {
+  const resultsDiv = document.getElementById(resultsId);
+  resultsDiv.classList.remove('d-none');
+}
+
+function hideResults(resultsId) {
+  const resultsDiv = document.getElementById(resultsId);
+  resultsDiv.classList.add('d-none');
+}
+</script>

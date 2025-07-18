@@ -1,0 +1,80 @@
+<% content_for :title, "Stock Solutions" %>
+
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Stock Solutions</h1>
+        <%= link_to "New Stock Solution", new_stock_solution_path, class: "btn btn-primary" %>
+      </div>
+
+      <!-- Search Form -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <%= form_with url: stock_solutions_path, method: :get, local: true, class: "d-flex" do |f| %>
+            <%= f.text_field :search, placeholder: "Search by name...", 
+                           value: params[:search], class: "form-control me-2" %>
+            <%= f.submit "Search", class: "btn btn-outline-secondary" %>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Stock Solutions Table -->
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Components</th>
+              <th>Used in Wells</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @stock_solutions.each do |stock_solution| %>
+              <tr>
+                <td>
+                  <%= link_to stock_solution.display_name, stock_solution_path(stock_solution) %>
+                </td>
+                <td>
+                  <span class="badge bg-secondary"><%= stock_solution.total_components %></span>
+                  <% if stock_solution.total_components > 0 %>
+                    <div class="small text-muted mt-1">
+                      <%= truncate(stock_solution.component_summary, length: 100) %>
+                    </div>
+                  <% end %>
+                </td>
+                <td>
+                  <span class="badge bg-<%= stock_solution.used_in_wells_count > 0 ? 'success' : 'light' %>">
+                    <%= stock_solution.used_in_wells_count %>
+                  </span>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <%= link_to "View", stock_solution_path(stock_solution), class: "btn btn-sm btn-outline-primary" %>
+                    <%= link_to "Edit", edit_stock_solution_path(stock_solution), class: "btn btn-sm btn-outline-secondary" %>
+                    <% if stock_solution.can_be_deleted? %>
+                      <%= button_to "Delete", stock_solution_path(stock_solution), method: :delete,
+                                 data: { confirm: "Are you sure?" }, class: "btn btn-sm btn-outline-danger",
+                                 style: "display: inline;" %>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if @stock_solutions.empty? %>
+        <div class="alert alert-info">
+          <% if params[:search].present? %>
+            No stock solutions found matching "<%= params[:search] %>".
+          <% else %>
+            No stock solutions yet. <%= link_to "Create one", new_stock_solution_path %> to get started.
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

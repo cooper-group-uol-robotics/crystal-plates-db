@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :stock_solutions
   resources :chemicals do
     collection do
       post :import_from_sciformation
@@ -39,6 +40,12 @@ Rails.application.routes.draw do
   # API Routes
   namespace :api do
     namespace :v1 do
+      resources :stock_solutions
+      resources :chemicals, only: [] do
+        collection do
+          get :search
+        end
+      end
       resources :plates, param: :barcode do
         member do
           post :move_to_location
