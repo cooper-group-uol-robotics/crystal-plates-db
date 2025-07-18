@@ -3,5 +3,4 @@
 //= link application.css
 //= link application.js
 //= link controllers/application.js
-//= link controllers/chemical_search_controller.js
 //= link controllers/index.js

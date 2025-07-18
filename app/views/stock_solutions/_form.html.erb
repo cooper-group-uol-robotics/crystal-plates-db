@@ -1,4 +1,5 @@
 <%= form_with model: stock_solution, local: true do |form| %>
+<div class="stock-solution-form">
   <style>
     .chemical-search-dropdown {
       z-index: 1050;
@@ -23,6 +24,11 @@
     
     .chemical-search-dropdown .dropdown-item:focus {
       background-color: #e9ecef;
+    }
+    
+    .stock-solution-form {
+      max-width: 1200px;
+      margin: 0 auto;
     }
   </style>
   <% if stock_solution.errors.any? %>
@@ -50,7 +56,7 @@
         <%= form.fields_for :stock_solution_components do |component_form| %>
           <div class="component-fields border p-3 mb-3 rounded">
             <div class="row">
-              <div class="col-md-4">
+              <div class="col-md-8">
                 <%= component_form.label :chemical_id, "Chemical", class: "form-label" %>
                 <div class="position-relative">
                   <% field_index = component_form.index || rand(10000) %>
@@ -67,17 +73,23 @@
                   </div>
                 </div>
               </div>
-              <div class="col-md-3">
-                <%= component_form.label :amount, class: "form-label" %>
-                <%= component_form.number_field :amount, step: :any, class: "form-control" %>
+              <div class="col-md-2">
+                <%= component_form.label :amount_with_unit, "Amount", class: "form-label" %>
+                <%= component_form.text_field :amount_with_unit, 
+                    class: "form-control", 
+                    placeholder: "e.g., 10 mg, 5.5 ml",
+                    title: "Enter amount with unit (e.g., 10 mg, 5.5 ml)" %>
               </div>
-              <div class="col-md-3">
-                <%= component_form.label :unit_id, "Unit", class: "form-label" %>
-                <%= component_form.collection_select :unit_id, Unit.order(:name), :id, :name, 
-                                                   { prompt: "Select a unit..." }, 
-                                                   { class: "form-select" } %>
-              </div>
-              <div class="col-md-2 d-flex align-items-end">
+              <div class="col-md-3 d-flex align-items-end">
+                <% component_index = component_form.index || 0 %>
+                <% if component_index > 0 || component_form.object.persisted? %>
+                  <% if component_form.object.persisted? %>
+                    <%= component_form.check_box :_destroy, { class: "d-none" }, "1", "0" %>
+                    <button type="button" class="btn btn-outline-danger" onclick="removeExistingComponent(this)">Remove</button>
+                  <% else %>
+                    <button type="button" class="btn btn-outline-danger" onclick="removeComponent(this)">Remove</button>
+                  <% end %>
+                <% end %>
               </div>
             </div>
           </div>
@@ -98,7 +110,6 @@
       <%= link_to "Cancel", stock_solutions_path, class: "btn btn-secondary" %>
     <% end %>
   </div>
-<% end %>
 
 <script>
 function addComponent() {
@@ -107,7 +118,7 @@ function addComponent() {
   const newFields = `
     <div class="component-fields border p-3 mb-3 rounded">
       <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-8">
           <label class="form-label">Chemical</label>
           <div class="position-relative">
             <input type="hidden" name="stock_solution[stock_solution_components_attributes][${timestamp}][chemical_id]" id="chemical_id_${timestamp}" />
@@ -121,30 +132,41 @@ function addComponent() {
             </div>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="form-label">Amount</label>
-          <input type="number" step="any" name="stock_solution[stock_solution_components_attributes][${timestamp}][amount]" class="form-control" />
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Unit</label>
-          <select name="stock_solution[stock_solution_components_attributes][${timestamp}][unit_id]" class="form-select">
-            <option value="">Select a unit...</option>
-            <% Unit.order(:name).each do |unit| %>
-              <option value="<%= unit.id %>"><%= unit.name %></option>
-            <% end %>
-          </select>
+          <input type="text" name="stock_solution[stock_solution_components_attributes][${timestamp}][amount_with_unit]" 
+                 class="form-control" 
+                 placeholder="e.g., 10 mg, 5.5 ml"
+                 title="Enter amount with unit (e.g., 10 mg, 5.5 ml)" />
         </div>
         <div class="col-md-2 d-flex align-items-end">
-          <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeComponent(this)">Remove</button>
+          <button type="button" class="btn btn-outline-danger" onclick="removeComponent(this)">Remove</button>
         </div>
       </div>
     </div>
   `;
   container.insertAdjacentHTML('beforeend', newFields);
+  
+  // Generate stock solution name after adding component
+  generateStockSolutionName();
 }
 
 function removeComponent(button) {
   button.closest('.component-fields').remove();
+  
+  // Generate stock solution name after removing component
+  generateStockSolutionName();
+}
+
+function removeExistingComponent(button) {
+  const componentFields = button.closest('.component-fields');
+  const destroyField = componentFields.querySelector('input[type="checkbox"][name*="_destroy"]');
+  
+  if (destroyField) {
+    destroyField.checked = true;
+    // Hide the component instead of removing it
+    componentFields.style.display = 'none';
+  }
 }
 
 // Chemical search functionality
@@ -220,7 +242,7 @@ function selectChemicalByElement(buttonElement, chemicalId, chemicalName) {
   console.log('Chemical selected:', chemicalName);
   
   // Find the parent container with the search components
-  const container = buttonElement.closest('.component-fields') || buttonElement.closest('.col-md-4');
+  const container = buttonElement.closest('.component-fields') || buttonElement.closest('.col-md-5') || buttonElement.closest('.col-md-4');
   
   if (!container) {
     console.error('Could not find parent container');
@@ -253,6 +275,9 @@ function selectChemicalByElement(buttonElement, chemicalId, chemicalName) {
   if (resultsDiv) {
     resultsDiv.classList.add('d-none');
   }
+  
+  // Generate stock solution name
+  generateStockSolutionName();
 }
 
 function showResults(resultsId) {
@@ -264,4 +289,37 @@ function hideResults(resultsId) {
   const resultsDiv = document.getElementById(resultsId);
   resultsDiv.classList.add('d-none');
 }
+
+function generateStockSolutionName() {
+  const componentFields = document.querySelectorAll('.component-fields');
+  const componentNames = [];
+  
+  // Get the first 2 components that have chemical names
+  for (let i = 0; i < Math.min(componentFields.length, 2); i++) {
+    const component = componentFields[i];
+    const chemicalInput = component.querySelector('input[type="text"][placeholder*="Search by name"]');
+    
+    if (chemicalInput && chemicalInput.value.trim()) {
+      componentNames.push(chemicalInput.value.trim());
+    }
+  }
+  
+  // Generate name based on components
+  let generatedName = '';
+  if (componentNames.length === 1) {
+    generatedName = `${componentNames[0]} Stock Solution`;
+  } else if (componentNames.length === 2) {
+    generatedName = `${componentNames[0]} + ${componentNames[1]} Stock Solution`;
+  } else {
+    generatedName = 'Stock Solution';
+  }
+  
+  // Update the name field
+  const nameField = document.querySelector('input[name="stock_solution[name]"]');
+  if (nameField && !nameField.value.trim()) {
+    nameField.value = generatedName;
+  }
+}
 </script>
+</div>
+<% end %>

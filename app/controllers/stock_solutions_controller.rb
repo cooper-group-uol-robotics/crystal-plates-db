@@ -68,6 +68,6 @@ class StockSolutionsController < ApplicationController
 
   def stock_solution_params
     params.require(:stock_solution).permit(:name,
-      stock_solution_components_attributes: [ :id, :chemical_id, :amount, :unit_id, :_destroy ])
+      stock_solution_components_attributes: [ :id, :chemical_id, :amount, :unit_id, :amount_with_unit, :_destroy ])
   end
 end

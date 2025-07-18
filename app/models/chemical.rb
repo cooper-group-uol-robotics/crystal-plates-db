@@ -95,20 +95,6 @@ class Chemical < ApplicationRecord
     end
   end
 
-  # Class method to import data from a JSON file (for testing/manual import)
-  def self.import_from_file(file_path)
-    begin
-      data = JSON.parse(File.read(file_path))
-      import_results = import_sciformation_data(data)
-
-      Rails.logger.info "File import completed: #{import_results}"
-      import_results
-    rescue => e
-      Rails.logger.error "Error importing from file: #{e.message}"
-      { success: false, error: e.message }
-    end
-  end
-
   private
 
   # Private class method to handle the actual data import
