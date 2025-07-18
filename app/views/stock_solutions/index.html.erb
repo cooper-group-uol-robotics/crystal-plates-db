@@ -1,27 +1,31 @@
 <% content_for :title, "Stock Solutions" %>
 
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Stock Solutions</h1>
-        <%= link_to "New Stock Solution", new_stock_solution_path, class: "btn btn-primary" %>
-      </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">Stock Solutions</h1>
+  <div>
+    <%= link_to "New Stock Solution", new_stock_solution_path, class: "btn btn-success" %>
+  </div>
+</div>
 
-      <!-- Search Form -->
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <%= form_with url: stock_solutions_path, method: :get, local: true, class: "d-flex" do |f| %>
-            <%= f.text_field :search, placeholder: "Search by name...", 
-                           value: params[:search], class: "form-control me-2" %>
-            <%= f.submit "Search", class: "btn btn-outline-secondary" %>
-          <% end %>
-        </div>
-      </div>
+<!-- Search Form -->
+<div class="card mb-4">
+  <div class="card-body">
+    <%= form_with url: stock_solutions_path, method: :get, local: true, class: "d-flex gap-2" do |f| %>
+      <%= f.text_field :search, value: params[:search], placeholder: "Search by name...", 
+                       class: "form-control flex-grow-1" %>
+      <%= f.submit "Search", class: "btn btn-primary" %>
+      <% if params[:search].present? %>
+        <%= link_to "Clear", stock_solutions_path, class: "btn btn-outline-secondary" %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
 
-      <!-- Stock Solutions Table -->
+<div class="card">
+  <div class="card-body">
+    <% if @stock_solutions.any? %>
       <div class="table-responsive">
-        <table class="table table-striped">
+        <table class="table table-hover">
           <thead>
             <tr>
               <th>Name</th>
@@ -34,7 +38,8 @@
             <% @stock_solutions.each do |stock_solution| %>
               <tr>
                 <td>
-                  <%= link_to stock_solution.display_name, stock_solution_path(stock_solution) %>
+                  <%= link_to stock_solution.display_name, stock_solution_path(stock_solution), 
+                              class: "text-decoration-none" %>
                 </td>
                 <td>
                   <span class="badge bg-secondary"><%= stock_solution.total_components %></span>
@@ -65,16 +70,16 @@
           </tbody>
         </table>
       </div>
-
-      <% if @stock_solutions.empty? %>
-        <div class="alert alert-info">
-          <% if params[:search].present? %>
-            No stock solutions found matching "<%= params[:search] %>".
-          <% else %>
-            No stock solutions yet. <%= link_to "Create one", new_stock_solution_path %> to get started.
-          <% end %>
-        </div>
-      <% end %>
-    </div>
+    <% else %>
+      <div class="text-center py-5">
+        <% if params[:search].present? %>
+          <p class="text-muted mb-3">No stock solutions found matching "<%= params[:search] %>".</p>
+          <%= link_to "Clear search", stock_solutions_path, class: "btn btn-outline-primary me-2" %>
+        <% else %>
+          <p class="text-muted mb-3">No stock solutions found.</p>
+        <% end %>
+        <%= link_to "Create First Stock Solution", new_stock_solution_path, class: "btn btn-primary" %>
+      </div>
+    <% end %>
   </div>
 </div>

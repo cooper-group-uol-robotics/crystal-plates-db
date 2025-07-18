@@ -1,81 +1,77 @@
 <% content_for :title, @stock_solution.display_name %>
 
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><%= @stock_solution.display_name %></h1>
-        <div>
-          <%= link_to "Edit", edit_stock_solution_path(@stock_solution), class: "btn btn-primary" %>
-          <% if @stock_solution.can_be_deleted? %>
-            <%= button_to "Delete", stock_solution_path(@stock_solution), 
-                         method: :delete, 
-                         data: { confirm: "Are you sure?" }, 
-                         class: "btn btn-danger" %>
-          <% end %>
-          <%= link_to "Back to List", stock_solutions_path, class: "btn btn-outline-secondary" %>
-        </div>
-      </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0"><%= @stock_solution.display_name %></h1>
+  <div>
+    <%= link_to "Edit", edit_stock_solution_path(@stock_solution), class: "btn btn-outline-primary me-2" %>
+    <% if @stock_solution.can_be_deleted? %>
+      <%= button_to "Delete", stock_solution_path(@stock_solution), 
+                   method: :delete, 
+                   data: { confirm: "Are you sure?" }, 
+                   class: "btn btn-outline-danger me-2",
+                   form: { style: "display: inline-block;" } %>
+    <% end %>
+    <%= link_to "Back to List", stock_solutions_path, class: "btn btn-outline-secondary" %>
+  </div>
+</div>
 
-      <div class="row">
-        <div class="col-md-8">
-          <div class="card">
-            <div class="card-header">
-              <h5>Components</h5>
-            </div>
-            <div class="card-body">
-              <% if @stock_solution_components.any? %>
-                <div class="table-responsive">
-                  <table class="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Chemical</th>
-                        <th>Amount</th>
-                        <th>Unit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <% @stock_solution_components.each do |component| %>
-                        <tr>
-                          <td>
-                            <%= link_to component.chemical.name, chemical_path(component.chemical) %>
-                          </td>
-                          <td><%= component.amount %></td>
-                          <td><%= component.unit.symbol %></td>
-                        </tr>
-                      <% end %>
-                    </tbody>
-                  </table>
-                </div>
-              <% else %>
-                <div class="alert alert-info">
-                  No components added yet. <%= link_to "Edit", edit_stock_solution_path(@stock_solution) %> to add components.
-                </div>
-              <% end %>
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Components</h5>
+      </div>
+      <div class="card-body">
+        <% if @stock_solution_components.any? %>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Chemical</th>
+                  <th>Amount</th>
+                  <th>Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @stock_solution_components.each do |component| %>
+                  <tr>
+                    <td>
+                      <%= link_to component.chemical.name, chemical_path(component.chemical), 
+                                  class: "text-decoration-none" %>
+                    </td>
+                    <td><%= component.amount %></td>
+                    <td><%= component.unit.symbol %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="alert alert-info">
+            No components added yet. <%= link_to "Edit", edit_stock_solution_path(@stock_solution) %> to add components.
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Usage Statistics</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-6">
+            <div class="text-center">
+              <h4 class="text-primary"><%= @stock_solution.total_components %></h4>
+              <small class="text-muted">Components</small>
             </div>
           </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-header">
-              <h5>Usage Statistics</h5>
-            </div>
-            <div class="card-body">
-              <div class="row">
-                <div class="col-6">
-                  <div class="text-center">
-                    <h4 class="text-primary"><%= @stock_solution.total_components %></h4>
-                    <small class="text-muted">Components</small>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="text-center">
-                    <h4 class="text-success"><%= @stock_solution.used_in_wells_count %></h4>
-                    <small class="text-muted">Wells</small>
-                  </div>
-                </div>
-              </div>
+          <div class="col-6">
+            <div class="text-center">
+              <h4 class="text-success"><%= @stock_solution.used_in_wells_count %></h4>
+              <small class="text-muted">Wells</small>
             </div>
           </div>
         </div>
