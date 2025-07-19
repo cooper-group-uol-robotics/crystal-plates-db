@@ -66,7 +66,7 @@ module Api::V1
     end
 
     def wells_with_content_count
-      Well.joins(:well_content).distinct.count
+      Well.joins(:well_contents).distinct.count
     end
 
     def wells_without_content_count

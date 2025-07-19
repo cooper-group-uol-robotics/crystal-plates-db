@@ -4,10 +4,10 @@ one:
   stock_solution: one
   chemical: one
   amount: 1.5
-  unit: one
+  unit: microliters
 
 two:
   stock_solution: two
   chemical: two
-  amount: 1.5
-  unit: one
+  amount: 2.0
+  unit: milliliters

@@ -1,11 +1,16 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-one:
-  name: MyString
-  symbol: MyString
-  conversion_to_base: 1.5
+microliters:
+  name: Microliters
+  symbol: μL
+  conversion_to_base: 1.0
 
-two:
-  name: MyString
-  symbol: MyString
-  conversion_to_base: 1.5
+milliliters:
+  name: Milliliters
+  symbol: mL
+  conversion_to_base: 1000.0
+
+liters:
+  name: Liters
+  symbol: L
+  conversion_to_base: 1000000.0

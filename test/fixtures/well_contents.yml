@@ -3,9 +3,11 @@
 one:
   well: one
   stock_solution: one
-  volume_ul: 1.5
+  volume: 1.5
+  unit: microliters
 
 two:
   well: two
   stock_solution: two
-  volume_ul: 1.5
+  volume: 2.0
+  unit: milliliters
