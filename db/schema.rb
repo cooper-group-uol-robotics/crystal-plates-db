@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_16_135756) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_18_182710) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -135,10 +135,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_16_135756) do
   create_table "well_contents", force: :cascade do |t|
     t.integer "well_id", null: false
     t.integer "stock_solution_id", null: false
-    t.float "volume_ul"
+    t.float "volume"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "unit_id"
     t.index ["stock_solution_id"], name: "index_well_contents_on_stock_solution_id"
+    t.index ["unit_id"], name: "index_well_contents_on_unit_id"
     t.index ["well_id"], name: "index_well_contents_on_well_id"
   end
 
@@ -161,6 +163,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_16_135756) do
   add_foreign_key "stock_solution_components", "stock_solutions"
   add_foreign_key "stock_solution_components", "units"
   add_foreign_key "well_contents", "stock_solutions"
+  add_foreign_key "well_contents", "units"
   add_foreign_key "well_contents", "wells"
   add_foreign_key "wells", "plates"
 end

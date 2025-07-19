@@ -1,5 +1,9 @@
 Rails.application.routes.draw do
-  resources :stock_solutions
+  resources :stock_solutions do
+    collection do
+      get :search
+    end
+  end
   resources :chemicals do
     collection do
       post :import_from_sciformation
@@ -8,6 +12,9 @@ Rails.application.routes.draw do
   resources :wells do
     member do
       get :images
+      get :content_form
+      patch :update_content
+      delete "content/:content_id", to: "wells#remove_content", as: "remove_content"
     end
     resources :images, except: [ :index ]
   end

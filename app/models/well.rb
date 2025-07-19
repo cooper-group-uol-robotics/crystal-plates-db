@@ -1,6 +1,7 @@
 class Well < ApplicationRecord
   belongs_to :plate
-  has_many :well_content, dependent: :destroy
+  has_many :well_contents, dependent: :destroy
+  has_many :stock_solutions, through: :well_contents
   has_many :images, dependent: :destroy
 
   validates :well_row, :well_column, presence: true

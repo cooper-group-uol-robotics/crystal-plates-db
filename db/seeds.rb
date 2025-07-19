@@ -15,21 +15,10 @@ units_data = [
   { name: "kilogram", symbol: "kg", conversion_to_base: 1000000.0 },
 
   # Volume units
+  { name: "nanoliter", symbol: "nl", conversion_to_base: 0.001 },
   { name: "microliter", symbol: "µl", conversion_to_base: 1.0 },
   { name: "milliliter", symbol: "ml", conversion_to_base: 1000.0 },
-  { name: "liter", symbol: "l", conversion_to_base: 1000000.0 },
-
-  # Concentration units
-  { name: "molar", symbol: "M", conversion_to_base: 1.0 },
-  { name: "millimolar", symbol: "mM", conversion_to_base: 0.001 },
-  { name: "micromolar", symbol: "µM", conversion_to_base: 0.000001 },
-  { name: "nanomolar", symbol: "nM", conversion_to_base: 0.000000001 },
-  { name: "picomolar", symbol: "pM", conversion_to_base: 0.000000000001 },
-
-  # Other units
-  { name: "percent", symbol: "%", conversion_to_base: 1.0 },
-  { name: "parts per million", symbol: "ppm", conversion_to_base: 1.0 },
-  { name: "parts per billion", symbol: "ppb", conversion_to_base: 1.0 }
+  { name: "liter", symbol: "l", conversion_to_base: 1000000.0 }
 ]
 
 units_data.each do |unit_data|

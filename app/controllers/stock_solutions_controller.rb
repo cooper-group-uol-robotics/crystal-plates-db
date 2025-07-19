@@ -60,6 +60,28 @@ class StockSolutionsController < ApplicationController
     redirect_to stock_solutions_url, notice: "Stock solution was successfully deleted."
   end
 
+  # GET /stock_solutions/search
+  def search
+    query = params[:q]
+
+    if query.present?
+      @stock_solutions = StockSolution.includes(:stock_solution_components, :chemicals)
+                                     .by_name(query)
+                                     .order(:name)
+                                     .limit(10)
+
+      render json: @stock_solutions.map { |ss|
+        {
+          id: ss.id,
+          name: ss.display_name,
+          components: ss.stock_solution_components.any? ? ss.component_summary : nil
+        }
+      }
+    else
+      render json: []
+    end
+  end
+
   private
 
   def set_stock_solution

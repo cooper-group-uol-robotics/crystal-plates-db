@@ -65,11 +65,33 @@
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="wellImagesModalLabel">Well Images</h5>
+        <h5 class="modal-title" id="wellImagesModalLabel">Well Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" id="wellImagesContent">
-        <!-- Images will be injected here -->
+      <div class="modal-body">
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs" id="wellTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="images-tab" data-bs-toggle="tab" data-bs-target="#images" type="button" role="tab" aria-controls="images" aria-selected="true">Images</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab" aria-controls="content" aria-selected="false">Stock Solutions</button>
+          </li>
+        </ul>
+
+        <!-- Tab content -->
+        <div class="tab-content mt-3" id="wellTabContent">
+          <div class="tab-pane fade show active" id="images" role="tabpanel" aria-labelledby="images-tab">
+            <div id="wellImagesContent">
+              <!-- Images will be injected here -->
+            </div>
+          </div>
+          <div class="tab-pane fade" id="content" role="tabpanel" aria-labelledby="content-tab">
+            <div id="wellContentForm">
+              <!-- Stock solution form will be injected here -->
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -79,6 +101,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const wellImagesModal = document.getElementById('wellImagesModal')
   const wellImagesContent = document.getElementById('wellImagesContent')
+  const wellContentForm = document.getElementById('wellContentForm')
   const modalTitle = document.getElementById('wellImagesModalLabel')
 
   wellImagesModal.addEventListener('show.bs.modal', event => {
@@ -88,13 +111,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!wellId) {
       wellImagesContent.innerHTML = '<p>No well selected.</p>'
-      modalTitle.textContent = 'Well Images'
+      wellContentForm.innerHTML = '<p>No well selected.</p>'
+      modalTitle.textContent = 'Well Details'
       return
     }
 
-    modalTitle.textContent = `Well ${wellLabel} Images`
+    modalTitle.textContent = `Well ${wellLabel} Details`
 
-    fetch(`/wells/${wellId}/images`) // we'll create this route/controller action
+    // Load images tab
+    fetch(`/wells/${wellId}/images`)
       .then(response => response.text())
       .then(html => {
         wellImagesContent.innerHTML = html
@@ -102,6 +127,196 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(() => {
         wellImagesContent.innerHTML = '<p>Error loading images.</p>'
       })
+
+    // Load content tab
+    fetch(`/wells/${wellId}/content_form`)
+      .then(response => response.text())
+      .then(html => {
+        wellContentForm.innerHTML = html
+      })
+      .catch(() => {
+        wellContentForm.innerHTML = '<p>Error loading content form.</p>'
+      })
+  })
+
+  // Event delegation for dynamically loaded content
+  wellContentForm.addEventListener('click', event => {
+    const target = event.target
+    const action = target.getAttribute('data-action')
+    const wellId = target.getAttribute('data-well-id')
+
+    if (action === 'add-stock-solution') {
+      addStockSolution(wellId)
+    } else if (action === 'remove-stock-solution') {
+      const contentId = target.getAttribute('data-content-id')
+      removeStockSolution(wellId, contentId)
+    } else if (action === 'remove-all-content') {
+      removeAllContent(wellId)
+    }
   })
 })
+
+// Stock solution management functions
+function addStockSolution(wellId) {
+  const hiddenInput = document.getElementById(`stockSolutionId_${wellId}`)
+  const searchInput = document.getElementById(`stockSolutionSearch_${wellId}`)
+  const volumeInput = document.getElementById(`volumeAmountInput_${wellId}`)
+  
+  const stockSolutionId = hiddenInput.value
+  const volumeWithUnit = volumeInput.value.trim()
+  
+  console.log('addStockSolution called with:', stockSolutionId, 'volume:', volumeWithUnit)
+  
+  if (!stockSolutionId) {
+    showMessage(wellId, 'Please select a stock solution', 'danger')
+    return
+  }
+
+  if (!volumeWithUnit) {
+    showMessage(wellId, 'Please enter a volume with unit (e.g., 50 μL)', 'danger')
+    return
+  }
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')
+  console.log('CSRF token found:', csrfToken ? 'yes' : 'no')
+  
+  if (!csrfToken) {
+    showMessage(wellId, 'CSRF token not found', 'danger')
+    return
+  }
+
+  fetch(`/wells/${wellId}/update_content`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken.getAttribute('content')
+    },
+    body: JSON.stringify({
+      stock_solution_id: stockSolutionId,
+      volume_with_unit: volumeWithUnit
+    })
+  })
+  .then(response => {
+    console.log('Response status:', response.status)
+    return response.json()
+  })
+  .then(data => {
+    console.log('Response data:', data)
+    if (data.success) {
+      showMessage(wellId, data.message, 'success')
+      // Reload the content form
+      reloadContentForm(wellId)
+      // Reset the form
+      hiddenInput.value = ''
+      searchInput.value = ''
+      volumeInput.value = ''
+    } else {
+      showMessage(wellId, data.message, 'danger')
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error)
+    showMessage(wellId, 'Error adding stock solution: ' + error.message, 'danger')
+  })
+}
+
+function removeStockSolution(wellId, contentId) {
+  if (!confirm('Are you sure you want to remove this stock solution from the well?')) {
+    return
+  }
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')
+  
+  fetch(`/wells/${wellId}/content/${contentId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken.getAttribute('content')
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showMessage(wellId, data.message, 'success')
+      // Reload the content form
+      reloadContentForm(wellId)
+    } else {
+      showMessage(wellId, data.message, 'danger')
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error)
+    showMessage(wellId, 'Error removing stock solution', 'danger')
+  })
+}
+
+function removeAllContent(wellId) {
+  if (!confirm('Are you sure you want to remove all stock solutions from this well?')) {
+    return
+  }
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')
+
+  fetch(`/wells/${wellId}/update_content`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken.getAttribute('content')
+    },
+    body: JSON.stringify({
+      remove_all_content: true
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showMessage(wellId, data.message, 'success')
+      // Reload the content form
+      reloadContentForm(wellId)
+    } else {
+      showMessage(wellId, data.message, 'danger')
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error)
+    showMessage(wellId, 'Error removing content', 'danger')
+  })
+}
+
+function reloadContentForm(wellId) {
+  fetch(`/wells/${wellId}/content_form`)
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('wellContentForm').innerHTML = html
+    })
+    .catch(error => {
+      console.error('Error reloading form:', error)
+    })
+}
+
+function showMessage(wellId, message, type) {
+  const messagesDiv = document.getElementById(`contentMessages_${wellId}`)
+  if (!messagesDiv) {
+    console.error('Messages div not found for well:', wellId)
+    return
+  }
+  
+  messagesDiv.innerHTML = `
+    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  `
+  
+  // Auto-hide after 3 seconds
+  setTimeout(() => {
+    const alert = messagesDiv.querySelector('.alert')
+    if (alert) {
+      alert.classList.remove('show')
+      setTimeout(() => {
+        messagesDiv.innerHTML = ''
+      }, 150)
+    }
+  }, 3000)
+}
 </script>

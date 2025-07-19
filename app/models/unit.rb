@@ -1,5 +1,6 @@
 class Unit < ApplicationRecord
   has_many :stock_solution_components, dependent: :restrict_with_error
+  has_many :well_contents, dependent: :restrict_with_error
 
   validates :name, presence: true, uniqueness: true
   validates :symbol, presence: true, uniqueness: true
@@ -13,6 +14,6 @@ class Unit < ApplicationRecord
   end
 
   def can_be_deleted?
-    stock_solution_components.count == 0
+    stock_solution_components.count == 0 && well_contents.count == 0
   end
 end
