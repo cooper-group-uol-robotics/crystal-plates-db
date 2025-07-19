@@ -39,8 +39,21 @@
             <div class="d-grid" style="grid-template-columns: repeat(<%= Math.sqrt(wells_in_position.length).ceil %>, 1fr); gap: 2px;">
               <% wells_in_position.sort_by(&:subwell).each do |well| %>
                 <% has_image = well.has_images? %>
-                <button type="button" class="btn btn-sm text-white p-1"
-                  style="background-color: <%= has_image ? '#198754' : '#dc3545' %>; height: 25px; font-size: 9px;"
+                <% has_content = well.well_contents.any? %>
+                <% 
+                  if has_image
+                    bg_color = '#198754'  # Green - has images
+                    text_color = 'white'
+                  elsif has_content
+                    bg_color = '#ffc107'  # Yellow - has stock solutions but no images
+                    text_color = 'black'
+                  else
+                    bg_color = '#dc3545'  # Red - empty
+                    text_color = 'white'
+                  end
+                %>
+                <button type="button" class="btn btn-sm p-1"
+                  style="background-color: <%= bg_color %>; color: <%= text_color %>; height: 25px; font-size: 9px;"
                   data-bs-toggle="modal" data-bs-target="#wellImagesModal"
                   data-well-id="<%= well.id %>"
                   data-well-label="<%= well.well_label_with_subwell %>"
@@ -139,6 +152,79 @@ document.addEventListener('DOMContentLoaded', () => {
       })
   })
 
+// Stock solution search functionality
+async function searchStockSolutions(input, hiddenFieldId, resultsId) {
+  const query = input.value.trim();
+  const resultsDiv = document.getElementById(resultsId);
+  
+  if (query.length < 2) {
+    resultsDiv.classList.add('d-none');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/stock_solutions/search?q=${encodeURIComponent(query)}`, {
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Search failed');
+    }
+    
+    const data = await response.json();
+    displayStockSolutionResults(data, resultsId, hiddenFieldId, input);
+  } catch (error) {
+    console.error('Stock solution search error:', error);
+    resultsDiv.innerHTML = '<div class="dropdown-item text-danger">Search failed</div>';
+    resultsDiv.classList.remove('d-none');
+  }
+}
+
+function displayStockSolutionResults(results, resultsId, hiddenFieldId, input) {
+  const resultsDiv = document.getElementById(resultsId);
+  
+  if (results.length === 0) {
+    resultsDiv.innerHTML = '<div class="dropdown-item text-muted">No stock solutions found</div>';
+  } else {
+    resultsDiv.innerHTML = results.map(solution => 
+      `<button type="button" class="dropdown-item" 
+               data-solution-id="${solution.id}" 
+               data-solution-name="${solution.display_name}"
+               data-hidden-field-id="${hiddenFieldId}"
+               data-input-id="${input.id}"
+               data-results-id="${resultsId}">
+        <strong>${solution.display_name}</strong>
+        ${solution.component_summary ? `<br><small class="text-muted">${solution.component_summary}</small>` : ''}
+      </button>`
+    ).join('');
+  }
+  
+  resultsDiv.classList.remove('d-none');
+}
+
+function selectStockSolution(id, name, hiddenFieldId, inputId, resultsId) {
+  const hiddenField = document.getElementById(hiddenFieldId);
+  const inputField = document.getElementById(inputId);
+  
+  if (hiddenField) {
+    hiddenField.value = id;
+  }
+  
+  if (inputField) {
+    inputField.value = name;
+  }
+  
+  hideStockSolutionResults(resultsId);
+}
+
+function hideStockSolutionResults(resultsId) {
+  const resultsDiv = document.getElementById(resultsId);
+  resultsDiv.classList.add('d-none');
+}
+
   // Event delegation for dynamically loaded content
   wellContentForm.addEventListener('click', event => {
     const target = event.target
@@ -152,8 +238,40 @@ document.addEventListener('DOMContentLoaded', () => {
       removeStockSolution(wellId, contentId)
     } else if (action === 'remove-all-content') {
       removeAllContent(wellId)
+    } else {
+      // Handle stock solution selection - check if clicked element or its parent is a dropdown item
+      const dropdownItem = target.closest('.dropdown-item')
+      if (dropdownItem && dropdownItem.dataset.solutionId) {
+        const id = dropdownItem.dataset.solutionId
+        const name = dropdownItem.dataset.solutionName
+        const hiddenFieldId = dropdownItem.dataset.hiddenFieldId
+        const inputId = dropdownItem.dataset.inputId
+        const resultsId = dropdownItem.dataset.resultsId
+        selectStockSolution(id, name, hiddenFieldId, inputId, resultsId)
+      }
     }
   })
+
+  // Event delegation for input events
+  wellContentForm.addEventListener('input', event => {
+    const target = event.target
+    if (target.id && target.id.startsWith('stockSolutionSearch_')) {
+      const wellId = target.id.replace('stockSolutionSearch_', '')
+      const hiddenFieldId = `stockSolutionId_${wellId}`
+      const resultsId = `stockSolutionResults_${wellId}`
+      searchStockSolutions(target, hiddenFieldId, resultsId)
+    }
+  })
+
+  // Event delegation for blur events
+  wellContentForm.addEventListener('blur', event => {
+    const target = event.target
+    if (target.id && target.id.startsWith('stockSolutionSearch_')) {
+      const wellId = target.id.replace('stockSolutionSearch_', '')
+      const resultsId = `stockSolutionResults_${wellId}`
+      setTimeout(() => hideStockSolutionResults(resultsId), 200)
+    }
+  }, true)
 })
 
 // Stock solution management functions
@@ -164,8 +282,6 @@ function addStockSolution(wellId) {
   
   const stockSolutionId = hiddenInput.value
   const volumeWithUnit = volumeInput.value.trim()
-  
-  console.log('addStockSolution called with:', stockSolutionId, 'volume:', volumeWithUnit)
   
   if (!stockSolutionId) {
     showMessage(wellId, 'Please select a stock solution', 'danger')
@@ -178,31 +294,29 @@ function addStockSolution(wellId) {
   }
 
   const csrfToken = document.querySelector('meta[name="csrf-token"]')
-  console.log('CSRF token found:', csrfToken ? 'yes' : 'no')
   
   if (!csrfToken) {
     showMessage(wellId, 'CSRF token not found', 'danger')
     return
   }
 
-  fetch(`/wells/${wellId}/update_content`, {
-    method: 'PATCH',
+  fetch(`/wells/${wellId}/well_contents`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       'X-CSRF-Token': csrfToken.getAttribute('content')
     },
     body: JSON.stringify({
-      stock_solution_id: stockSolutionId,
-      volume_with_unit: volumeWithUnit
+      well_content: {
+        stock_solution_id: stockSolutionId,
+        volume_with_unit: volumeWithUnit
+      }
     })
   })
-  .then(response => {
-    console.log('Response status:', response.status)
-    return response.json()
-  })
+  .then(response => response.json())
   .then(data => {
-    console.log('Response data:', data)
-    if (data.success) {
+    if (data.status === 'success') {
       showMessage(wellId, data.message, 'success')
       // Reload the content form
       reloadContentForm(wellId)
@@ -227,16 +341,17 @@ function removeStockSolution(wellId, contentId) {
 
   const csrfToken = document.querySelector('meta[name="csrf-token"]')
   
-  fetch(`/wells/${wellId}/content/${contentId}`, {
+  fetch(`/wells/${wellId}/well_contents/${contentId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       'X-CSRF-Token': csrfToken.getAttribute('content')
     }
   })
   .then(response => response.json())
   .then(data => {
-    if (data.success) {
+    if (data.status === 'success') {
       showMessage(wellId, data.message, 'success')
       // Reload the content form
       reloadContentForm(wellId)

@@ -9,7 +9,7 @@ class StockSolution < ApplicationRecord
   accepts_nested_attributes_for :stock_solution_components, allow_destroy: true, reject_if: :all_blank
 
   scope :with_components, -> { joins(:stock_solution_components).distinct }
-  scope :by_name, ->(name) { where("name ILIKE ?", "%#{name}%") }
+  scope :by_name, ->(name) { where("name LIKE ?", "%#{name}%") }
 
   def display_name
     name.presence || "Stock Solution ##{id}"

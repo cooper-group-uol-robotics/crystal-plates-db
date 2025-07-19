@@ -73,8 +73,8 @@ class StockSolutionsController < ApplicationController
       render json: @stock_solutions.map { |ss|
         {
           id: ss.id,
-          name: ss.display_name,
-          components: ss.stock_solution_components.any? ? ss.component_summary : nil
+          display_name: ss.display_name,
+          component_summary: ss.stock_solution_components.any? ? ss.component_summary : nil
         }
       }
     else

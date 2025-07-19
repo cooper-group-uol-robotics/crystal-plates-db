@@ -17,6 +17,11 @@ Rails.application.routes.draw do
       delete "content/:content_id", to: "wells#remove_content", as: "remove_content"
     end
     resources :images, except: [ :index ]
+    resources :well_contents do
+      collection do
+        delete :destroy_all
+      end
+    end
   end
   resources :plates do
     collection do
