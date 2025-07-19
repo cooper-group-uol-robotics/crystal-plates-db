@@ -20,7 +20,7 @@ class WellsControllerTest < ActionDispatch::IntegrationTest
       post wells_url, params: { well: { well_column: 2, plate_id: @well.plate_id, well_row: 2, subwell: 1 } }
     end
 
-    assert_redirected_to well_url(Well.last)
+    assert_redirected_to @well.plate
   end
 
   test "should show well" do
@@ -35,7 +35,7 @@ class WellsControllerTest < ActionDispatch::IntegrationTest
 
   test "should update well" do
     patch well_url(@well), params: { well: { well_column: @well.well_column, plate_id: @well.plate_id, well_row: @well.well_row, subwell: @well.subwell } }
-    assert_redirected_to well_url(@well)
+    assert_redirected_to @well.plate
   end
 
   test "should destroy well" do
@@ -43,6 +43,6 @@ class WellsControllerTest < ActionDispatch::IntegrationTest
       delete well_url(@well)
     end
 
-    assert_redirected_to wells_url
+    assert_redirected_to @well.plate
   end
 end

@@ -74,7 +74,7 @@ class ImagesControllerTest < ActionDispatch::IntegrationTest
     assert_difference("Image.count", -1) do
       delete well_image_url(@well, image)
     end
-    assert_redirected_to well_url(@well)
+    assert_redirected_to @well.plate
   end
 
   test "should require file" do
