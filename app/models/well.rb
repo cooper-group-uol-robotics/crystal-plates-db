@@ -30,7 +30,20 @@ class Well < ApplicationRecord
 
   # Check if well has any images
   def has_images?
-    images.any?
+    if association(:images).loaded?
+      images.any?
+    else
+      images.exists?
+    end
+  end
+
+  # Check if well has any content (optimized for preloaded associations)
+  def has_content?
+    if association(:well_contents).loaded?
+      well_contents.any?
+    else
+      well_contents.exists?
+    end
   end
 
   # Get the most recent image

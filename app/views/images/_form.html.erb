@@ -12,8 +12,21 @@
 
   <div class="mb-3">
     <%= form.label :file, "Image File", class: "form-label" %>
-    <%= form.file_field :file, class: "form-control", accept: "image/*", required: true %>
-    <div class="form-text">Select an image file (JPEG, PNG, etc.)</div>
+    <%= form.file_field :file, class: "form-control", accept: "image/*", required: !image.persisted? %>
+    <% if image.persisted? %>
+      <div class="form-text">
+        <strong>Current file:</strong> <%= image.file.blob.filename if image.file.attached? %>
+        <br>Leave blank to keep the current image, or select a new file to replace it.
+      </div>
+      <% if image.file.attached? %>
+        <div class="mt-2">
+          <small class="text-muted">Current image preview:</small><br>
+          <%= image_tag image.file, class: "img-thumbnail", style: "max-width: 200px; max-height: 200px;" %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="form-text">Select an image file (JPEG, PNG, etc.)</div>
+    <% end %>
   </div>
 
   <div class="row">

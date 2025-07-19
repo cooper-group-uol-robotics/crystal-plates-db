@@ -1,5 +1,52 @@
 <% content_for :title, "Image Details" %>
 
+<style>
+  .point-marker {
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  
+  .point-marker:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+  }
+  
+  .point-crystal { 
+    background-color: #007bff !important; 
+  }
+  
+  .point-particle { 
+    background-color: #6c757d !important; 
+  }
+  
+  .point-droplet { 
+    background-color: #17a2b8 !important; 
+  }
+  
+  .point-other { 
+    background-color: #ffc107 !important; 
+  }
+  
+  #image-container {
+    position: relative;
+    display: inline-block;
+  }
+  
+  #points-overlay {
+    pointer-events: none;
+  }
+  
+  #clickable-image {
+    user-select: none;
+  }
+  
+  .btn-xs {
+    padding: 0.125rem 0.25rem;
+    font-size: 0.75rem;
+    border-radius: 0.125rem;
+  }
+</style>
+
 <div class="container">
   <div class="row">
     <div class="col-md-8">
@@ -16,15 +63,57 @@
         </div>
         <div class="card-body">
           <% if @image.file.attached? %>
-            <div class="text-center mb-4">
-              <% begin %>
-                <%= image_tag @image.file.variant(resize_to_limit: [600, 600]), class: "img-fluid img-thumbnail" %>
-              <% rescue => e %>
-                <div class="alert alert-warning">
-                  <p><strong>Could not display image preview:</strong> <%= e.message %></p>
-                  <p>You can still <%= link_to 'download the original file', @image.file, target: '_blank' %></p>
+            <div class="mb-4">
+              <!-- Interactive Image Container -->
+              <div id="image-container" class="position-relative d-inline-block">
+                <% begin %>
+                  <%= image_tag @image.file.variant(resize_to_limit: [800, 600]), 
+                      id: "clickable-image",
+                      class: "img-fluid img-thumbnail",
+                      style: "cursor: crosshair;",
+                      data: { 
+                        image_id: @image.id,
+                        well_id: @well.id,
+                        pixel_width: @image.pixel_width,
+                        pixel_height: @image.pixel_height
+                      } %>
+                  <!-- Points of Interest will be dynamically added here -->
+                  <div id="points-overlay" class="position-absolute top-0 start-0 w-100 h-100 pointer-events-none"></div>
+                <% rescue => e %>
+                  <div class="alert alert-warning">
+                    <p><strong>Could not display image preview:</strong> <%= e.message %></p>
+                    <p>You can still <%= link_to 'download the original file', @image.file, target: '_blank' %></p>
+                  </div>
+                <% end %>
+              </div>
+              
+              <!-- Point Selection Controls -->
+              <div class="mt-3">
+                <div class="btn-group me-3" role="group" aria-label="Point Type">
+                  <input type="radio" class="btn-check" name="pointType" id="crystal" value="crystal" checked>
+                  <label class="btn btn-outline-primary btn-sm" for="crystal">Crystal</label>
+                  
+                  <input type="radio" class="btn-check" name="pointType" id="particle" value="particle">
+                  <label class="btn btn-outline-secondary btn-sm" for="particle">Particle</label>
+                  
+                  <input type="radio" class="btn-check" name="pointType" id="droplet" value="droplet">
+                  <label class="btn btn-outline-info btn-sm" for="droplet">Droplet</label>
+                  
+                  <input type="radio" class="btn-check" name="pointType" id="other" value="other">
+                  <label class="btn btn-outline-warning btn-sm" for="other">Other</label>
                 </div>
-              <% end %>
+                
+                <button id="clear-points" class="btn btn-outline-danger btn-sm me-2">Clear All Points</button>
+                <button id="toggle-points" class="btn btn-outline-dark btn-sm">Hide Points</button>
+              </div>
+              
+              <!-- Points List -->
+              <div id="points-list" class="mt-3" style="display: none;">
+                <h6>Points of Interest (<span id="points-count">0</span>)</h6>
+                <div id="points-table-container">
+                  <!-- Points table will be populated by JavaScript -->
+                </div>
+              </div>
             </div>
           <% end %>
           
@@ -90,14 +179,343 @@
           <p><strong>Well:</strong> <%= @well.well_label %></p>
           <p><strong>Plate:</strong> <%= @well.plate.barcode %></p>
           <p><strong>Total Images:</strong> <%= @well.images.count %></p>
-          <%= link_to 'View All Images', well_path(@well), class: 'btn btn-outline-primary btn-sm' %>
+          <%= link_to 'Back to Plate Grid', @well.plate, class: 'btn btn-outline-primary btn-sm' %>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="mt-3 text-center">
-  <%= link_to 'Back to Well', @well, class: 'btn btn-secondary' %>
-  <%= link_to 'Back to Plate', @well.plate, class: 'btn btn-outline-secondary' %>
-</div>
+<script>
+// Interactive Image Viewer for Points of Interest
+class InteractiveImageViewer {
+  constructor(imageElement) {
+    this.image = imageElement;
+    this.overlay = document.getElementById('points-overlay');
+    this.pointsList = document.getElementById('points-list');
+    this.pointsCount = document.getElementById('points-count');
+    this.pointsTableContainer = document.getElementById('points-table-container');
+    this.clearPointsBtn = document.getElementById('clear-points');
+    this.togglePointsBtn = document.getElementById('toggle-points');
+    
+    this.imageId = this.image.dataset.imageId;
+    this.wellId = this.image.dataset.wellId;
+    this.originalWidth = parseInt(this.image.dataset.pixelWidth);
+    this.originalHeight = parseInt(this.image.dataset.pixelHeight);
+    
+    this.points = [];
+    this.pointsVisible = true;
+    
+    this.init();
+  }
+  
+  init() {
+    this.setupEventListeners();
+    this.loadExistingPoints();
+  }
+  
+  setupEventListeners() {
+    // Image click handler
+    this.image.addEventListener('click', (e) => this.handleImageClick(e));
+    
+    // Control buttons
+    this.clearPointsBtn.addEventListener('click', () => this.clearAllPoints());
+    this.togglePointsBtn.addEventListener('click', () => this.togglePointsVisibility());
+    
+    // Image load handler to ensure we have correct dimensions
+    this.image.addEventListener('load', () => this.refreshPointPositions());
+  }
+  
+  handleImageClick(e) {
+    const rect = this.image.getBoundingClientRect();
+    const scaleX = this.originalWidth / this.image.clientWidth;
+    const scaleY = this.originalHeight / this.image.clientHeight;
+    
+    // Calculate click position relative to image
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    // Round to nearest integer pixel
+    const pixelX = Math.round(x);
+    const pixelY = Math.round(y);
+    
+    // Get selected point type
+    const pointType = document.querySelector('input[name="pointType"]:checked').value;
+    
+    this.createPoint(pixelX, pixelY, pointType);
+  }
+  
+  async createPoint(pixelX, pixelY, pointType) {
+    try {
+      const response = await fetch(`/wells/${this.wellId}/images/${this.imageId}/point_of_interests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+          point_of_interest: {
+            pixel_x: pixelX,
+            pixel_y: pixelY,
+            point_type: pointType
+          }
+        })
+      });
+      
+      if (response.ok) {
+        const point = await response.json();
+        console.log('Created point:', point);
+        this.addPointToDisplay(point);
+        this.showNotification(`${pointType.charAt(0).toUpperCase() + pointType.slice(1)} marked at (${pixelX}, ${pixelY})`, 'success');
+      } else {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        this.showNotification(`Error: ${errorText}`, 'error');
+      }
+    } catch (error) {
+      console.error('Network error creating point:', error);
+      this.showNotification(`Network error: ${error.message}`, 'error');
+    }
+  }
+  
+  async loadExistingPoints() {
+    try {
+      const response = await fetch(`/wells/${this.wellId}/images/${this.imageId}/point_of_interests.json`);
+      if (response.ok) {
+        this.points = await response.json();
+        this.refreshDisplay();
+      }
+    } catch (error) {
+      console.error('Error loading points:', error);
+    }
+  }
+  
+  addPointToDisplay(point) {
+    this.points.push(point);
+    this.refreshDisplay();
+  }
+  
+  refreshDisplay() {
+    this.clearPointMarkers();
+    this.points.forEach(point => this.createPointMarker(point));
+    this.updatePointsList();
+    this.updatePointsCount();
+  }
+  
+  createPointMarker(point) {
+    if (!this.pointsVisible) return;
+    
+    const marker = document.createElement('div');
+    marker.className = `point-marker point-${point.point_type}`;
+    marker.dataset.pointId = point.id;
+    
+    // Position the marker
+    const scaleX = this.image.clientWidth / this.originalWidth;
+    const scaleY = this.image.clientHeight / this.originalHeight;
+    
+    const displayX = point.pixel_x * scaleX;
+    const displayY = point.pixel_y * scaleY;
+    
+    marker.style.left = `${displayX - 6}px`; // Center the 12px marker
+    marker.style.top = `${displayY - 6}px`;
+    marker.style.position = 'absolute';
+    marker.style.width = '12px';
+    marker.style.height = '12px';
+    marker.style.borderRadius = '50%';
+    marker.style.border = '2px solid white';
+    marker.style.cursor = 'pointer';
+    marker.style.pointerEvents = 'auto';
+    marker.style.zIndex = '10';
+    
+    // Color coding by type
+    const colors = {
+      crystal: '#007bff',    // Blue
+      particle: '#6c757d',   // Gray
+      droplet: '#17a2b8',    // Cyan
+      other: '#ffc107'       // Yellow
+    };
+    marker.style.backgroundColor = colors[point.point_type] || colors.other;
+    
+    // Tooltip
+    marker.title = `${point.point_type} at (${point.pixel_x}, ${point.pixel_y})`;
+    if (point.description) {
+      marker.title += ` - ${point.description}`;
+    }
+    
+    // Click handler for deletion
+    marker.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.deletePoint(point);
+    });
+    
+    this.overlay.appendChild(marker);
+  }
+  
+  async deletePoint(point) {
+    if (!confirm(`Delete this ${point.point_type}?`)) return;
+    
+    try {
+      const response = await fetch(`/wells/${this.wellId}/images/${this.imageId}/point_of_interests/${point.id}`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+      });
+      
+      if (response.ok) {
+        this.points = this.points.filter(p => p.id !== point.id);
+        this.refreshDisplay();
+        this.showNotification('Point deleted', 'success');
+      } else {
+        this.showNotification('Failed to delete point', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting point:', error);
+      this.showNotification('Network error occurred', 'error');
+    }
+  }
+  
+  clearPointMarkers() {
+    const markers = this.overlay.querySelectorAll('.point-marker');
+    markers.forEach(marker => marker.remove());
+  }
+  
+  refreshPointPositions() {
+    // Recalculate positions when image size changes
+    this.refreshDisplay();
+  }
+  
+  updatePointsList() {
+    if (this.points.length === 0) {
+      this.pointsList.style.display = 'none';
+      return;
+    }
+    
+    this.pointsList.style.display = 'block';
+    
+    const table = document.createElement('table');
+    table.className = 'table table-sm table-striped';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Pixel Coords</th>
+          <th>Real World (mm)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${this.points.map(point => `
+          <tr>
+            <td><span class="badge bg-${this.getTypeColor(point.point_type)}">${point.point_type}</span></td>
+            <td>(${point.pixel_x}, ${point.pixel_y})</td>
+            <td>(${this.formatCoordinate(point.real_world_x_mm)}, ${this.formatCoordinate(point.real_world_y_mm)})</td>
+            <td>
+              <button class="btn btn-outline-danger btn-xs" onclick="window.viewer.deletePointById(${point.id})">
+                Delete
+              </button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    `;
+    
+    this.pointsTableContainer.innerHTML = '';
+    this.pointsTableContainer.appendChild(table);
+  }
+  
+  formatCoordinate(value) {
+    if (value === null || value === undefined || isNaN(value)) {
+      return 'N/A';
+    }
+    return parseFloat(value).toFixed(3);
+  }
+  
+  deletePointById(pointId) {
+    const point = this.points.find(p => p.id === pointId);
+    if (point) {
+      this.deletePoint(point);
+    }
+  }
+  
+  updatePointsCount() {
+    this.pointsCount.textContent = this.points.length;
+  }
+  
+  getTypeColor(type) {
+    const colors = {
+      crystal: 'primary',
+      particle: 'secondary',
+      droplet: 'info',
+      other: 'warning'
+    };
+    return colors[type] || 'secondary';
+  }
+  
+  async clearAllPoints() {
+    if (this.points.length === 0) return;
+    
+    if (!confirm(`Delete all ${this.points.length} points?`)) return;
+    
+    try {
+      const deletePromises = this.points.map(point => 
+        fetch(`/wells/${this.wellId}/images/${this.imageId}/point_of_interests/${point.id}`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          }
+        })
+      );
+      
+      await Promise.all(deletePromises);
+      this.points = [];
+      this.refreshDisplay();
+      this.showNotification('All points cleared', 'success');
+    } catch (error) {
+      console.error('Error clearing points:', error);
+      this.showNotification('Error clearing points', 'error');
+    }
+  }
+  
+  togglePointsVisibility() {
+    this.pointsVisible = !this.pointsVisible;
+    this.togglePointsBtn.textContent = this.pointsVisible ? 'Hide Points' : 'Show Points';
+    
+    if (this.pointsVisible) {
+      this.refreshDisplay();
+    } else {
+      this.clearPointMarkers();
+    }
+  }
+  
+  showNotification(message, type = 'info') {
+    // Create a simple notification
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show position-fixed`;
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.zIndex = '9999';
+    notification.innerHTML = `
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, 5000);
+  }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  const clickableImage = document.getElementById('clickable-image');
+  if (clickableImage) {
+    window.viewer = new InteractiveImageViewer(clickableImage);
+  }
+});
+</script>

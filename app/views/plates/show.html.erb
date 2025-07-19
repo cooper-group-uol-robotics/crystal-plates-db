@@ -39,7 +39,7 @@
             <div class="d-grid" style="grid-template-columns: repeat(<%= Math.sqrt(wells_in_position.length).ceil %>, 1fr); gap: 2px;">
               <% wells_in_position.sort_by(&:subwell).each do |well| %>
                 <% has_image = well.has_images? %>
-                <% has_content = well.well_contents.any? %>
+                <% has_content = well.has_content? %>
                 <% 
                   if has_image
                     bg_color = '#198754'  # Green - has images

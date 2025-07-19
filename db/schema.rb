@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_18_182710) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_19_102057) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -106,6 +106,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_182710) do
     t.check_constraint "subwells_per_well > 0 AND subwells_per_well <= 16", name: "plates_subwells_range"
   end
 
+  create_table "point_of_interests", force: :cascade do |t|
+    t.integer "image_id", null: false
+    t.integer "pixel_x", null: false
+    t.integer "pixel_y", null: false
+    t.string "point_type", default: "crystal", null: false
+    t.text "description"
+    t.datetime "marked_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["image_id", "pixel_x", "pixel_y"], name: "index_poi_on_image_and_coordinates"
+    t.index ["image_id"], name: "index_point_of_interests_on_image_id"
+    t.index ["marked_at"], name: "index_point_of_interests_on_marked_at"
+    t.index ["point_type"], name: "index_point_of_interests_on_point_type"
+  end
+
   create_table "stock_solution_components", force: :cascade do |t|
     t.integer "stock_solution_id", null: false
     t.integer "chemical_id", null: false
@@ -159,6 +174,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_182710) do
   add_foreign_key "images", "wells"
   add_foreign_key "plate_locations", "locations"
   add_foreign_key "plate_locations", "plates"
+  add_foreign_key "point_of_interests", "images"
   add_foreign_key "stock_solution_components", "chemicals"
   add_foreign_key "stock_solution_components", "stock_solutions"
   add_foreign_key "stock_solution_components", "units"

@@ -26,6 +26,115 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 }
 ```
 
+## Stock Solutions API
+
+### List All Stock Solutions
+- **GET** `/api/v1/stock_solutions`
+- **Description**: Get all stock solutions with component information
+- **Query Parameters**:
+  - `search` (string, optional): Filter by name
+- **Response**: Array of stock solution objects with components
+- **Example Response**:
+  ```json
+  [
+    {
+      "id": 1,
+      "name": "Buffer A",
+      "description": "Tris-HCl buffer pH 7.4",
+      "display_name": "Buffer A",
+      "component_summary": "Tris-HCl (50 mM), NaCl (150 mM)",
+      "used_in_wells_count": 5,
+      "can_be_deleted": false,
+      "created_at": "2025-07-19T10:00:00Z",
+      "updated_at": "2025-07-19T10:00:00Z"
+    }
+  ]
+  ```
+
+### Get Stock Solution Details
+- **GET** `/api/v1/stock_solutions/:id`
+- **Description**: Get detailed information about a specific stock solution
+- **Parameters**: 
+  - `id` (integer): Stock solution ID
+- **Response**: Detailed stock solution object with full component list
+- **Example Response**:
+  ```json
+  {
+    "id": 1,
+    "name": "Buffer A",
+    "description": "Tris-HCl buffer pH 7.4",
+    "display_name": "Buffer A",
+    "component_summary": "Tris-HCl (50 mM), NaCl (150 mM)",
+    "used_in_wells_count": 5,
+    "can_be_deleted": false,
+    "created_at": "2025-07-19T10:00:00Z",
+    "updated_at": "2025-07-19T10:00:00Z",
+    "components": [
+      {
+        "id": 1,
+        "chemical": {
+          "id": 1,
+          "name": "Tris-HCl"
+        },
+        "amount": 50.0,
+        "unit": {
+          "id": 1,
+          "name": "Millimolar",
+          "symbol": "mM"
+        },
+        "display_amount": "50.0 mM",
+        "formatted_component": "Tris-HCl (50.0 mM)"
+      }
+    ]
+  }
+  ```
+
+### Create Stock Solution
+- **POST** `/api/v1/stock_solutions`
+- **Description**: Create a new stock solution
+- **Body Parameters**:
+  ```json
+  {
+    "stock_solution": {
+      "name": "Buffer Solution A",
+      "description": "Tris-HCl buffer pH 7.4"
+    }
+  }
+  ```
+- **Response**: Created stock solution object
+
+### Update Stock Solution
+- **PUT/PATCH** `/api/v1/stock_solutions/:id`
+- **Description**: Update stock solution information
+- **Body Parameters**: Same as create
+- **Response**: Updated stock solution object
+
+### Delete Stock Solution
+- **DELETE** `/api/v1/stock_solutions/:id`
+- **Description**: Delete a stock solution
+- **Response**: Success message
+
+## Chemicals API
+
+### Search Chemicals
+- **GET** `/api/v1/chemicals/search`
+- **Description**: Search chemicals by name, CAS number, or barcode
+- **Query Parameters**:
+  - `q` (string, required): Search query
+- **Response**: Array of matching chemical objects with display text
+- **Example Response**:
+  ```json
+  [
+    {
+      "id": 1,
+      "name": "Tris-HCl",
+      "cas": "1185-53-1",
+      "barcode": "CHEM001",
+      "display_text": "Tris-HCl (CAS: 1185-53-1)"
+    }
+  ]
+  ```
+
 ## Plates API
 
 ### List All Plates
@@ -158,13 +267,41 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 ### List Wells
 - **GET** `/api/v1/wells`
 - **GET** `/api/v1/plates/:barcode/wells`
-- **Description**: Get wells (all or for specific plate)
-- **Response**: Array of well objects
+- **Description**: Get wells (all or for specific plate) with stock solution content counts
+- **Response**: Array of well objects with content and image counts
 
 ### Get Well Details
 - **GET** `/api/v1/wells/:id`
-- **Description**: Get detailed well information
-- **Response**: Well object with contents
+- **Description**: Get detailed well information including stock solution contents
+- **Response**: Well object with stock solution contents and images
+- **Example Response**:
+  ```json
+  {
+    "id": 1,
+    "plate_id": 1,
+    "well_row": 1,
+    "well_column": 1,
+    "subwell": 1,
+    "well_label": "A1",
+    "well_label_with_subwell": "A1-1",
+    "plate_barcode": "PLATE001",
+    "well_contents": [
+      {
+        "id": 1,
+        "stock_solution": "Buffer A",
+        "volume": "50.0 μL"
+      }
+    ],
+    "images": [
+      {
+        "id": 1,
+        "filename": "image_001.jpg",
+        "description": "Crystal formation",
+        "captured_at": "2025-07-19T10:00:00Z"
+      }
+    ]
+  }
+  ```
 
 ### Create Well
 - **POST** `/api/v1/wells`
@@ -248,6 +385,23 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **Response**: Comprehensive stats about plates, locations, and wells
 
 ## Example API Usage
+
+### Create a stock solution
+```bash
+# Create stock solution
+curl -X POST http://localhost:3000/api/v1/stock_solutions \
+  -H "Content-Type: application/json" \
+  -d '{"stock_solution": {"name": "Buffer A", "description": "Tris-HCl pH 7.4"}}'
+
+# Search stock solutions
+curl "http://localhost:3000/api/v1/stock_solutions?search=buffer"
+```
+
+### Search chemicals
+```bash
+# Search chemicals by name, CAS, or barcode
+curl "http://localhost:3000/api/v1/chemicals/search?q=tris"
+```
 
 ### Create a plate and move it to a location
 ```bash

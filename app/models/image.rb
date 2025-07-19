@@ -1,6 +1,7 @@
 class Image < ApplicationRecord
   belongs_to :well
   has_one_attached :file
+  has_many :point_of_interests, dependent: :destroy
 
   # Callbacks
   after_commit :populate_dimensions_if_needed, on: :create

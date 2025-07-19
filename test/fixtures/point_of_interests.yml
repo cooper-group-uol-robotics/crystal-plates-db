@@ -1,0 +1,49 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+crystal_one:
+  image: one
+  pixel_x: 100
+  pixel_y: 150
+  point_type: crystal
+  description: "Large crystal formation"
+  marked_at: <%= 1.hour.ago %>
+
+crystal_two:
+  image: one
+  pixel_x: 200
+  pixel_y: 250
+  point_type: crystal
+  description: "Small crystal"
+  marked_at: <%= 30.minutes.ago %>
+
+particle_one:
+  image: one
+  pixel_x: 300
+  pixel_y: 100
+  point_type: particle
+  description: "Protein aggregate"
+  marked_at: <%= 15.minutes.ago %>
+
+droplet_one:
+  image: two
+  pixel_x: 150
+  pixel_y: 200
+  point_type: droplet
+  description: "Phase separation droplet"
+  marked_at: <%= 5.minutes.ago %>ures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  image: one
+  pixel_x: 1
+  pixel_y: 1
+  point_type: MyString
+  description: MyText
+  marked_at: 2025-07-19 11:20:57
+
+two:
+  image: two
+  pixel_x: 1
+  pixel_y: 1
+  point_type: MyString
+  description: MyText
+  marked_at: 2025-07-19 11:20:57

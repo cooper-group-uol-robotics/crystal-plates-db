@@ -25,7 +25,7 @@ class WellsController < ApplicationController
 
     respond_to do |format|
       if @well.save
-        format.html { redirect_to @well, notice: "Well was successfully created." }
+        format.html { redirect_to @well.plate, notice: "Well was successfully created." }
         format.json { render :show, status: :created, location: @well }
       else
         format.html { render :new, status: :unprocessable_entity }
@@ -38,7 +38,7 @@ class WellsController < ApplicationController
   def update
     respond_to do |format|
       if @well.update(well_params)
-        format.html { redirect_to @well, notice: "Well was successfully updated." }
+        format.html { redirect_to @well.plate, notice: "Well was successfully updated." }
         format.json { render :show, status: :ok, location: @well }
       else
         format.html { render :edit, status: :unprocessable_entity }
@@ -49,10 +49,11 @@ class WellsController < ApplicationController
 
   # DELETE /wells/1 or /wells/1.json
   def destroy
+    plate = @well.plate  # Store plate reference before destroying well
     @well.destroy!
 
     respond_to do |format|
-      format.html { redirect_to wells_path, status: :see_other, notice: "Well was successfully destroyed." }
+      format.html { redirect_to plate, status: :see_other, notice: "Well was successfully destroyed." }
       format.json { head :no_content }
     end
   end

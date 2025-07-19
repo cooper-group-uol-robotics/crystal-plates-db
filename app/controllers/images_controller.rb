@@ -80,7 +80,7 @@ class ImagesController < ApplicationController
     @image.destroy!
 
     respond_to do |format|
-      format.html { redirect_to @well, status: :see_other, notice: "Image was successfully deleted." }
+      format.html { redirect_to @well.plate, status: :see_other, notice: "Image was successfully deleted." }
       format.json { head :no_content }
     end
   end

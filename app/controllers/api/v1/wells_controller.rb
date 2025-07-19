@@ -7,14 +7,14 @@ module Api::V1
     # GET /api/v1/plates/:barcode/wells
     def index
       wells = @plate ? @plate.wells : Well.includes(:plate)
-      wells = wells.includes(:well_content, :images)
+      wells = wells.includes(:well_contents, :images)
 
       render_success(wells.map { |well| well_json(well) })
     end
 
     # GET /api/v1/wells/:id
     def show
-      @well = Well.includes(:well_content, :images).find(params[:id])
+      @well = Well.includes(:well_contents, :images).find(params[:id])
       render_success(well_json(@well, include_details: true))
     end
 
@@ -73,12 +73,11 @@ module Api::V1
 
       if include_details
         result.merge!({
-          well_content: well.well_content.map do |content|
+          well_contents: well.well_contents.map do |content|
             {
               id: content.id,
-              chemical: content.chemical&.name,
-              stock_solution: content.stock_solution&.name,
-              volume_ul: content.volume_ul
+              stock_solution: content.stock_solution&.display_name,
+              volume: content.display_volume
             }
           end,
           images: well.images.recent.map do |image|
@@ -95,7 +94,7 @@ module Api::V1
           updated_at: well.updated_at
         })
       else
-        result[:contents_count] = well.well_content.count
+        result[:contents_count] = well.well_contents.count
         result[:images_count] = well.images.count
       end
 
