@@ -320,6 +320,13 @@ document.addEventListener('DOMContentLoaded', () => {
       })
   })
 
+  // Add event listener for when modal is closed to refresh the plate grid
+  wellImagesModal.addEventListener('hidden.bs.modal', event => {
+    console.log('Modal closed, refreshing page to update well colors...');
+    // Refresh the page to update the well grid colors
+    window.location.reload();
+  })
+
 // Stock solution search functionality
 async function searchStockSolutions(input, hiddenFieldId, resultsId) {
   const query = input.value.trim();
