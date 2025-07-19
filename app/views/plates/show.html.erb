@@ -75,13 +75,14 @@
 
 <!-- Modal -->
 <div class="modal fade" id="wellImagesModal" tabindex="-1" aria-labelledby="wellImagesModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="wellImagesModalLabel">Well Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body"
+        style="max-height: 80vh; overflow-y: auto;">
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" id="wellTabs" role="tablist">
           <li class="nav-item" role="presentation">
@@ -111,6 +112,114 @@
 </div>
 
 <script>
+// Define showImageInMain function globally 
+window.showImageInMain = function(imageId, imageUrl, largeImageUrl) {
+  console.log('showImageInMain called with:', imageId, imageUrl, largeImageUrl);
+  
+  // Find the main image element and thumbnail - be specific about finding img element
+  const mainImage = document.querySelector('img[id^="main-image-"]');
+  const thumbnailImage = document.getElementById(`thumb-image-${imageId}`);
+  const thumbnail = thumbnailImage?.closest('.image-thumbnail');
+  
+  console.log('Elements found:', {
+    mainImage: !!mainImage,
+    mainImageId: mainImage?.id,
+    mainImageCurrentSrc: mainImage?.src,
+    thumbnailImage: !!thumbnailImage,
+    thumbnail: !!thumbnail
+  });
+  
+  if (mainImage && thumbnailImage && thumbnail) {
+    console.log('Switching image to:', largeImageUrl || thumbnailImage.src);
+    
+    // Use the provided large image URL, or fall back to thumbnail URL
+    const imageSrc = largeImageUrl || thumbnailImage.src;
+    
+    console.log('Before update - mainImage.src:', mainImage.src);
+    
+    // Update main image
+    mainImage.src = imageSrc;
+    mainImage.id = `main-image-${imageId}`;
+    
+    console.log('After update - mainImage.src:', mainImage.src);
+    console.log('Image element:', mainImage);
+    
+    // Force a reload of the image
+    mainImage.onload = function() {
+      console.log('Image loaded successfully:', imageSrc);
+    };
+    mainImage.onerror = function() {
+      console.error('Image failed to load:', imageSrc);
+    };
+    
+    // Update main image link
+    const mainImageLink = document.getElementById('main-image-link');
+    if (mainImageLink) {
+      mainImageLink.href = imageUrl;
+      console.log('Updated main image link href to:', imageUrl);
+    } else {
+      console.warn('main-image-link not found');
+    }
+    
+    // Update image info overlay
+    const imageInfo = thumbnail.getAttribute('data-image-info');
+    const infoOverlay = document.getElementById('image-info-overlay');
+    if (infoOverlay && imageInfo) {
+      infoOverlay.innerHTML = `<small>${imageInfo}</small>`;
+      console.log('Updated image info overlay:', imageInfo);
+    } else {
+      console.warn('image-info-overlay not found or no image info');
+    }
+    
+    // Update header info
+    const capturedDate = thumbnail.getAttribute('data-image-captured');
+    const headerInfo = document.getElementById('current-image-info');
+    if (headerInfo) {
+      headerInfo.innerHTML = capturedDate ? `Captured: ${capturedDate}` : '';
+      console.log('Updated header info:', capturedDate);
+    } else {
+      console.warn('current-image-info not found');
+    }
+    
+    // Update description
+    const description = thumbnail.getAttribute('data-image-description');
+    const descriptionElement = document.getElementById('current-image-description');
+    if (descriptionElement) {
+      descriptionElement.textContent = description || '';
+      console.log('Updated description:', description);
+    } else {
+      console.warn('current-image-description not found');
+    }
+    
+    // Update action buttons
+    const actionsContainer = document.getElementById('main-image-actions');
+    if (actionsContainer) {
+      const viewButton = actionsContainer.querySelector('.btn-outline-primary');
+      const editButton = actionsContainer.querySelector('.btn-outline-secondary');
+      if (viewButton) viewButton.href = imageUrl;
+      if (editButton) editButton.href = imageUrl.replace(/\/\d+$/, `/${imageId}/edit`);
+      console.log('Updated action buttons');
+    } else {
+      console.warn('main-image-actions not found');
+    }
+    
+    // Update thumbnail highlighting
+    document.querySelectorAll('.image-thumbnail').forEach(thumb => {
+      thumb.classList.remove('border-primary');
+    });
+    thumbnail.classList.add('border-primary');
+    
+    console.log('Image switched successfully');
+  } else {
+    console.error('Could not find required elements:', {
+      mainImage: !!mainImage,
+      thumbnailImage: !!thumbnailImage,
+      thumbnail: !!thumbnail,
+      imageId: imageId
+    });
+  }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   const wellImagesModal = document.getElementById('wellImagesModal')
   const wellImagesContent = document.getElementById('wellImagesContent')
@@ -118,9 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalTitle = document.getElementById('wellImagesModalLabel')
 
   wellImagesModal.addEventListener('show.bs.modal', event => {
+    console.log('Modal show event triggered');
     const button = event.relatedTarget
     const wellId = button.getAttribute('data-well-id')
     const wellLabel = button.getAttribute('data-well-label')
+
+    console.log('Button:', button);
+    console.log('Well ID:', wellId);
+    console.log('Well Label:', wellLabel);
 
     if (!wellId) {
       wellImagesContent.innerHTML = '<p>No well selected.</p>'
@@ -132,12 +246,66 @@ document.addEventListener('DOMContentLoaded', () => {
     modalTitle.textContent = `Well ${wellLabel} Details`
 
     // Load images tab
+    console.log('Fetching:', `/wells/${wellId}/images`);
     fetch(`/wells/${wellId}/images`)
-      .then(response => response.text())
-      .then(html => {
-        wellImagesContent.innerHTML = html
+      .then(response => {
+        console.log('Fetch response:', response);
+        return response.text();
       })
-      .catch(() => {
+      .then(html => {
+        console.log('Fetch HTML length:', html.length);
+        wellImagesContent.innerHTML = html
+        // Initialize thumbnails after content is loaded
+        setTimeout(() => {
+          if (window.initializeThumbnails) {
+            console.log('Calling initializeThumbnails after AJAX load');
+            window.initializeThumbnails();
+          } else {
+            console.error('initializeThumbnails function not found, trying direct initialization');
+            // Try to call it directly from the loaded content
+            const thumbnails = document.querySelectorAll('.image-thumbnail');
+            console.log('Found thumbnails directly:', thumbnails.length);
+            
+            thumbnails.forEach((thumbnail, index) => {
+              if (thumbnail.hasAttribute('data-initialized')) {
+                return;
+              }
+              
+              thumbnail.setAttribute('data-initialized', 'true');
+              
+              // Add hover functionality for action buttons
+              thumbnail.addEventListener('mouseenter', function() {
+                const actions = this.querySelector('.image-actions');
+                if (actions) {
+                  actions.classList.remove('d-none');
+                }
+              });
+              
+              thumbnail.addEventListener('mouseleave', function() {
+                const actions = this.querySelector('.image-actions');
+                if (actions) {
+                  actions.classList.add('d-none');
+                }
+              });
+              
+              thumbnail.addEventListener('click', function(e) {
+                const imageId = this.getAttribute('data-image-id');
+                const imageUrl = this.getAttribute('data-image-url');
+                const largeImageUrl = this.getAttribute('data-large-image-url');
+                console.log('Direct thumbnail clicked:', imageId, imageUrl, largeImageUrl);
+                
+                if (imageId && imageUrl && window.showImageInMain) {
+                  window.showImageInMain(imageId, imageUrl, largeImageUrl);
+                } else {
+                  console.error('showImageInMain not available');
+                }
+              });
+            });
+          }
+        }, 200);
+      })
+      .catch((error) => {
+        console.error('Fetch error:', error);
         wellImagesContent.innerHTML = '<p>Error loading images.</p>'
       })
 

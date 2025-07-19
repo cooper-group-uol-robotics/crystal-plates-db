@@ -1,55 +1,334 @@
+<script>
+console.log('START: Wells _images.html.erb script executing');
+console.log('Wells _images.html.erb partial loaded');
+
+// Define function in global scope first
+window.showImageInMain = function(imageId, imageUrl, largeImageUrl) {
+  console.log('showImageInMain called with:', imageId, imageUrl, largeImageUrl);
+  
+  // Find the main image element and thumbnail
+  const mainImage = document.querySelector('[id^="main-image-"]');
+  const thumbnailImage = document.getElementById(`thumb-image-${imageId}`);
+  const thumbnail = thumbnailImage?.closest('.image-thumbnail');
+  
+  if (mainImage && thumbnailImage && thumbnail) {
+    console.log('Switching image to:', largeImageUrl || thumbnailImage.src);
+    
+    // Use the provided large image URL, or fall back to thumbnail URL
+    const imageSrc = largeImageUrl || thumbnailImage.src;
+    
+    // Update main image
+    mainImage.src = imageSrc;
+    mainImage.id = `main-image-${imageId}`;
+    
+    // Update main image link
+    const mainImageLink = document.getElementById('main-image-link');
+    if (mainImageLink) {
+      mainImageLink.href = imageUrl;
+    }
+    
+    // Update image info overlay
+    const imageInfo = thumbnail.getAttribute('data-image-info');
+    const infoOverlay = document.getElementById('image-info-overlay');
+    if (infoOverlay && imageInfo) {
+      infoOverlay.innerHTML = `<small>${imageInfo}</small>`;
+    }
+    
+    // Update header info
+    const capturedDate = thumbnail.getAttribute('data-image-captured');
+    const headerInfo = document.getElementById('current-image-info');
+    if (headerInfo) {
+      headerInfo.innerHTML = capturedDate ? `Captured: ${capturedDate}` : '';
+    }
+    
+    // Update description
+    const description = thumbnail.getAttribute('data-image-description');
+    const descriptionElement = document.getElementById('current-image-description');
+    if (descriptionElement) {
+      descriptionElement.textContent = description || '';
+    }
+    
+    // Update action buttons
+    const actionsContainer = document.getElementById('main-image-actions');
+    if (actionsContainer) {
+      const viewButton = actionsContainer.querySelector('.btn-outline-primary');
+      const editButton = actionsContainer.querySelector('.btn-outline-secondary');
+      if (viewButton) viewButton.href = imageUrl;
+      if (editButton) editButton.href = imageUrl.replace(/\/\d+$/, `/${imageId}/edit`);
+    }
+    
+    // Update thumbnail highlighting
+    document.querySelectorAll('.image-thumbnail').forEach(thumb => {
+      thumb.classList.remove('border-primary');
+    });
+    thumbnail.classList.add('border-primary');
+    
+    console.log('Image switched successfully');
+  } else {
+    console.error('Could not find required elements:', {
+      mainImage: !!mainImage,
+      thumbnailImage: !!thumbnailImage,
+      thumbnail: !!thumbnail,
+      imageId: imageId
+    });
+  }
+};
+</script>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0">Well Images (<%= images.count %>)</h5>
   <%= link_to 'Add Image', new_well_image_path(well), class: 'btn btn-primary btn-sm' %>
 </div>
 
 <% if images.any? %>
-  <div class="d-flex flex-wrap gap-3 justify-content-center">
-    <% images.each do |image| %>
-      <% if well.present? && image.present? %>
-        <div class="card" style="width: 300px;">
-          <%= link_to well_image_path(well, image) do %>
+  <% most_recent = images.first %>
+  
+  <!-- Main Image Display -->
+  <div class="mb-4">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold">Image Viewer</span>
+        <small class="text-muted" id="current-image-info">
+          <% if most_recent.captured_at %>
+            Captured: <%= most_recent.captured_at.strftime("%Y-%m-%d %H:%M") %>
+          <% end %>
+        </small>
+      </div>
+      <div class="card-body p-0">
+        <div class="position-relative">
+          <%= link_to well_image_path(well, most_recent), target: "_blank", class: "text-decoration-none", id: "main-image-link" do %>
             <% begin %>
-              <%= image_tag image.file.variant(resize_to_limit: [300, 300]), class: "card-img-top img-thumbnail" %>
+              <%= image_tag most_recent.file.variant(resize_to_limit: [800, 600]), 
+                  class: "img-fluid w-100", 
+                  style: "max-height: 400px; object-fit: contain; background: #f8f9fa;",
+                  id: "main-image-#{most_recent.id}" %>
             <% rescue => e %>
-              <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+              <div class="bg-light d-flex align-items-center justify-content-center" style="height: 300px;">
                 <span class="text-muted">Preview unavailable</span>
               </div>
             <% end %>
           <% end %>
-          <div class="card-body p-2">
-            <div class="small text-muted">
-              <strong>Dimensions:</strong> 
-              <% if image.pixel_width && image.pixel_height %>
-                <%= image.pixel_width %>×<%= image.pixel_height %>px<br>
-                <strong>Physical:</strong> <%= sprintf("%.2f", image.physical_width_mm) %>×<%= sprintf("%.2f", image.physical_height_mm) %>mm<br>
-              <% else %>
-                Auto-detecting...<br>
-              <% end %>
-              <strong>Pixel Size:</strong> <%= sprintf("%.4f", image.pixel_size_x_mm) %>×<%= sprintf("%.4f", image.pixel_size_y_mm) %>mm/px<br>
-              <% if image.captured_at %>
-                <strong>Captured:</strong> <%= image.captured_at.strftime("%m/%d %H:%M") %><br>
-              <% end %>
-              <% if image.description.present? %>
-                <strong>Description:</strong> <%= truncate(image.description, length: 50) %>
-              <% end %>
-            </div>
-            <div class="mt-2 d-flex justify-content-between">
-              <%= link_to 'View', well_image_path(well, image), class: 'btn btn-outline-primary btn-xs' %>
-              <%= link_to 'Edit', edit_well_image_path(well, image), class: 'btn btn-outline-secondary btn-xs' %>
-              <%= button_to 'Delete', well_image_path(well, image), method: :delete, 
-                            class: 'btn btn-outline-danger btn-xs',
-                            form: { style: "display: inline-block;" },
-                            data: { confirm: "Delete this image?" } %>
-            </div>
+          
+          <!-- Image Info Overlay -->
+          <div class="position-absolute bottom-0 start-0 bg-dark bg-opacity-75 text-white p-2 m-2 rounded" id="image-info-overlay">
+            <small>
+              <%= most_recent.pixel_width %>×<%= most_recent.pixel_height %>px |
+              <%= sprintf("%.2f", most_recent.physical_width_mm) %>×<%= sprintf("%.2f", most_recent.physical_height_mm) %>mm
+            </small>
           </div>
         </div>
-      <% end %>
-    <% end %>
+      </div>
+      <div class="card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="btn-group btn-group-sm" id="main-image-actions">
+            <%= link_to 'View Full', well_image_path(well, most_recent), class: 'btn btn-outline-primary' %>
+            <%= link_to 'Edit', edit_well_image_path(well, most_recent), class: 'btn btn-outline-secondary' %>
+          </div>
+          <small class="text-muted" id="current-image-description">
+            <% if most_recent.description.present? %>
+              <%= truncate(most_recent.description, length: 100) %>
+            <% end %>
+          </small>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- All Images Thumbnail Gallery -->
+  <div class="mb-3">
+    <h6 class="text-muted">All Images (<%= images.count %>)</h6>
+    <div class="border rounded p-2" style="background: #f8f9fa;">
+      <div class="d-flex overflow-auto gap-2 p-2" style="scroll-behavior: smooth;">
+        <% images.each_with_index do |image, index| %>
+          <div class="flex-shrink-0 position-relative" style="width: 150px;">
+            <div class="card h-100 image-thumbnail <%= 'border-primary' if index == 0 %>" style="cursor: pointer;" 
+                 data-image-id="<%= image.id %>"
+                 data-image-url="<%= well_image_path(well, image) %>"
+                 data-large-image-url="<%= url_for(image.file.variant(resize_to_limit: [800, 600])) %>"
+                 data-image-info="<%= image.pixel_width %>×<%= image.pixel_height %>px | <%= sprintf("%.2f", image.physical_width_mm) %>×<%= sprintf("%.2f", image.physical_height_mm) %>mm"
+                 data-image-captured="<%= image.captured_at&.strftime("%Y-%m-%d %H:%M") %>"
+                 data-image-description="<%= image.description %>">
+              <% begin %>
+                <%= image_tag image.file.variant(resize_to_limit: [150, 150]), 
+                    class: "card-img-top", 
+                    style: "height: 120px; object-fit: cover;",
+                    id: "thumb-image-#{image.id}" %>
+              <% rescue => e %>
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
+                  <small class="text-muted">No preview</small>
+                </div>
+              <% end %>
+              <div class="card-body p-1">
+                <div class="small text-center">
+                  <% if image.captured_at %>
+                    <%= image.captured_at.strftime("%m/%d %H:%M") %>
+                  <% else %>
+                    Image #<%= index + 1 %>
+                  <% end %>
+                </div>
+              </div>
+              
+              <!-- Actions overlay on hover -->
+              <div class="position-absolute top-0 end-0 p-1 d-none image-actions">
+                <div class="btn-group-vertical btn-group-sm">
+                  <%= link_to well_image_path(well, image), class: 'btn btn-outline-light btn-sm', title: 'View' do %>
+                    <i class="bi bi-eye"></i>
+                  <% end %>
+                  <%= link_to edit_well_image_path(well, image), class: 'btn btn-outline-light btn-sm', title: 'Edit' do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
 <% else %>
   <div class="text-center py-4">
     <p class="text-muted">No images attached to this well.</p>
     <%= link_to 'Add First Image', new_well_image_path(well), class: 'btn btn-primary' %>
   </div>
 <% end %>
+
+<script>
+// Initialize thumbnail functionality - can be called multiple times
+function initializeThumbnails() {
+  console.log('Initializing thumbnails...');
+  
+  const thumbnails = document.querySelectorAll('.image-thumbnail');
+  console.log('Found thumbnails:', thumbnails.length);
+  
+  thumbnails.forEach((thumbnail, index) => {
+    // Skip if already initialized
+    if (thumbnail.hasAttribute('data-initialized')) {
+      console.log(`Thumbnail ${index} already initialized, skipping`);
+      return;
+    }
+    
+    thumbnail.setAttribute('data-initialized', 'true');
+    
+    console.log(`Setting up thumbnail ${index}:`, {
+      element: thumbnail,
+      imageId: thumbnail.getAttribute('data-image-id'),
+      imageUrl: thumbnail.getAttribute('data-image-url')
+    });
+    
+    thumbnail.addEventListener('mouseenter', function() {
+      const actions = this.querySelector('.image-actions');
+      if (actions) {
+        actions.classList.remove('d-none');
+      }
+    });
+    
+    thumbnail.addEventListener('mouseleave', function() {
+      const actions = this.querySelector('.image-actions');
+      if (actions) {
+        actions.classList.add('d-none');
+      }
+    });
+    
+    // Add click handler
+    thumbnail.addEventListener('click', function(e) {
+      console.log('Click event triggered on thumbnail:', this);
+      
+      const imageId = this.getAttribute('data-image-id');
+      const imageUrl = this.getAttribute('data-image-url');
+      const largeImageUrl = this.getAttribute('data-large-image-url');
+      console.log('Thumbnail clicked:', {
+        imageId: imageId,
+        imageUrl: imageUrl,
+        largeImageUrl: largeImageUrl,
+        element: this,
+        functionExists: !!window.showImageInMain
+      });
+      
+      if (imageId && imageUrl && window.showImageInMain) {
+        console.log('Calling showImageInMain...');
+        window.showImageInMain(imageId, imageUrl, largeImageUrl);
+      } else {
+        console.error('Missing data or function not available:', {
+          imageId: imageId,
+          imageUrl: imageUrl,
+          largeImageUrl: largeImageUrl,
+          functionExists: !!window.showImageInMain
+        });
+      }
+    });
+  });
+  
+  // Also check if function is available
+  console.log('showImageInMain function available:', !!window.showImageInMain);
+}
+
+// Initialize on DOM load and make it available globally
+document.addEventListener('DOMContentLoaded', initializeThumbnails);
+window.initializeThumbnails = initializeThumbnails;
+
+// Call it immediately in case DOM is already loaded
+if (document.readyState === 'loading') {
+  // Document still loading
+  console.log('Document still loading, waiting for DOMContentLoaded');
+} else {
+  // Document already loaded
+  console.log('Document already loaded, calling initializeThumbnails in 100ms');
+  setTimeout(initializeThumbnails, 100);
+}
+
+console.log('End of wells _images.html.erb partial script');
+</script>
+
+<style>
+.image-thumbnail {
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.image-thumbnail:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-color: #dee2e6;
+}
+
+.image-thumbnail:active {
+  transform: translateY(-1px);
+}
+
+.image-thumbnail.border-primary {
+  border-color: #0d6efd !important;
+  border-width: 3px !important;
+  box-shadow: 0 0 0 0.3rem rgba(13, 110, 253, 0.25) !important;
+  transform: translateY(-2px);
+}
+
+.image-thumbnail.border-primary:hover {
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 0.3rem rgba(13, 110, 253, 0.4) !important;
+}
+
+/* Custom scrollbar for the carousel */
+.overflow-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Improve click target */
+.image-thumbnail {
+  user-select: none;
+}
+</style>
