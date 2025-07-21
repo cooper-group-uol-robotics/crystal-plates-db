@@ -5,7 +5,14 @@ module Api::V1
     # GET /api/v1/locations
     def index
       locations = Location.includes(:plates, :plate_locations).all
-      render_success(locations.map { |location| location_json(location) })
+      render_success(
+        locations.map do |location|
+          data = location_json(location)
+          current_plate = location.current_plates.first
+          data[:current_plate_id] = current_plate&.id
+          data
+        end
+      )
     end
 
     # GET /api/v1/locations/carousel
