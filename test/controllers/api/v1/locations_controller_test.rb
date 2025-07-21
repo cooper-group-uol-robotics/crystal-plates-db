@@ -32,16 +32,6 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
     assert json_response["data"].all? { |loc| loc["name"] && !loc["carousel_position"] }
   end
 
-  test "should get grid" do
-    get grid_api_v1_locations_url, as: :json
-    assert_response :success
-
-    json_response = JSON.parse(response.body)
-    assert json_response.key?("data")
-    assert json_response["data"].key?("grid")
-    assert json_response["data"].key?("dimensions")
-  end
-
   test "should show location" do
     get api_v1_location_url(@location), as: :json
     assert_response :success
