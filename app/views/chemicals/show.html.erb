@@ -120,7 +120,7 @@
           <% @chemical.stock_solution_components.includes(:stock_solution, :unit).each do |component| %>
             <div class="border-bottom pb-2 mb-2">
               <div class="fw-medium">
-                <%= link_to component.stock_solution.name, "#", class: "text-decoration-none" %>
+                <%= link_to component.stock_solution.name, stock_solution_path(component.stock_solution), class: "text-decoration-none" %>
               </div>
               <small class="text-muted">
                 Amount: <%= component.amount %> 

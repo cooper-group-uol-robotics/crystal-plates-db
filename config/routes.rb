@@ -104,6 +104,7 @@ Rails.application.routes.draw do
           get :recent
           get :crystals
           get :particles
+          get "/", to: "points_of_interest#index_standalone"
         end
       end
 
