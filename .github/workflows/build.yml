@@ -21,12 +21,6 @@ jobs:
           docker volume create crystal_plates_db_database || true
           docker volume create crystal_plates_db_storage || true
 
-      - name: Ensure db directory exists in volume
-        run: |
-          docker run --rm \
-            -v crystal_plates_db_database:/rails/db \
-            busybox mkdir -p /rails/db
-
       - name: Stop and remove previous container if it exists
         run: |
           docker rm -f crystal-plates-db || true
@@ -42,6 +36,3 @@ jobs:
             -v crystal_plates_db_storage:/rails/storage \
             crystal-plates-db:latest
             
-      - name: Run DB migrations
-        run: |
-          docker exec crystal-plates-db ./bin/rails db:migrate
