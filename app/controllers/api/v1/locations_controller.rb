@@ -20,7 +20,14 @@ module Api::V1
       locations = Location.where.not(carousel_position: nil, hotel_position: nil)
                           .order(:carousel_position, :hotel_position)
                           .includes(:plates, :plate_locations)
-      render_success(locations.map { |location| location_json(location) })
+      render_success(
+        locations.map do |location|
+          data = location_json(location)
+          current_plate = location.current_plates.first
+          data[:current_plate_id] = current_plate&.id
+          data
+        end
+      )
     end
 
     # GET /api/v1/locations/special
@@ -28,42 +35,17 @@ module Api::V1
       locations = Location.where(carousel_position: nil, hotel_position: nil)
                           .order(:name)
                           .includes(:plates, :plate_locations)
-      render_success(locations.map { |location| location_json(location) })
-    end
-
-    # GET /api/v1/locations/grid
-    def grid
-      grid_data = build_carousel_grid
-      dimensions = get_grid_dimensions
-      formatted_grid = []
-
-      dimensions[:hotel_range].each do |hotel|
-        row = []
-        dimensions[:carousel_range].each do |carousel|
-          cell_data = grid_data[hotel][carousel]
-          row << {
-            carousel_position: carousel,
-            hotel_position: hotel,
-            location: cell_data[:location] ? location_json(cell_data[:location]) : nil,
-            plate: cell_data[:plate] ? plate_summary(cell_data[:plate]) : nil,
-            occupied: cell_data[:occupied]
-          }
+      render_success(
+        locations.map do |location|
+          data = location_json(location)
+          current_plate = location.current_plates.first
+          data[:current_plate_id] = current_plate&.id
+          data
         end
-        formatted_grid << row
-      end
-
-      render_success({
-        grid: formatted_grid,
-        dimensions: {
-          carousel_positions: dimensions[:max_carousel] - dimensions[:min_carousel] + 1,
-          hotel_positions: dimensions[:max_hotel] - dimensions[:min_hotel] + 1,
-          min_carousel: dimensions[:min_carousel],
-          max_carousel: dimensions[:max_carousel],
-          min_hotel: dimensions[:min_hotel],
-          max_hotel: dimensions[:max_hotel]
-        }
-      })
+      )
     end
+
+
 
     # GET /api/v1/locations/:id
     def show
@@ -171,57 +153,6 @@ module Api::V1
         barcode: plate.barcode,
         wells_count: plate.wells.count
       }
-    end
-
-    def get_grid_dimensions
-      # Get all carousel locations from the database
-      locations = Location.where.not(carousel_position: nil, hotel_position: nil)
-      carousel_positions = locations.pluck(:carousel_position).compact
-      hotel_positions = locations.pluck(:hotel_position).compact
-
-      # Return the dimensions as a hash
-      {
-        min_carousel: carousel_positions.min || 1,
-        max_carousel: carousel_positions.max || 10,
-        min_hotel: hotel_positions.min || 1,
-        max_hotel: hotel_positions.max || 20,
-        carousel_range: (carousel_positions.min || 1)..(carousel_positions.max || 10),
-        hotel_range: (hotel_positions.min || 1)..(hotel_positions.max || 20)
-      }
-    end
-
-    def build_carousel_grid
-      # Get dynamic dimensions
-      dimensions = get_grid_dimensions
-      grid = {}
-
-      dimensions[:hotel_range].each do |hotel|
-        grid[hotel] = {}
-        dimensions[:carousel_range].each do |carousel|
-          grid[hotel][carousel] = {
-            location: nil,
-            plate: nil,
-            occupied: false
-          }
-        end
-      end
-
-      Location.where.not(carousel_position: nil, hotel_position: nil)
-              .includes(plate_locations: :plate)
-              .each do |location|
-        carousel = location.carousel_position
-        hotel = location.hotel_position
-
-        current_plate = location.current_plates.first
-
-        grid[hotel][carousel] = {
-          location: location,
-          plate: current_plate,
-          occupied: current_plate.present?
-        }
-      end
-
-      grid
     end
   end
 end
