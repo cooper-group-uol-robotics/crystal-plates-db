@@ -33,6 +33,7 @@ RUN bundle install && \
 RUN groupadd --system --gid 1000 rails && \
     useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash rails
 
+# Copy application code (database files excluded via .dockerignore)
 COPY --chown=rails:rails . .
 
 RUN bundle exec bootsnap precompile app/ lib/

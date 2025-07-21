@@ -8,7 +8,18 @@ fi
 
 # If running the rails server then create or migrate existing database
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
-  ./bin/rails db:prepare
+  # Ensure the db directory exists and has proper permissions
+  mkdir -p /rails/db
+  chown rails:rails /rails/db
+  
+  # Only run migrations and seed if database doesn't exist, don't reset existing data
+  if [ ! -f "/rails/db/production.sqlite3" ]; then
+    echo "Database not found, creating and seeding..."
+    ./bin/rails db:create db:migrate db:seed
+  else
+    echo "Database exists, running migrations only..."
+    ./bin/rails db:migrate
+  fi
 fi
 
 exec "${@}"

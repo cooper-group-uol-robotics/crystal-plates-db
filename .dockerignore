@@ -30,6 +30,14 @@
 /tmp/storage/*
 !/tmp/storage/.keep
 
+# Ignore database files but keep directory structure
+/db/*.sqlite3
+/db/*.sqlite3-*
+/db/development.sqlite3*
+/db/production.sqlite3*
+/db/test.sqlite3*
+!/db/.keep
+
 # Ignore CI service files.
 /.github
 
