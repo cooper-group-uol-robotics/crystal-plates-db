@@ -35,3 +35,8 @@ jobs:
             -v crystal_plates_db_database:/rails/db \
             -v crystal_plates_db_storage:/rails/storage \
             crystal-plates-db:latest
+            
+      - name: Run DB migrations
+        run: |
+          docker exec crystal-plates-db ./bin/rails db:migrate
+          
