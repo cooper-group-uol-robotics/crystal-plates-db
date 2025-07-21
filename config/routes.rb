@@ -4,6 +4,14 @@ Rails.application.routes.draw do
       get :search
     end
   end
+
+  resources :points_of_interest do
+    collection do
+      get :by_type
+      get :recent
+    end
+  end
+
   resources :chemicals do
     collection do
       post :import_from_sciformation
@@ -66,7 +74,9 @@ Rails.application.routes.draw do
           get :location_history
         end
         resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
-          resources :images, only: [ :index, :show, :create, :update, :destroy ]
+          resources :images, only: [ :index, :show, :create, :update, :destroy ] do
+            resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
+          end
         end
       end
 
@@ -83,7 +93,18 @@ Rails.application.routes.draw do
       end
 
       resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
-        resources :images, only: [ :index, :show, :create, :update, :destroy ]
+        resources :images, only: [ :index, :show, :create, :update, :destroy ] do
+          resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
+        end
+      end
+
+      resources :points_of_interest do
+        collection do
+          get :by_type
+          get :recent
+          get :crystals
+          get :particles
+        end
       end
 
       # Utility endpoints
