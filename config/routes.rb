@@ -72,6 +72,7 @@ Rails.application.routes.draw do
         member do
           post :move_to_location
           get :location_history
+          get :points_of_interest
         end
         resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
           resources :images, only: [ :index, :show, :create, :update, :destroy ] do

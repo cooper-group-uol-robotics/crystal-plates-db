@@ -127,11 +127,23 @@
                 </tr>
                 <tr>
                   <td><strong>Physical Size:</strong></td>
-                  <td><%= sprintf("%.3f", @image.physical_width_mm) %>×<%= sprintf("%.3f", @image.physical_height_mm) %> mm</td>
+                  <td>
+                    <% if @image.physical_width_mm && @image.physical_height_mm %>
+                      <%= sprintf("%.3f", @image.physical_width_mm) %>×<%= sprintf("%.3f", @image.physical_height_mm) %> mm
+                    <% else %>
+                      Not calibrated
+                    <% end %>
+                  </td>
                 </tr>
                 <tr>
                   <td><strong>Pixel Size:</strong></td>
-                  <td><%= sprintf("%.6f", @image.pixel_size_x_mm) %>×<%= sprintf("%.6f", @image.pixel_size_y_mm) %> mm/pixel</td>
+                  <td>
+                    <% if @image.pixel_size_x_mm && @image.pixel_size_y_mm %>
+                      <%= sprintf("%.6f", @image.pixel_size_x_mm) %>×<%= sprintf("%.6f", @image.pixel_size_y_mm) %> mm/pixel
+                    <% else %>
+                      Not calibrated
+                    <% end %>
+                  </td>
                 </tr>
                 <% if @image.captured_at %>
                 <tr>
@@ -147,13 +159,24 @@
               <table class="table table-sm">
                 <tr>
                   <td><strong>Reference Point:</strong></td>
-                  <td>(<%= sprintf("%.3f", @image.reference_x_mm) %>, <%= sprintf("%.3f", @image.reference_y_mm) %>, <%= sprintf("%.3f", @image.reference_z_mm) %>)</td>
+                  <td>
+                    <% if @image.reference_x_mm && @image.reference_y_mm && @image.reference_z_mm %>
+                      (<%= sprintf("%.3f", @image.reference_x_mm) %>, <%= sprintf("%.3f", @image.reference_y_mm) %>, <%= sprintf("%.3f", @image.reference_z_mm) %>)
+                    <% else %>
+                      Not set
+                    <% end %>
+                  </td>
                 </tr>
                 <tr>
                   <td><strong>Bounding Box:</strong></td>
                   <td>
-                    X: <%= sprintf("%.3f", @image.bounding_box[:min_x]) %> to <%= sprintf("%.3f", @image.bounding_box[:max_x]) %><br>
-                    Y: <%= sprintf("%.3f", @image.bounding_box[:min_y]) %> to <%= sprintf("%.3f", @image.bounding_box[:max_y]) %>
+                    <% bbox = @image.bounding_box %>
+                    <% if bbox[:min_x] && bbox[:min_y] && bbox[:max_x] && bbox[:max_y] %>
+                      X: <%= sprintf("%.3f", bbox[:min_x]) %> to <%= sprintf("%.3f", bbox[:max_x]) %><br>
+                      Y: <%= sprintf("%.3f", bbox[:min_y]) %> to <%= sprintf("%.3f", bbox[:max_y]) %>
+                    <% else %>
+                      Not available (requires calibration)
+                    <% end %>
                   </td>
                 </tr>
               </table>

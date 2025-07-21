@@ -34,6 +34,12 @@ class PlatesController < ApplicationController
     @wells = @plate.wells.includes(:images, :well_contents)
     @rows = @wells.maximum(:well_row) || 0
     @columns = @wells.maximum(:well_column) || 0
+
+    # Get all points of interest for this plate
+    @points_of_interest = PointOfInterest.joins(image: { well: :plate })
+                                       .where(plates: { id: @plate.id })
+                                       .includes(image: { well: :plate })
+                                       .order(:marked_at)
   end
 
   # GET /plates/new
@@ -202,7 +208,7 @@ class PlatesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def plate_params
-      params.expect(plate: [ :barcode, :location_id ]).merge(
+      params.expect(plate: [ :barcode, :name, :location_id ]).merge(
         plate_rows: params[:plate_rows],
         plate_columns: params[:plate_columns],
         plate_subwells_per_well: params[:plate_subwells_per_well]

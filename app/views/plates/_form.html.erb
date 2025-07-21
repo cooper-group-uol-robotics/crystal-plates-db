@@ -17,6 +17,13 @@
     <div class="form-text">Leave blank to automatically generate a unique barcode</div>
   </div>
 
+  <div class="mb-3">
+    <%= form.label :name, "Descriptive Name (Optional)", class: "form-label" %>
+    <%= form.text_field :name, class: "form-control", 
+                        placeholder: "Enter a descriptive name for this plate" %>
+    <div class="form-text">Optional descriptive name to help identify this plate</div>
+  </div>
+
   <div class="mb-4">
     <label class="form-label fw-bold">Plate Dimensions</label>
     <% if plate.persisted? %>

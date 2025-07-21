@@ -132,7 +132,7 @@ module Api::V1
       if include_context
         result[:image] = {
           id: image.id,
-          filename: image.filename,
+          filename: image.file.attached? ? image.file.blob.filename.to_s : nil,
           well_id: image.well_id
         }
         result[:well] = {

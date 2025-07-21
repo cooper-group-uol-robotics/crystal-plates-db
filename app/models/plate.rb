@@ -6,6 +6,7 @@ class Plate < ApplicationRecord
     has_many :locations, through: :plate_locations
 
     validates :barcode, uniqueness: true
+    validates :name, length: { maximum: 255 }, allow_blank: true
     before_validation :generate_barcode_if_blank
     after_create :create_wells_from_attributes
 
@@ -27,6 +28,14 @@ class Plate < ApplicationRecord
 
     def current_location_record
         plate_locations.recent_first.first
+    end
+
+    def display_name
+        if name.present?
+            "#{barcode} (#{name})"
+        else
+            barcode
+        end
     end
 
     def location_history

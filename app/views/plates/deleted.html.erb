@@ -18,6 +18,7 @@
       <thead>
         <tr>
           <th>Barcode</th>
+          <th>Name</th>
           <th>Current Location</th>
           <th>Deleted At</th>
           <th>Actions</th>
@@ -27,6 +28,13 @@
         <% @plates.each do |plate| %>
           <tr>
             <td><%= plate.barcode %></td>
+            <td>
+              <% if plate.name.present? %>
+                <%= plate.name %>
+              <% else %>
+                <span class="text-muted">—</span>
+              <% end %>
+            </td>
             <td>
               <% if plate.current_location %>
                 <%= plate.current_location.display_name %>

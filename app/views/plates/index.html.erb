@@ -26,6 +26,7 @@
                   <% end %>
                 <% end %>
               </th>
+              <th>Name</th>
               <th>Current Location</th>
               <th>
                 <%= link_to plates_path(sort: 'created_at', direction: @sort_column == 'created_at' && @sort_direction == 'asc' ? 'desc' : 'asc', page: params[:page]), 
@@ -46,6 +47,13 @@
               <tr>
                 <td>
                   <%= link_to plate.barcode, plate_path(plate), class: "fw-bold text-decoration-none" %>
+                </td>
+                <td>
+                  <% if plate.name.present? %>
+                    <%= plate.name %>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
                 </td>
                 <td>
                   <% if plate.current_location %>
