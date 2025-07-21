@@ -147,6 +147,10 @@ bundle exec rails test        # Test suite
 - `GET /api/v1/health` - System health check
 - `GET /api/v1/stats` - System statistics
 
+## Deployment
+
+For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Contributing
 
 1. Fork the repository
