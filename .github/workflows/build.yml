@@ -32,7 +32,7 @@ jobs:
           docker run -d --name crystal-plates-db \
             -p 3000:80 \
             -e RAILS_MASTER_KEY=$RAILS_MASTER_KEY \
-            -v crystal_plates_db_database:/rails/db \
+            -v crystal_plates_db_database:/rails/db/production.sqlite3 \
             -v crystal_plates_db_storage:/rails/storage \
             crystal-plates-db:latest
             
