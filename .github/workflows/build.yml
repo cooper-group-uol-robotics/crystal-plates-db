@@ -16,9 +16,15 @@ jobs:
       - name: Build Docker image
         run: docker build -t crystal-plates-db:latest .
 
+      - name: Create named volumes for data persistence
+        run: |
+          docker volume create crystal_plates_db_database || true
+          docker volume create crystal_plates_db_storage || true
+
       - name: Stop and remove previous container if it exists
         run: |
           docker rm -f crystal-plates-db || true
+
       - name: Run Docker container
         env:
           RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
@@ -26,4 +32,6 @@ jobs:
           docker run -d --name crystal-plates-db \
             -p 3000:80 \
             -e RAILS_MASTER_KEY=$RAILS_MASTER_KEY \
+            -v crystal_plates_db_database:/rails/db \
+            -v crystal_plates_db_storage:/rails/storage \
             crystal-plates-db:latest

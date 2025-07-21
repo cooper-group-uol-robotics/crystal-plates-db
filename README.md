@@ -149,7 +149,7 @@ bundle exec rails test        # Test suite
 
 ## Deployment
 
-For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+For production deployment instructions using GitHub Actions, see [DEPLOYMENT_GITHUB_ACTIONS.md](DEPLOYMENT_GITHUB_ACTIONS.md).
 
 ## Contributing
 
