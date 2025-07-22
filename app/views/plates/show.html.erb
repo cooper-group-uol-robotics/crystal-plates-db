@@ -56,7 +56,15 @@
   </div>
 </div>
 
+
 <h2 class="mb-3">Wells</h2>
+<div class="mb-2">
+  <div class="form-check form-switch d-inline-block me-3">
+    <input class="form-check-input" type="checkbox" id="selectModeSwitch">
+    <label class="form-check-label" for="selectModeSwitch">Multi select</label>
+  </div>
+  <button id="editMultipleWellsBtn" class="btn btn-outline-primary btn-sm d-none" disabled>Edit multiple wells</button>
+</div>
 <div class="d-inline-block border rounded p-2 shadow-sm" style="background: #f8f9fa;">
   <div class="d-grid" style="grid-template-columns: repeat(<%= @columns %>, 80px); gap: 8px;">
     <% (1..@rows).each do |row| %>
@@ -83,12 +91,12 @@
                     text_color = 'white'
                   end
                 %>
-                <button type="button" class="btn btn-sm p-1"
+                <button type="button" class="btn btn-sm p-1 well-select-btn"
                   style="background-color: <%= bg_color %>; color: <%= text_color %>; height: 25px; font-size: 9px;"
-                  data-bs-toggle="modal" data-bs-target="#wellImagesModal"
                   data-well-id="<%= well.id %>"
                   data-well-label="<%= well.well_label_with_subwell %>"
-                  title="<%= well.well_label_with_subwell %>">
+                  title="<%= well.well_label_with_subwell %>"
+                  <%= 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>
                   <%= well.subwell %>
                 </button>
               <% end %>
@@ -103,6 +111,93 @@
     <% end %>
   </div>
 </div>
+
+<script>
+// Select mode logic
+let selectMode = false;
+let selectedWells = new Set();
+
+document.addEventListener('DOMContentLoaded', () => {
+  const selectModeSwitch = document.getElementById('selectModeSwitch');
+  const editMultipleWellsBtn = document.getElementById('editMultipleWellsBtn');
+  const wellButtons = document.querySelectorAll('.well-select-btn');
+
+  function updateEditButton() {
+    if (selectedWells.size > 0) {
+      editMultipleWellsBtn.classList.remove('d-none');
+      editMultipleWellsBtn.disabled = false;
+      editMultipleWellsBtn.textContent = `Edit multiple wells (${selectedWells.size})`;
+    } else {
+      editMultipleWellsBtn.classList.add('d-none');
+      editMultipleWellsBtn.disabled = true;
+      editMultipleWellsBtn.textContent = 'Edit multiple wells';
+    }
+  }
+
+  selectModeSwitch.addEventListener('change', (e) => {
+    selectMode = e.target.checked;
+    selectedWells.clear();
+    wellButtons.forEach(btn => {
+      btn.classList.remove('border-info', 'shadow');
+    });
+    updateEditButton();
+  });
+
+  wellButtons.forEach(btn => {
+    btn.addEventListener('click', function(event) {
+      if (selectMode) {
+        event.preventDefault();
+        const wellId = this.getAttribute('data-well-id');
+        if (selectedWells.has(wellId)) {
+          selectedWells.delete(wellId);
+          this.classList.remove('border-info', 'shadow');
+        } else {
+          selectedWells.add(wellId);
+          this.classList.add('border-info', 'shadow');
+        }
+        updateEditButton();
+      } else {
+        // Normal behaviour: open modal
+        this.setAttribute('data-bs-toggle', 'modal');
+        this.setAttribute('data-bs-target', '#wellImagesModal');
+      }
+    });
+  });
+
+  editMultipleWellsBtn.addEventListener('click', function() {
+    if (selectedWells.size === 0) return;
+    // Open a modal or redirect to a bulk edit page with selected well IDs
+    // For now, show a simple modal with selected wells
+    const wellIds = Array.from(selectedWells);
+    const modalHtml = `
+      <div class="modal fade" id="editMultipleWellsModal" tabindex="-1" aria-labelledby="editMultipleWellsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="editMultipleWellsModalLabel">Edit Multiple Wells</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p>Selected wells: <strong>${wellIds.join(', ')}</strong></p>
+              <p>Bulk editing stock solutions for selected wells is not yet implemented.</p>
+              <!-- TODO: Add bulk stock solution form here -->
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    // Remove any existing modal
+    const existingModal = document.getElementById('editMultipleWellsModal');
+    if (existingModal) existingModal.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('editMultipleWellsModal'));
+    modal.show();
+  });
+});
+</script>
 
 <!-- Points of Interest Section -->
 <% if @points_of_interest.any? %>
