@@ -34,6 +34,69 @@ class WellsController < ApplicationController
     end
   end
 
+  # POST /wells/bulk_add_content
+  def bulk_add_content
+    # Parse JSON body if present
+    if request.content_type == "application/json"
+      json_params = JSON.parse(request.body.read)
+      params.merge!(json_params)
+    end
+
+    well_ids = params[:well_ids] || params["well_ids"]
+    stock_solution_id = params[:stock_solution_id] || params["stock_solution_id"]
+    volume_with_unit = params[:volume_with_unit] || params["volume_with_unit"]
+
+    unless well_ids.is_a?(Array) && well_ids.any?
+      render json: { status: "error", message: "No wells selected" }, status: 400
+      return
+    end
+    unless stock_solution_id.present?
+      render json: { status: "error", message: "No stock solution selected" }, status: 400
+      return
+    end
+
+    stock_solution = StockSolution.find_by(id: stock_solution_id)
+    unless stock_solution
+      render json: { status: "error", message: "Stock solution not found" }, status: 404
+      return
+    end
+
+    success_count = 0
+    error_wells = []
+    well_ids.each do |well_id|
+      well = Well.find_by(id: well_id)
+      if well.nil?
+        error_wells << well_id
+        next
+      end
+      existing_content = well.well_contents.find_by(stock_solution: stock_solution)
+      if existing_content
+        error_wells << well_id
+        next
+      end
+      well_content = well.well_contents.build(stock_solution: stock_solution)
+      well_content.volume_with_unit = volume_with_unit if volume_with_unit.present?
+      if well_content.save
+        success_count += 1
+      else
+        error_wells << well_id
+      end
+    end
+
+    if success_count > 0
+      msg = "Stock solution added to #{success_count} well(s)."
+      msg += " Failed for wells: #{error_wells.join(", ")}" if error_wells.any?
+      render json: { status: "success", message: msg }
+    else
+      render json: { status: "error", message: "No wells updated. Failed for wells: #{error_wells.join(", ")}" }, status: 422
+    end
+  rescue JSON::ParserError
+    render json: { status: "error", message: "Invalid JSON" }, status: 400
+  rescue => e
+    Rails.logger.error "Error in wells#bulk_add_content: #{e.message}"
+    render json: { status: "error", message: "Error updating wells" }, status: 500
+  end
+
   # PATCH/PUT /wells/1 or /wells/1.json
   def update
     respond_to do |format|

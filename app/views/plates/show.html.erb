@@ -66,8 +66,31 @@
   <button id="editMultipleWellsBtn" class="btn btn-outline-primary btn-sm d-none" disabled>Edit multiple wells</button>
 </div>
 <div class="d-inline-block border rounded p-2 shadow-sm" style="background: #f8f9fa;">
-  <div class="d-grid" style="grid-template-columns: repeat(<%= @columns %>, 80px); gap: 8px;">
+  <div id="well-grid-container">
+    <div class="d-grid" style="grid-template-columns: 40px repeat(<%= @columns %>, 80px); gap: 8px;">
+      <div>
+      <!-- Subwell header buttons (copied from well A1) -->
+      <% wells_in_a1 = @wells.select { |w| w.well_row == 1 && w.well_column == 1 } %>
+      <% wells_in_a1.sort_by(&:subwell).each do |well| %>
+        <button type="button" class="btn btn-outline-secondary btn-sm subwell-header-btn p-1"
+          data-subwell="<%= well.subwell %>" disabled>
+          <%= well.subwell %>
+        </button>
+      <% end %>
+      </div>
+      
+
+      <!-- Column header buttons -->
+      <% (1..@columns).each do |col| %>
+        <button type="button" class="btn btn-outline-secondary btn-sm col-header-btn" data-col="<%= col %>" disabled>
+          <%= col %>
+        </button>
+      <% end %>
     <% (1..@rows).each do |row| %>
+            <!-- Row header button -->
+        <button type="button" class="btn btn-outline-secondary btn-sm row-header-btn" data-row="<%= row %>" disabled>
+          <%= ('A'.ord + row - 1).chr %>
+        </button>
       <% (1..@columns).each do |col| %>
         <% wells_in_position = @wells.select { |w| w.well_row == row && w.well_column == col } %>
         <div class="well-position border rounded p-1" style="background: white; min-height: 80px;">
@@ -95,6 +118,9 @@
                   style="background-color: <%= bg_color %>; color: <%= text_color %>; height: 25px; font-size: 9px;"
                   data-well-id="<%= well.id %>"
                   data-well-label="<%= well.well_label_with_subwell %>"
+                  data-col="<%= well.well_column %>"
+                  data-row="<%= well.well_row %>"
+                  data-subwell="<%= well.subwell %>"
                   title="<%= well.well_label_with_subwell %>"
                   <%= raw 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>
                   <%= well.subwell %>
@@ -134,6 +160,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function setHeaderButtonsState(enabled) {
+    document.querySelectorAll('.row-header-btn, .col-header-btn, .subwell-header-btn').forEach(btn => {
+      btn.disabled = !enabled;
+    });
+  }
+
   selectModeSwitch.addEventListener('change', (e) => {
     selectMode = e.target.checked;
     selectedWells.clear();
@@ -142,11 +174,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (selectMode) {
         btn.removeAttribute('data-bs-toggle');
         btn.removeAttribute('data-bs-target');
+        
       } else {
         btn.setAttribute('data-bs-toggle', 'modal');
         btn.setAttribute('data-bs-target', '#wellImagesModal');
       }
     });
+    setHeaderButtonsState(selectMode);
     updateEditButton();
   });
 
@@ -171,23 +205,177 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Row/Column/Subwell header selection logic using data-row, data-col, and data-subwell attributes
+  function selectRow(row) {
+    let allSelected = true;
+    wellButtons.forEach(btn => {
+      if (btn.getAttribute('data-row') == row) {
+        const wellId = btn.getAttribute('data-well-id');
+        if (!selectedWells.has(wellId)) {
+          allSelected = false;
+        }
+      }
+    });
+
+    if (allSelected) {
+      // Deselect all wells in the row
+      wellButtons.forEach(btn => {
+        if (btn.getAttribute('data-row') == row) {
+          const wellId = btn.getAttribute('data-well-id');
+          selectedWells.delete(wellId);
+          btn.classList.remove('border-info', 'shadow');
+        }
+      });
+    } else {
+      // Select all wells in the row
+      wellButtons.forEach(btn => {
+        if (btn.getAttribute('data-row') == row) {
+          const wellId = btn.getAttribute('data-well-id');
+          if (!selectedWells.has(wellId)) {
+            selectedWells.add(wellId);
+            btn.classList.add('border-info', 'shadow');
+          }
+        }
+      });
+    }
+    updateEditButton();
+  }
+
+  function selectColumn(col) {
+    let allSelected = true;
+    wellButtons.forEach(btn => {
+      if (btn.getAttribute('data-col') == col) {
+        const wellId = btn.getAttribute('data-well-id');
+        if (!selectedWells.has(wellId)) {
+          allSelected = false;
+        }
+      }
+    });
+
+    if (allSelected) {
+      // Deselect all wells in the column
+      wellButtons.forEach(btn => {
+        if (btn.getAttribute('data-col') == col) {
+          const wellId = btn.getAttribute('data-well-id');
+          selectedWells.delete(wellId);
+          btn.classList.remove('border-info', 'shadow');
+        }
+      });
+    } else {
+      // Select all wells in the column
+      wellButtons.forEach(btn => {
+        if (btn.getAttribute('data-col') == col) {
+          const wellId = btn.getAttribute('data-well-id');
+          if (!selectedWells.has(wellId)) {
+            selectedWells.add(wellId);
+            btn.classList.add('border-info', 'shadow');
+          }
+        }
+      });
+    }
+    updateEditButton();
+  }
+
+  function selectSubwell(subwell) {
+    let allSelected = true;
+    wellButtons.forEach(btn => {
+      if (btn.getAttribute('data-subwell') == subwell) {
+        const wellId = btn.getAttribute('data-well-id');
+        if (!selectedWells.has(wellId)) {
+          allSelected = false;
+        }
+      }
+    });
+
+    if (allSelected) {
+      // Deselect all wells in the subwell
+      wellButtons.forEach(btn => {
+        if (btn.getAttribute('data-subwell') == subwell) {
+          const wellId = btn.getAttribute('data-well-id');
+          selectedWells.delete(wellId);
+          btn.classList.remove('border-info', 'shadow');
+        }
+      });
+    } else {
+      // Select all wells in the subwell
+      wellButtons.forEach(btn => {
+        if (btn.getAttribute('data-subwell') == subwell) {
+          const wellId = btn.getAttribute('data-well-id');
+          if (!selectedWells.has(wellId)) {
+            selectedWells.add(wellId);
+            btn.classList.add('border-info', 'shadow');
+          }
+        }
+      });
+    }
+    updateEditButton();
+  }
+
+  document.querySelectorAll('.row-header-btn').forEach(btn => {
+    btn.addEventListener('click', function(event) {
+      if (selectMode) {
+        event.preventDefault();
+        const row = this.getAttribute('data-row');
+        selectRow(row);
+      }
+    });
+  });
+
+  document.querySelectorAll('.col-header-btn').forEach(btn => {
+    btn.addEventListener('click', function(event) {
+      if (selectMode) {
+        event.preventDefault();
+        const col = this.getAttribute('data-col');
+        selectColumn(col);
+      }
+    });
+  });
+
+  document.querySelectorAll('.subwell-header-btn').forEach(btn => {
+    btn.addEventListener('click', function(event) {
+      if (selectMode) {
+        event.preventDefault();
+        const subwell = this.getAttribute('data-subwell');
+        selectSubwell(subwell);
+      }
+    });
+  });
+
   editMultipleWellsBtn.addEventListener('click', function() {
     if (selectedWells.size === 0) return;
-    // Open a modal or redirect to a bulk edit page with selected well IDs
-    // For now, show a simple modal with selected wells
+    // Bulk edit modal for multiple wells, reusing original modal's content (stock solution tab only)
     const wellIds = Array.from(selectedWells);
     const modalHtml = `
       <div class="modal fade" id="editMultipleWellsModal" tabindex="-1" aria-labelledby="editMultipleWellsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title" id="editMultipleWellsModalLabel">Edit Multiple Wells</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-              <p>Selected wells: <strong>${wellIds.join(', ')}</strong></p>
-              <p>Bulk editing stock solutions for selected wells is not yet implemented.</p>
-              <!-- TODO: Add bulk stock solution form here -->
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+              <div class="tab-content mt-3" id="bulkWellTabContent">
+                <div class="tab-pane fade show active" id="bulk-content" role="tabpanel" aria-labelledby="bulk-content-tab">
+                  <form id="bulkStockSolutionForm">
+                    <div class="mb-3">
+                      <div class="row">
+                        <div class="col-md-8">
+                          <label for="bulkStockSolutionSearch" class="form-label">Stock Solution</label>
+                          <input type="text" class="form-control" id="bulkStockSolutionSearch" placeholder="Search stock solution..." autocomplete="off">
+                          <input type="hidden" id="bulkStockSolutionId">
+                          <div id="bulkStockSolutionResults" class="dropdown-menu" style="max-height: 200px;overflow-y: auto;"></div>
+                        </div>
+                        <div class="col-md-4">
+                          <label for="bulkVolumeAmountInput" class="form-label">Volume with unit</label>
+                          <input type="text" class="form-control" id="bulkVolumeAmountInput" placeholder="e.g. 50 μL">
+                        </div>
+                      </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add to selected wells</button>
+                  </form>
+                  <div id="bulkContentMessages" class="mt-2"></div>
+                </div>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -200,8 +388,111 @@ document.addEventListener('DOMContentLoaded', () => {
     const existingModal = document.getElementById('editMultipleWellsModal');
     if (existingModal) existingModal.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('editMultipleWellsModal'));
+    const modalEl = document.getElementById('editMultipleWellsModal');
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
+
+    // Wait for modal to be fully shown before attaching event listeners
+    modalEl.addEventListener('shown.bs.modal', function() {
+      const bulkSearchInput = document.getElementById('bulkStockSolutionSearch');
+      const bulkResultsDiv = document.getElementById('bulkStockSolutionResults');
+      const bulkForm = document.getElementById('bulkStockSolutionForm');
+      const bulkContentMessages = document.getElementById('bulkContentMessages');
+
+      if (!bulkSearchInput || !bulkResultsDiv || !bulkForm) return;
+
+      bulkSearchInput.addEventListener('input', function() {
+        const query = bulkSearchInput.value.trim();
+        if (query.length < 2) {
+          bulkResultsDiv.classList.remove('show');
+          bulkResultsDiv.classList.add('d-none');
+          return;
+        }
+        fetch(`/stock_solutions/search?q=${encodeURIComponent(query)}`, {
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.length === 0) {
+            bulkResultsDiv.innerHTML = '<div class="dropdown-item text-muted">No stock solutions found</div>';
+          } else {
+            bulkResultsDiv.innerHTML = data.map(solution => 
+              `<button type="button" class="dropdown-item" 
+                       data-solution-id="${solution.id}" 
+                       data-solution-name="${solution.display_name}">
+                <strong>${solution.display_name}</strong>
+                ${solution.component_summary ? `<br><small class=\"text-muted\">${solution.component_summary}</small>` : ''}
+              </button>`
+            ).join('');
+          }
+          bulkResultsDiv.classList.remove('d-none');
+          bulkResultsDiv.classList.add('show');
+
+        });
+      });
+      bulkResultsDiv.addEventListener('click', function(event) {
+        const target = event.target.closest('.dropdown-item');
+        if (target && target.dataset.solutionId) {
+          document.getElementById('bulkStockSolutionId').value = target.dataset.solutionId;
+          bulkSearchInput.value = target.dataset.solutionName;
+          bulkResultsDiv.classList.remove('show');
+          bulkResultsDiv.classList.add('d-none');
+        }
+      });
+      // Hide dropdown on blur
+      bulkSearchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+          bulkResultsDiv.classList.remove('show');
+          bulkResultsDiv.classList.add('d-none');
+        }, 200);
+      });
+
+      bulkForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const stockSolutionId = document.getElementById('bulkStockSolutionId').value;
+        const volumeWithUnit = document.getElementById('bulkVolumeAmountInput').value.trim();
+        if (!stockSolutionId) {
+          bulkContentMessages.innerHTML = '<div class="alert alert-danger">Please select a stock solution</div>';
+          return;
+        }
+        if (!volumeWithUnit) {
+          bulkContentMessages.innerHTML = '<div class="alert alert-danger">Please enter a volume with unit (e.g., 50 μL)</div>';
+          return;
+        }
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (!csrfToken) {
+          bulkContentMessages.innerHTML = '<div class="alert alert-danger">CSRF token not found</div>';
+          return;
+        }
+        fetch('/wells/bulk_add_content', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-Token': csrfToken.getAttribute('content')
+          },
+          body: JSON.stringify({
+            well_ids: wellIds,
+            stock_solution_id: stockSolutionId,
+            volume_with_unit: volumeWithUnit
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            bulkContentMessages.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+          } else {
+            bulkContentMessages.innerHTML = `<div class="alert alert-danger">${data.message || 'Bulk add failed'}</div>`;
+          }
+        })
+        .catch(error => {
+          bulkContentMessages.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        });
+      });
+    });
   });
 });
 </script>
@@ -830,3 +1121,11 @@ function showMessage(wellId, message, type) {
   }, 3000)
 }
 </script>
+
+<style>
+  .well-select-btn.border-info {
+    border-width: 3px !important;
+    box-shadow: 0 0 0 3px #0dcaf0 !important;
+    z-index: 2;
+  }
+</style>

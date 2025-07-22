@@ -24,6 +24,9 @@ Rails.application.routes.draw do
       patch :update_content
       delete "content/:content_id", to: "wells#remove_content", as: "remove_content"
     end
+    collection do
+      post :bulk_add_content
+    end
     resources :images, except: [ :index ] do
       resources :point_of_interests, except: [ :new, :edit ]
     end
