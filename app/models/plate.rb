@@ -8,7 +8,7 @@ class Plate < ApplicationRecord
     validates :barcode, uniqueness: true
     validates :name, length: { maximum: 255 }, allow_blank: true
     before_validation :generate_barcode_if_blank
-    after_create :create_wells_from_attributes
+    after_create :create_wells_from_prototype_or_attributes
 
     attr_accessor :plate_rows, :plate_columns, :plate_subwells_per_well
 
@@ -79,6 +79,7 @@ class Plate < ApplicationRecord
         wells.maximum(:subwell) || 1
     end
 
+
     private
 
     def generate_barcode_if_blank
@@ -112,6 +113,32 @@ class Plate < ApplicationRecord
         end
         # Use insert_all for bulk insert
         Well.insert_all(wells_to_create)
+    end
+
+    def create_wells_from_prototype!(prototype)
+        wells_to_create = prototype.prototype_wells.map do |pw|
+            {
+                plate_id: id,
+                well_row: pw.well_row,
+                well_column: pw.well_column,
+                subwell: pw.subwell,
+                x_mm: pw.x_mm,
+                y_mm: pw.y_mm,
+                z_mm: pw.z_mm
+            }
+        end
+        Well.insert_all(wells_to_create) if wells_to_create.any?
+    end
+
+    def create_wells_from_prototype_or_attributes
+        if plate_prototype_id.present?
+            prototype = PlatePrototype.find_by(id: plate_prototype_id)
+            if prototype
+                create_wells_from_prototype!(prototype)
+                return
+            end
+        end
+        create_wells_from_attributes
     end
 
     def create_wells_from_attributes

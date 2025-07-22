@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  plate_prototype: one
+  well_row: 1
+  well_column: 1
+  subwell: 1
+  x_mm: 9.99
+  y_mm: 9.99
+  z_mm: 9.99
+
+two:
+  plate_prototype: two
+  well_row: 1
+  well_column: 1
+  subwell: 1
+  x_mm: 9.99
+  y_mm: 9.99
+  z_mm: 9.99

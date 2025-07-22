@@ -59,7 +59,7 @@ module Api::V1
     end
 
     def well_params
-      params.require(:well).permit(:plate_id, :well_row, :well_column)
+      params.require(:well).permit(:plate_id, :well_row, :well_column, :subwell, :x_mm, :y_mm, :z_mm)
     end
 
     def well_json(well, include_details: false)
@@ -68,7 +68,11 @@ module Api::V1
         well_row: well.well_row,
         well_column: well.well_column,
         position: well.well_label,
-        plate_barcode: well.plate.barcode
+        plate_barcode: well.plate.barcode,
+        x_mm: well.x_mm,
+        y_mm: well.y_mm,
+        z_mm: well.z_mm,
+        has_coordinates: well.has_coordinates?
       }
 
       if include_details

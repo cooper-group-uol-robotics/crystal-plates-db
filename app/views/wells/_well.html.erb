@@ -17,4 +17,16 @@
     <% end %>
   </p>
 
+  <% if well.has_coordinates? %>
+    <p>
+      <strong>Coordinates:</strong>
+      <%= well.coordinates_formatted %>
+    </p>
+  <% else %>
+    <p>
+      <strong>Coordinates:</strong>
+      <span class="text-muted">Not set</span>
+    </p>
+  <% end %>
+
 </div>

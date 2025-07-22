@@ -32,6 +32,21 @@
   </div>
 
   <div>
+    <%= form.label :x_mm, "X Coordinate (mm)", style: "display: block" %>
+    <%= form.number_field :x_mm, step: 0.0001, placeholder: "e.g. 12.5000" %>
+  </div>
+
+  <div>
+    <%= form.label :y_mm, "Y Coordinate (mm)", style: "display: block" %>
+    <%= form.number_field :y_mm, step: 0.0001, placeholder: "e.g. 8.7500" %>
+  </div>
+
+  <div>
+    <%= form.label :z_mm, "Z Coordinate (mm)", style: "display: block" %>
+    <%= form.number_field :z_mm, step: 0.0001, placeholder: "e.g. 1.0000" %>
+  </div>
+
+  <div>
     <%= form.submit %>
   </div>
 <% end %>

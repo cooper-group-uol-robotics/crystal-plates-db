@@ -24,7 +24,19 @@
     <div class="form-text">Optional descriptive name to help identify this plate</div>
   </div>
 
+
   <div class="mb-4">
+    <label class="form-label fw-bold">Plate Prototype</label>
+    <select class="form-select" id="plate_prototype_id" name="plate[plate_prototype_id]">
+      <option value="">Select a prototype (optional)...</option>
+      <% PlatePrototype.all.each do |prototype| %>
+        <option value="<%= prototype.id %>"><%= prototype.name %></option>
+      <% end %>
+    </select>
+    <div class="form-text">Choose a plate type to auto-populate wells and coordinates. Leave blank for manual dimensions.</div>
+  </div>
+
+  <div class="mb-4" id="dimensions_section">
     <label class="form-label fw-bold">Plate Dimensions</label>
     <% if plate.persisted? %>
       <div class="alert alert-info">
@@ -147,42 +159,52 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // Location logic
       const carouselRadio = document.getElementById('carousel_location');
       const specialRadio = document.getElementById('special_location');
       const carouselFields = document.getElementById('carousel_fields');
       const specialFields = document.getElementById('special_fields');
       const carouselInputs = carouselFields.querySelectorAll('input');
       const specialInputs = specialFields.querySelectorAll('select');
-      
+
       function toggleFields() {
         if (carouselRadio.checked) {
           carouselFields.classList.remove('d-none');
           specialFields.classList.add('d-none');
-          
-          // Enable carousel inputs and disable special inputs
           carouselInputs.forEach(input => input.disabled = false);
           specialInputs.forEach(input => input.disabled = true);
         } else {
-          // Default to special location (either explicitly checked or as fallback)
           carouselFields.classList.add('d-none');
           specialFields.classList.remove('d-none');
-          
-          // If neither is checked, select special location
           if (!specialRadio.checked) {
             specialRadio.checked = true;
           }
-          
-          // Disable carousel inputs and enable special inputs
           carouselInputs.forEach(input => input.disabled = true);
           specialInputs.forEach(input => input.disabled = false);
         }
       }
-      
+
       carouselRadio.addEventListener('change', toggleFields);
       specialRadio.addEventListener('change', toggleFields);
-      
-      // Initialize on page load
       toggleFields();
+
+      // Prototype logic
+      const prototypeSelect = document.getElementById('plate_prototype_id');
+      const dimensionsSection = document.getElementById('dimensions_section');
+      const dimensionInputs = dimensionsSection.querySelectorAll('input');
+
+      function toggleDimensions() {
+        if (prototypeSelect.value) {
+          dimensionsSection.classList.add('opacity-50');
+          dimensionInputs.forEach(input => input.disabled = true);
+        } else {
+          dimensionsSection.classList.remove('opacity-50');
+          dimensionInputs.forEach(input => input.disabled = false);
+        }
+      }
+
+      prototypeSelect.addEventListener('change', toggleDimensions);
+      toggleDimensions();
     });
   </script>
 

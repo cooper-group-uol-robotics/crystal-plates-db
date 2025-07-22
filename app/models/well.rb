@@ -7,6 +7,7 @@ class Well < ApplicationRecord
   validates :well_row, :well_column, presence: true
   validates :subwell, presence: true, numericality: { greater_than: 0 }
   validates :subwell, uniqueness: { scope: [ :plate_id, :well_row, :well_column ] }
+  validates :x_mm, :y_mm, :z_mm, numericality: true, allow_nil: true
 
   scope :in_well, ->(row, column) { where(well_row: row, well_column: column) }
   scope :subwell_number, ->(number) { where(subwell: number) }
@@ -89,5 +90,26 @@ class Well < ApplicationRecord
   # Default subwell representation - can be customized
   def full_label
     well_label_with_subwell
+  end
+
+  # Coordinate methods
+  def has_coordinates?
+    x_mm.present? && y_mm.present? && z_mm.present?
+  end
+
+  def coordinates
+    return nil unless has_coordinates?
+    { x: x_mm, y: y_mm, z: z_mm }
+  end
+
+  def coordinates_formatted
+    return "No coordinates" unless has_coordinates?
+    "X: #{x_mm}mm, Y: #{y_mm}mm, Z: #{z_mm}mm"
+  end
+
+  def set_coordinates(x:, y:, z:)
+    self.x_mm = x
+    self.y_mm = y
+    self.z_mm = z
   end
 end

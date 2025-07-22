@@ -289,6 +289,10 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
     "well_label": "A1",
     "well_label_with_subwell": "A1-1",
     "plate_barcode": "PLATE001",
+    "x_mm": 12.5000,
+    "y_mm": 8.7500,
+    "z_mm": 1.0000,
+    "has_coordinates": true,
     "well_contents": [
       {
         "id": 1,
@@ -317,10 +321,15 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
     "well": {
       "plate_id": 123,
       "well_row": 1,
-      "well_column": 1
+      "well_column": 1,
+      "subwell": 1,
+      "x_mm": 12.5000,
+      "y_mm": 8.7500,
+      "z_mm": 1.0000
     }
   }
   ```
+  **Note**: `x_mm`, `y_mm`, `z_mm` are optional coordinate fields in millimeters with up to 4 decimal places precision.
 - **Response**: Created well object
 
 ### Update Well

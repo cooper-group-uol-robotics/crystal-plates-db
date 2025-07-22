@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_21_164950) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_22_121500) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -91,6 +91,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_21_164950) do
     t.index ["plate_id"], name: "index_plate_locations_on_plate_id"
   end
 
+  create_table "plate_prototypes", force: :cascade do |t|
+    t.string "name"
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "plates", force: :cascade do |t|
     t.string "barcode"
     t.datetime "created_at", null: false
@@ -100,8 +107,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_21_164950) do
     t.integer "subwells_per_well", default: 1, null: false
     t.datetime "deleted_at"
     t.string "name"
+    t.integer "plate_prototype_id"
     t.index ["barcode"], name: "index_plates_on_barcode", unique: true
     t.index ["deleted_at"], name: "index_plates_on_deleted_at"
+    t.index ["plate_prototype_id"], name: "index_plates_on_plate_prototype_id"
     t.check_constraint "columns > 0 AND columns <= 48", name: "plates_columns_range"
     t.check_constraint "rows > 0 AND rows <= 26", name: "plates_rows_range"
     t.check_constraint "subwells_per_well > 0 AND subwells_per_well <= 16", name: "plates_subwells_range"
@@ -120,6 +129,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_21_164950) do
     t.index ["image_id"], name: "index_point_of_interests_on_image_id"
     t.index ["marked_at"], name: "index_point_of_interests_on_marked_at"
     t.index ["point_type"], name: "index_point_of_interests_on_point_type"
+  end
+
+  create_table "prototype_wells", force: :cascade do |t|
+    t.integer "plate_prototype_id", null: false
+    t.integer "well_row"
+    t.integer "well_column"
+    t.integer "subwell"
+    t.decimal "x_mm"
+    t.decimal "y_mm"
+    t.decimal "z_mm"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["plate_prototype_id"], name: "index_prototype_wells_on_plate_prototype_id"
   end
 
   create_table "stock_solution_components", force: :cascade do |t|
@@ -167,6 +189,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_21_164950) do
     t.integer "subwell"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "x_mm", precision: 10, scale: 4
+    t.decimal "y_mm", precision: 10, scale: 4
+    t.decimal "z_mm", precision: 10, scale: 4
     t.index ["plate_id"], name: "index_wells_on_plate_id"
   end
 
@@ -175,7 +200,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_21_164950) do
   add_foreign_key "images", "wells"
   add_foreign_key "plate_locations", "locations"
   add_foreign_key "plate_locations", "plates"
+  add_foreign_key "plates", "plate_prototypes"
   add_foreign_key "point_of_interests", "images"
+  add_foreign_key "prototype_wells", "plate_prototypes"
   add_foreign_key "stock_solution_components", "chemicals"
   add_foreign_key "stock_solution_components", "stock_solutions"
   add_foreign_key "stock_solution_components", "units"

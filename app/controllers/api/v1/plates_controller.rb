@@ -17,6 +17,9 @@ module Api::V1
     def create
       plate = Plate.new(plate_params)
 
+      # Accept plate_prototype_id from params (for API)
+      plate.plate_prototype_id = params[:plate_prototype_id] if params[:plate_prototype_id].present?
+
       if plate.save
         render_success(plate_json(plate, include_wells: true), status: :created, message: "Plate created successfully")
       else
@@ -86,6 +89,10 @@ module Api::V1
     end
 
     private
+
+    def plate_params
+      params.require(:plate).permit(:barcode, :name)
+    end
 
     def set_plate
       @plate = Plate.find_by!(barcode: params[:barcode])

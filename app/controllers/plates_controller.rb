@@ -208,11 +208,12 @@ class PlatesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def plate_params
-      params.expect(plate: [ :barcode, :name, :location_id ]).merge(
-        plate_rows: params[:plate_rows],
-        plate_columns: params[:plate_columns],
-        plate_subwells_per_well: params[:plate_subwells_per_well]
-      )
+      params.require(:plate).permit(:barcode, :name, :location_id, :plate_prototype_id)
+        .merge(
+          plate_rows: params[:plate_rows],
+          plate_columns: params[:plate_columns],
+          plate_subwells_per_well: params[:plate_subwells_per_well]
+        )
     end
 
     def find_or_create_location_from_params

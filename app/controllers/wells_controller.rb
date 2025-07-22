@@ -153,6 +153,6 @@ class WellsController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def well_params
-      params.require(:well).permit(:plate_id, :well_row, :well_column, :subwell)
+      params.require(:well).permit(:plate_id, :well_row, :well_column, :subwell, :x_mm, :y_mm, :z_mm)
     end
 end
