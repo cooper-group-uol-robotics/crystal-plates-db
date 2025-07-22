@@ -48,6 +48,56 @@
 </style>
 
 <div class="container">
+<%# Navigation logic for keyboard shortcuts %>
+<% wells = @well.plate.wells.includes(:images).order(:well_row, :well_column, :subwell) %>
+<% well_index = wells.index(@well) %>
+
+<%# Find previous/next wells that have images %>
+<% prev_well = nil %>
+<% if well_index && well_index > 0 %>
+  <% (well_index - 1).downto(0) do |i| %>
+    <% if wells[i].images.any? %>
+      <% prev_well = wells[i] %>
+      <% break %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% next_well = nil %>
+<% if well_index && well_index < wells.size - 1 %>
+  <% ((well_index + 1)...wells.size).each do |i| %>
+    <% if wells[i].images.any? %>
+      <% next_well = wells[i] %>
+      <% break %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% images = @well.images.order(captured_at: :asc, created_at: :asc) %>
+<% image_index = images.index(@image) %>
+<% prev_image = images[image_index - 1] if image_index && image_index > 0 %>
+<% next_image = images[image_index + 1] if image_index && image_index < images.size - 1 %>
+
+<%# Debug output %>
+<!-- Debug: Total wells: <%= wells.size %>, Current well index: <%= well_index %> -->
+<!-- Debug: Prev well: <%= prev_well ? prev_well.well_label : '' %>, Next well: <%= next_well ? next_well.well_label : '' %> -->
+<!-- Debug: Total images: <%= images.size %>, Current image index: <%= image_index %> -->
+<!-- Debug: Prev image: <%= prev_image ? prev_image.id : '' %>, Next image: <%= next_image ? next_image.id : '' %> -->
+
+<%# URLs for navigation %>
+<% prevWellUrl = prev_well ? well_image_path(prev_well, prev_well.images.first) : nil %>
+<% nextWellUrl = next_well ? well_image_path(next_well, next_well.images.first) : nil %>
+<% prevImageUrl = prev_image ? well_image_path(@well, prev_image) : nil %>
+<% nextImageUrl = next_image ? well_image_path(@well, next_image) : nil %>
+
+<script>
+window.imageNavigation = {
+  prevWellUrl: <%= raw(prevWellUrl.to_json) %>,
+  nextWellUrl: <%= raw(nextWellUrl.to_json) %>,
+  prevImageUrl: <%= raw(prevImageUrl.to_json) %>,
+  nextImageUrl: <%= raw(nextImageUrl.to_json) %>
+};
+</script>
   <div class="row">
     <div class="col-md-8">
       <div class="card">
@@ -540,5 +590,44 @@ document.addEventListener('DOMContentLoaded', function() {
   if (clickableImage) {
     window.viewer = new InteractiveImageViewer(clickableImage);
   }
+  
+  // Debug: log navigation object
+  console.log('window.imageNavigation:', window.imageNavigation);
+
+  // Keyboard navigation for wells and images
+  document.addEventListener('keydown', function(e) {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      e.preventDefault();
+      console.log('Arrow key pressed:', e.key);
+      const wellId = parseInt(clickableImage?.dataset.wellId);
+      const imageId = parseInt(clickableImage?.dataset.imageId);
+      if (!wellId || !imageId) {
+        console.warn('Missing wellId or imageId:', { wellId, imageId });
+        return;
+      }
+      function goTo(url) { window.location.href = url; }
+      const nav = window.imageNavigation;
+      if (!nav) {
+        console.warn('window.imageNavigation is missing');
+        return;
+      }
+      console.log('Navigation URLs:', nav);
+      if (e.key === 'ArrowLeft' && nav.prevWellUrl) {
+        console.log('Navigating to prevWellUrl:', nav.prevWellUrl);
+        goTo(nav.prevWellUrl);
+      } else if (e.key === 'ArrowRight' && nav.nextWellUrl) {
+        console.log('Navigating to nextWellUrl:', nav.nextWellUrl);
+        goTo(nav.nextWellUrl);
+      } else if (e.key === 'ArrowUp' && nav.prevImageUrl) {
+        console.log('Navigating to prevImageUrl:', nav.prevImageUrl);
+        goTo(nav.prevImageUrl);
+      } else if (e.key === 'ArrowDown' && nav.nextImageUrl) {
+        console.log('Navigating to nextImageUrl:', nav.nextImageUrl);
+        goTo(nav.nextImageUrl);
+      } else {
+        console.warn('No navigation URL for this key:', e.key);
+      }
+    }
+  });
 });
 </script>
