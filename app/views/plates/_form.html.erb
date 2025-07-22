@@ -28,10 +28,10 @@
   <div class="mb-4">
     <label class="form-label fw-bold">Plate Prototype</label>
     <select class="form-select" id="plate_prototype_id" name="plate[plate_prototype_id]" <%= plate.persisted? ? 'disabled' : '' %>>
-      <option value="">Select a prototype (optional)...</option>
       <% PlatePrototype.all.each do |prototype| %>
         <option value="<%= prototype.id %>" <%= (plate.plate_prototype_id == prototype.id || (!plate.persisted? && plate.plate_prototype_id.nil? && prototype.id == 1)) ? 'selected' : '' %>><%= prototype.name %></option>
       <% end %>
+      <option value="">Custom dimensions...</option>
     </select>
     <% if plate.persisted? %>
       <input type="hidden" name="plate[plate_prototype_id]" value="<%= plate.plate_prototype_id %>">
