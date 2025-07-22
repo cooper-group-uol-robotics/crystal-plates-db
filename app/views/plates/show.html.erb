@@ -96,7 +96,7 @@
                   data-well-id="<%= well.id %>"
                   data-well-label="<%= well.well_label_with_subwell %>"
                   title="<%= well.well_label_with_subwell %>"
-                  <%= 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>
+                  <%= raw 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>
                   <%= well.subwell %>
                 </button>
               <% end %>
@@ -139,6 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedWells.clear();
     wellButtons.forEach(btn => {
       btn.classList.remove('border-info', 'shadow');
+      if (selectMode) {
+        btn.removeAttribute('data-bs-toggle');
+        btn.removeAttribute('data-bs-target');
+      } else {
+        btn.setAttribute('data-bs-toggle', 'modal');
+        btn.setAttribute('data-bs-target', '#wellImagesModal');
+      }
     });
     updateEditButton();
   });
