@@ -5,7 +5,7 @@ module Api::V1
     # GET /api/v1/plates
     def index
       plates = Plate.includes(:wells, :plate_locations).all
-      render_success(plates.map { |plate| plate_json(plate) })
+      render_success(plates.map { |plate| plate_json(plate, include_wells: false, include_points_of_interest: false) })
     end
 
     # GET /api/v1/plates/:barcode
@@ -21,7 +21,7 @@ module Api::V1
       plate.plate_prototype_id = params[:plate_prototype_id] if params[:plate_prototype_id].present?
 
       if plate.save
-        render_success(plate_json(plate, include_wells: true), status: :created, message: "Plate created successfully")
+        render_success(plate_json(plate, include_wells: true, include_points_of_interest: false), status: :created, message: "Plate created successfully")
       else
         render_error("Failed to create plate", details: plate.errors.full_messages, status: :unprocessable_entity)
       end
@@ -30,7 +30,7 @@ module Api::V1
     # PUT/PATCH /api/v1/plates/:barcode
     def update
       if @plate.update(plate_params)
-        render_success(plate_json(@plate, include_wells: true), message: "Plate updated successfully")
+        render_success(plate_json(@plate, include_wells: true, include_points_of_interest: false), message: "Plate updated successfully")
       else
         render_error("Failed to update plate", details: @plate.errors.full_messages, status: :unprocessable_entity)
       end
@@ -137,7 +137,7 @@ module Api::V1
                 .recent
         result[:points_of_interest] = points.map { |point| point_json_for_plate(point) }
       else
-        result[:points_of_interest_count] = plate.points_of_interest.count
+        result[:points_of_interest_count] = plate.point_of_interests.count
       end
 
       result

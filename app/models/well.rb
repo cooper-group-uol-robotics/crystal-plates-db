@@ -3,6 +3,7 @@ class Well < ApplicationRecord
   has_many :well_contents, dependent: :destroy
   has_many :stock_solutions, through: :well_contents
   has_many :images, dependent: :destroy
+  has_many :point_of_interests, through: :images, dependent: :destroy
 
   validates :well_row, :well_column, presence: true
   validates :subwell, presence: true, numericality: { greater_than: 0 }
