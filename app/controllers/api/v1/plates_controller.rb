@@ -10,7 +10,7 @@ module Api::V1
 
     # GET /api/v1/plates/:barcode
     def show
-      render_success(plate_json(@plate, include_wells: true))
+      render_success(plate_json(@plate, include_wells: true, include_points_of_interest: true))
     end
 
     # POST /api/v1/plates
@@ -106,7 +106,7 @@ module Api::V1
       end
     end
 
-    def plate_json(plate, include_wells: false)
+    def plate_json(plate, include_wells: false, include_points_of_interest: false)
       result = {
         barcode: plate.barcode,
         name: plate.name,
@@ -117,18 +117,27 @@ module Api::V1
         columns: plate.columns,
         current_location: plate.current_location ? location_json(plate.current_location) : nil
       }
-
       if include_wells
         result[:wells] = plate.wells.map do |well|
           {
-            id: well.id,
-            well_row: well.well_row,
-            well_column: well.well_column,
-            position: "#{('A'.ord + well.well_row - 1).chr}#{well.well_column}"
+        id: well.id,
+        well_row: well.well_row,
+        well_column: well.well_column,
+        position: "#{('A'.ord + well.well_row - 1).chr}#{well.well_column}"
           }
         end
       else
         result[:wells_count] = plate.wells.count
+      end
+
+      if include_points_of_interest
+        points = PointOfInterest.joins(image: { well: :plate })
+                .where(plates: { id: plate.id })
+                .includes(image: { well: :plate })
+                .recent
+        result[:points_of_interest] = points.map { |point| point_json_for_plate(point) }
+      else
+        result[:points_of_interest_count] = plate.points_of_interest.count
       end
 
       result
