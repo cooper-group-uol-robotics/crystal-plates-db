@@ -136,12 +136,11 @@ bundle exec rails test        # Test suite
 - `POST /api/v1/plates/:barcode/move_to_location` - Move plate
 
 ### Locations
-- `GET /api/v1/locations` - List all locations
+- `GET /api/v1/locations` - List all locations (with optional query parameters)
 - `POST /api/v1/locations` - Create location
 - `GET /api/v1/locations/:id` - Get location details
 - `PUT /api/v1/locations/:id` - Update location
 - `DELETE /api/v1/locations/:id` - Delete location
-- `GET /api/v1/locations/grid` - Get carousel grid
 
 ### Utilities
 - `GET /api/v1/health` - System health check

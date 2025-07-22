@@ -194,8 +194,17 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 
 ### List All Locations
 - **GET** `/api/v1/locations`
-- **Description**: Get all locations
+- **Description**: Get all locations with optional filtering
+- **Query Parameters**:
+  - `name` (string, optional): Filter by location name (partial match, case-insensitive)
+  - `carousel_position` (integer, optional): Filter by specific carousel position
+  - `hotel_position` (integer, optional): Filter by specific hotel position
 - **Response**: Array of location objects
+- **Example**: 
+  - `GET /api/v1/locations?name=storage` - Find locations with "storage" in the name
+  - `GET /api/v1/locations?carousel_position=5` - Find locations at carousel position 5
+  - `GET /api/v1/locations?hotel_position=10` - Find locations at hotel position 10
+  - `GET /api/v1/locations?carousel_position=5&hotel_position=10` - Find specific carousel location
 
 ### List Carousel Locations
 - **GET** `/api/v1/locations/carousel`
@@ -206,11 +215,6 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **GET** `/api/v1/locations/special`
 - **Description**: Get only special named locations
 - **Response**: Array of special location objects
-
-### Get Location Grid
-- **GET** `/api/v1/locations/grid`
-- **Description**: Get the carousel grid layout
-- **Response**: 2D grid array with location and occupancy data
 
 ### Get Location Details
 - **GET** `/api/v1/locations/:id`

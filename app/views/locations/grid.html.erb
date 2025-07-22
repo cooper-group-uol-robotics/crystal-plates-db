@@ -54,9 +54,9 @@
                       <% if cell_data[:location] %>
                         <%= link_to location_path(cell_data[:location]), class: "cell-link" do %>
                             <% if cell_data[:occupied] %>
-                            <small class="px-1 py-1 d-inline-block"><%= cell_data[:plate].barcode %></small>
+                            <i class="bi bi-square-fill px-3"></i>
                           <% else %>
-                            <i class="bi bi-square"></i>
+                            <i class="bi bi-square px-3"></i>
                           <% end %>
                         <% end %>
                       <% else %>

@@ -5,6 +5,23 @@ module Api::V1
     # GET /api/v1/locations
     def index
       locations = Location.includes(:plates, :plate_locations).all
+
+      # Apply search filters
+      if params[:name].present?
+        locations = locations.where("name LIKE ?", "%#{params[:name]}%")
+      end
+
+      if params[:carousel_position].present?
+        locations = locations.where(carousel_position: params[:carousel_position])
+      end
+
+      if params[:hotel_position].present?
+        locations = locations.where(hotel_position: params[:hotel_position])
+      end
+
+      # Apply ordering
+      locations = locations.order(:name, :carousel_position, :hotel_position)
+
       render_success(
         locations.map do |location|
           data = location_json(location)
