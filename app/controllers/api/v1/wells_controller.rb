@@ -67,6 +67,7 @@ module Api::V1
         id: well.id,
         well_row: well.well_row,
         well_column: well.well_column,
+        subwell: well.subwell,
         position: well.well_label,
         plate_barcode: well.plate.barcode,
         x_mm: well.x_mm,
