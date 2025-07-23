@@ -98,33 +98,39 @@
             <div class="text-center mb-1" style="font-size: 10px; font-weight: bold;">
               <%= wells_in_position.first.well_label %>
             </div>
-            <div class="d-grid" style="grid-template-columns: repeat(<%= Math.sqrt(wells_in_position.length).ceil %>, 1fr); gap: 2px;">
+            <% # Calculate grid columns: 1 for 1-2, 2 for 3-4, 3 for 5-9 %>
+            <% grid_cols = case wells_in_position.length
+              when 1, 2 then 1
+              else Math.sqrt(wells_in_position.length).ceil
+              end
+            %>
+            <div class="d-grid" style="grid-template-columns: repeat(<%= grid_cols %>, 1fr); gap: 2px;">
               <% wells_in_position.sort_by(&:subwell).each do |well| %>
-                <% has_image = well.has_images? %>
-                <% has_content = well.has_content? %>
-                <% 
-                  if has_image
-                    bg_color = '#198754'  # Green - has images
-                    text_color = 'white'
-                  elsif has_content
-                    bg_color = '#ffc107'  # Yellow - has stock solutions but no images
-                    text_color = 'black'
-                  else
-                    bg_color = '#dc3545'  # Red - empty
-                    text_color = 'white'
-                  end
-                %>
-                <button type="button" class="btn btn-sm p-1 well-select-btn"
-                  style="background-color: <%= bg_color %>; color: <%= text_color %>; height: 25px; font-size: 9px;"
-                  data-well-id="<%= well.id %>"
-                  data-well-label="<%= well.well_label_with_subwell %>"
-                  data-col="<%= well.well_column %>"
-                  data-row="<%= well.well_row %>"
-                  data-subwell="<%= well.subwell %>"
-                  title="<%= well.well_label_with_subwell %>"
-                  <%= raw 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>
-                  <%= well.subwell %>
-                </button>
+              <% has_image = well.has_images? %>
+              <% has_content = well.has_content? %>
+              <% 
+                if has_image
+                bg_color = '#198754'  # Green - has images
+                text_color = 'white'
+                elsif has_content
+                bg_color = '#ffc107'  # Yellow - has stock solutions but no images
+                text_color = 'black'
+                else
+                bg_color = '#dc3545'  # Red - empty
+                text_color = 'white'
+                end
+              %>
+              <button type="button" class="btn btn-sm p-1 well-select-btn"
+                style="background-color: <%= bg_color %>; color: <%= text_color %>; height: 25px; font-size: 9px;"
+                data-well-id="<%= well.id %>"
+                data-well-label="<%= well.well_label_with_subwell %>"
+                data-col="<%= well.well_column %>"
+                data-row="<%= well.well_row %>"
+                data-subwell="<%= well.subwell %>"
+                title="<%= well.well_label_with_subwell %>"
+                <%= raw 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>
+                <%= well.subwell %>
+              </button>
               <% end %>
             </div>
           <% else %>
