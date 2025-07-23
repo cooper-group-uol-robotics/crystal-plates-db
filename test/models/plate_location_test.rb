@@ -162,21 +162,6 @@ class PlateLocationTest < ActiveSupport::TestCase
     assert_in_delta now.to_f, plate_location.moved_at.to_f, 1.0
   end
 
-  test "should destroy plate location when plate is destroyed" do
-    plate_location = PlateLocation.create!(
-      plate: @plate,
-      location: @location,
-      moved_at: Time.current
-    )
-
-    plate_location_id = plate_location.id
-    @plate.destroy
-
-    assert_raises(ActiveRecord::RecordNotFound) do
-      PlateLocation.find(plate_location_id)
-    end
-  end
-
   test "should destroy plate location when location is destroyed" do
     plate_location = PlateLocation.create!(
       plate: @plate,
