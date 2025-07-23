@@ -89,19 +89,13 @@
         </div>
       </div>
       
-      <div class="col-md-4">
+      <div class="col-md-4 mb-3">
         <label for="volumeAmountInput_<%= well.id %>" class="form-label">Volume</label>
         <input type="text" class="form-control" id="volumeAmountInput_<%= well.id %>" 
                placeholder="e.g., 50 μL">
       </div>
     </div>
-    
-    <div class="form-text mb-3">
-      Available units: 
-      <% units.each_with_index do |unit, index| %>
-        <span class="badge bg-secondary me-1"><%= unit.symbol %></span><%= index < units.size - 1 ? '' : '' %>
-      <% end %>
-    </div>
+  
     
     <button type="button" class="btn btn-primary" data-action="add-stock-solution" data-well-id="<%= well.id %>">
       Add Stock Solution

@@ -68,9 +68,14 @@
 <div class="d-inline-block border rounded p-2 shadow-sm" style="background: #f8f9fa;">
   <div id="well-grid-container">
     <div class="d-grid" style="grid-template-columns: 40px repeat(<%= @columns %>, 80px); gap: 8px;">
-      <div>
-      <!-- Subwell header buttons (copied from well A1) -->
       <% wells_in_a1 = @wells.select { |w| w.well_row == 1 && w.well_column == 1 } %>
+      <% subwell_selector_cols = case wells_in_a1.length
+        when 1, 2 then 1
+        else Math.sqrt(wells_in_a1.length).ceil
+        end
+      %>
+      <div class="d-grid" style="grid-template-columns: repeat(<%= subwell_selector_cols %>, 1fr); gap: 2px;">
+      <!-- Subwell header buttons (copied from well A1) -->
       <% wells_in_a1.sort_by(&:subwell).each do |well| %>
         <button type="button" class="btn btn-outline-secondary btn-sm subwell-header-btn p-1"
           data-subwell="<%= well.subwell %>" disabled>
@@ -364,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="tab-pane fade show active" id="bulk-content" role="tabpanel" aria-labelledby="bulk-content-tab">
                   <form id="bulkStockSolutionForm">
                     <div class="mb-3">
+                      <h6>Add Stock Solution</h6>
                       <div class="row">
                         <div class="col-md-8">
                           <label for="bulkStockSolutionSearch" class="form-label">Stock Solution</label>
@@ -1130,8 +1136,8 @@ function showMessage(wellId, message, type) {
 
 <style>
   .well-select-btn.border-info {
-    border-width: 3px !important;
-    box-shadow: 0 0 0 3px #0dcaf0 !important;
+    border-width: 2px !important;
+    box-shadow: 0 0 0 2px #0dcaf0 !important;
     z-index: 2;
   }
 </style>
