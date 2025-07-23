@@ -26,7 +26,7 @@ module Api::V1
         locations.map do |location|
           data = location_json(location)
           current_plate = location.current_plates.first
-          data[:current_plate_id] = current_plate&.id
+          data[:current_plate_barcode] = current_plate&.barcode
           data
         end
       )
