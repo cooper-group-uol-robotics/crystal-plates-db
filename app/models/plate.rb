@@ -1,9 +1,9 @@
 class Plate < ApplicationRecord
     acts_as_paranoid
 
-    has_many :wells, dependent: :destroy
+    has_many :wells
     has_many :point_of_interests, through: :wells
-    has_many :plate_locations, dependent: :destroy
+    has_many :plate_locations
     has_many :locations, through: :plate_locations
 
     validates :barcode, uniqueness: true
@@ -22,6 +22,12 @@ class Plate < ApplicationRecord
     scope :currently_at_location, ->(location) {
       with_current_location.where(plate_locations: { location_id: location.id })
     }
+
+    def really_destroy!
+        wells.each(&:really_destroy!)
+        plate_locations.each(&:really_destroy!)
+        super
+    end
 
     def current_location
         plate_locations.recent_first.first&.location
