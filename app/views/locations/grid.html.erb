@@ -35,7 +35,7 @@
               </div>
               
               <!-- Grid rows -->
-              <% @grid_dimensions[:hotel_range].each do |hotel| %>
+              <% @grid_dimensions[:hotel_range].reverse.each do |hotel| %>
                 <div class="grid-row">
                   <div class="grid-row-header">H<%= hotel %></div>
                   <% @grid_dimensions[:carousel_range].each do |carousel| %>
