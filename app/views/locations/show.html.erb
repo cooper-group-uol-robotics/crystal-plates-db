@@ -119,7 +119,11 @@
                   <small class="text-muted"><%= time_ago_in_words(movement.moved_at) %> ago</small>
                 </td>
                 <td>
-                  <%= link_to movement.plate.barcode, plate_path(movement.plate), class: "fw-bold text-decoration-none" %>
+                  <% if movement.plate.present? %>
+                    <%= link_to movement.plate.barcode, plate_path(movement.plate), class: "fw-bold text-decoration-none" %>
+                  <% else %>
+                    <span class="text-muted fst-italic">Plate deleted</span>
+                  <% end %>
                 </td>
                 <td>
                   <span class="badge bg-info">
