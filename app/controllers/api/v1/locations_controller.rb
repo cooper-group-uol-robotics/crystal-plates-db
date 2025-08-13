@@ -26,8 +26,9 @@ module Api::V1
       render_success(
         locations.map do |location|
           data = location_json(location)
-          current_plate = location.current_plates.first
-          data[:current_plate_barcode] = current_plate&.barcode
+          # Use cached current plate data to avoid additional queries
+          cached_plate = location.instance_variable_get(:@cached_current_plate)
+          data[:current_plate_barcode] = cached_plate&.barcode
           data
         end
       )
@@ -43,8 +44,9 @@ module Api::V1
       render_success(
         locations.map do |location|
           data = location_json(location)
-          current_plate = location.current_plates.first
-          data[:current_plate_barcode] = current_plate&.barcode
+          # Use cached current plate data to avoid additional queries
+          cached_plate = location.instance_variable_get(:@cached_current_plate)
+          data[:current_plate_barcode] = cached_plate&.barcode
           data
         end
       )
@@ -60,8 +62,9 @@ module Api::V1
       render_success(
         locations.map do |location|
           data = location_json(location)
-          current_plate = location.current_plates.first
-          data[:current_plate_barcode] = current_plate&.barcode
+          # Use cached current plate data to avoid additional queries
+          cached_plate = location.instance_variable_get(:@cached_current_plate)
+          data[:current_plate_barcode] = cached_plate&.barcode
           data
         end
       )
@@ -161,7 +164,14 @@ module Api::V1
       }
 
       if include_details
-        current_plates = location.current_plates
+        # Use cached current plate data if available, otherwise fall back to query
+        if location.instance_variable_defined?(:@cached_current_plate)
+          cached_plate = location.instance_variable_get(:@cached_current_plate)
+          current_plates = cached_plate ? [cached_plate] : []
+        else
+          current_plates = location.current_plates
+        end
+        
         result[:current_plates] = current_plates.map { |plate| plate_summary(plate) }
         result[:is_occupied] = current_plates.any?
         result[:plates_count] = current_plates.count
