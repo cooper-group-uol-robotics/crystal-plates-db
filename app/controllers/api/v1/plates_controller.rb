@@ -5,16 +5,16 @@ module Api::V1
     # GET /api/v1/plates
     def index
       plates = Plate.includes(:wells, :plate_locations)
-      
+
       # Filter by assignment status if requested
       if params[:assigned].present?
-        if params[:assigned] == 'true'
+        if params[:assigned] == "true"
           plates = plates.assigned
-        elsif params[:assigned] == 'false'
+        elsif params[:assigned] == "false"
           plates = plates.unassigned
         end
       end
-      
+
       render_success(plates.all.map { |plate| plate_json(plate, include_wells: false, include_points_of_interest: false) })
     end
 
@@ -61,7 +61,7 @@ module Api::V1
 
       begin
         @plate.move_to_location!(location)
-        
+
         if location
           render_success(
             {

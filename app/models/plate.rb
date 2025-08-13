@@ -38,7 +38,7 @@ class Plate < ApplicationRecord
       where(id: unassigned_plate_ids)
     }
 
-        # Scope to get plates that are currently assigned to any location
+    # Scope to get plates that are currently assigned to any location
     scope :assigned, -> {
       # Get plates that don't have unassigned as their latest location
       where.not(id: unassigned.pluck(:id))
@@ -54,11 +54,11 @@ class Plate < ApplicationRecord
       current_locations = PlateLocation
         .joins("INNER JOIN (#{latest_plate_location_ids.to_sql}) latest ON plate_locations.id = latest.latest_id")
         .left_joins(:location)
-        .select('plate_locations.plate_id, locations.id as location_id, locations.name as location_name, 
+        .select('plate_locations.plate_id, locations.id as location_id, locations.name as location_name,
                  locations.carousel_position, locations.hotel_position')
 
       joins("LEFT JOIN (#{current_locations.to_sql}) current_locations ON plates.id = current_locations.plate_id")
-        .select('plates.*, current_locations.location_id as current_location_id, 
+        .select('plates.*, current_locations.location_id as current_location_id,
                  current_locations.location_name as current_location_name,
                  current_locations.carousel_position as current_location_carousel_position,
                  current_locations.hotel_position as current_location_hotel_position')

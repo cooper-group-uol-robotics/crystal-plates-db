@@ -21,7 +21,7 @@ module Api::V1
       end
 
       # Apply ordering
-      locations = locations.sort_by { |loc| [loc.name || "", loc.carousel_position || 0, loc.hotel_position || 0] }
+      locations = locations.sort_by { |loc| [ loc.name || "", loc.carousel_position || 0, loc.hotel_position || 0 ] }
 
       render_success(
         locations.map do |location|
@@ -39,7 +39,7 @@ module Api::V1
       # Use efficient bulk loading to avoid N+1 queries
       locations = Location.with_current_occupation_data
                           .select { |loc| loc.carousel_position.present? && loc.hotel_position.present? }
-                          .sort_by { |loc| [loc.carousel_position, loc.hotel_position] }
+                          .sort_by { |loc| [ loc.carousel_position, loc.hotel_position ] }
 
       render_success(
         locations.map do |location|
@@ -167,11 +167,11 @@ module Api::V1
         # Use cached current plate data if available, otherwise fall back to query
         if location.instance_variable_defined?(:@cached_current_plate)
           cached_plate = location.instance_variable_get(:@cached_current_plate)
-          current_plates = cached_plate ? [cached_plate] : []
+          current_plates = cached_plate ? [ cached_plate ] : []
         else
           current_plates = location.current_plates
         end
-        
+
         result[:current_plates] = current_plates.map { |plate| plate_summary(plate) }
         result[:is_occupied] = current_plates.any?
         result[:plates_count] = current_plates.count

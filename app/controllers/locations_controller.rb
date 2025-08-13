@@ -63,7 +63,7 @@ class LocationsController < ApplicationController
   def grid
     @grid_dimensions = get_grid_dimensions
     @carousel_grid = build_carousel_grid
-    
+
     # Use efficient bulk loading to avoid N+1 queries
     @other_locations = Location.with_current_occupation_data
                                .select { |loc| loc.carousel_position.nil? && loc.hotel_position.nil? }

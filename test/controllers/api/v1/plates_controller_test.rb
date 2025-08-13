@@ -23,9 +23,9 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     # Assign the existing plate
     @plate.move_to_location!(@location)
 
-    get api_v1_plates_url(assigned: 'false'), as: :json
+    get api_v1_plates_url(assigned: "false"), as: :json
     assert_response :success
-    
+
     json_response = JSON.parse(response.body)
     plate_barcodes = json_response["data"].map { |p| p["barcode"] }
     assert_includes plate_barcodes, "UNASSIGNED_API"
@@ -40,9 +40,9 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     # Assign the existing plate
     @plate.move_to_location!(@location)
 
-    get api_v1_plates_url(assigned: 'true'), as: :json
+    get api_v1_plates_url(assigned: "true"), as: :json
     assert_response :success
-    
+
     json_response = JSON.parse(response.body)
     plate_barcodes = json_response["data"].map { |p| p["barcode"] }
     assert_includes plate_barcodes, @plate.barcode
