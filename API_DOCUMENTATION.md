@@ -140,7 +140,15 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 ### List All Plates
 - **GET** `/api/v1/plates`
 - **Description**: Get all plates with basic information
+- **Query Parameters**:
+  - `assigned` (boolean, optional): Filter plates by assignment status
+    - `true`: Only show plates assigned to locations
+    - `false`: Only show unassigned plates
 - **Response**: Array of plate objects with current location and wells count
+- **Examples**:
+  - `GET /api/v1/plates` - Get all plates
+  - `GET /api/v1/plates?assigned=false` - Get only unassigned plates
+  - `GET /api/v1/plates?assigned=true` - Get only assigned plates
 
 ### Get Plate Details
 - **GET** `/api/v1/plates/:barcode`
@@ -175,15 +183,26 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 
 ### Move Plate to Location
 - **POST** `/api/v1/plates/:barcode/move_to_location`
-- **Description**: Move a plate to a specific location
+- **Description**: Move a plate to a specific location or unassign it
 - **Body Parameters**:
   ```json
   {
-    "location_id": 123,
-    "moved_by": "api_user"
+    "location_id": 123
+  }
+  ```
+  Or to unassign a plate:
+  ```json
+  {
+    "location_id": null
   }
   ```
 - **Response**: Plate and location information
+
+### Unassign Plate from Location
+- **POST** `/api/v1/plates/:barcode/unassign_location`
+- **Description**: Remove a plate from its current location (set to unassigned)
+- **Body Parameters**: None required
+- **Response**: Plate information with null location
 
 ### Get Plate Location History
 - **GET** `/api/v1/plates/:barcode/location_history`

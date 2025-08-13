@@ -28,14 +28,26 @@ class PlateLocationTest < ActiveSupport::TestCase
     assert_includes plate_location.errors[:plate], "must exist"
   end
 
-  test "should require location" do
+  test "should allow null location for unassigned plates" do
     plate_location = PlateLocation.new(
       plate: @plate,
+      location: nil,
       moved_at: Time.current
     )
 
-    assert_not plate_location.valid?
-    assert_includes plate_location.errors[:location], "must exist"
+    assert plate_location.valid?
+  end
+
+  test "plate can be unassigned from location" do
+    # Move plate to a location first
+    @plate.move_to_location!(@location)
+    assert_equal @location, @plate.current_location
+
+    # Unassign the plate
+    @plate.unassign_location!
+    assert_nil @plate.current_location
+    assert @plate.unassigned?
+    assert_not @plate.assigned?
   end
 
   test "should require moved_at" do

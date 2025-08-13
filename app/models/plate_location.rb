@@ -1,6 +1,6 @@
 class PlateLocation < ApplicationRecord
   belongs_to :plate
-  belongs_to :location
+  belongs_to :location, optional: true
 
   validates :moved_at, presence: true
 

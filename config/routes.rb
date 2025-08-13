@@ -74,6 +74,7 @@ Rails.application.routes.draw do
       resources :plates, param: :barcode do
         member do
           post :move_to_location
+          post :unassign_location
           get :location_history
           get :points_of_interest
         end

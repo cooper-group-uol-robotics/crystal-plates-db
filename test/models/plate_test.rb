@@ -166,8 +166,26 @@ class PlateTest < ActiveSupport::TestCase
     assert_equal @imager_location, @plate1.current_location
   end
 
+  test "unassigned scope returns plates without location" do
+    # Create an unassigned plate
+    unassigned_plate = Plate.create!(barcode: "UNASSIGNED")
+    unassigned_plate.unassign_location!
+
+    # Create an assigned plate
+    assigned_plate = Plate.create!(barcode: "ASSIGNED")
+    assigned_plate.move_to_location!(@carousel_location)
+
+    unassigned_plates = Plate.unassigned
+    assigned_plates = Plate.assigned
+
+    assert_includes unassigned_plates, unassigned_plate
+    assert_not_includes unassigned_plates, assigned_plate
+
+    assert_includes assigned_plates, assigned_plate
+    assert_not_includes assigned_plates, unassigned_plate
+  end
+
   test "multiple plates can be tracked efficiently" do
-    # Create additional plates and locations
     plate2 = Plate.create!(barcode: "MULTI_TEST_2")
     plate3 = Plate.create!(barcode: "MULTI_TEST_3")
     location2 = Location.create!(name: "multi_test_location")

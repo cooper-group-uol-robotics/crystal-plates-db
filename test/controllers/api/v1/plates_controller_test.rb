@@ -15,6 +15,40 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     assert json_response["data"].is_a?(Array)
   end
 
+  test "should filter unassigned plates" do
+    # Create an unassigned plate
+    unassigned_plate = Plate.create!(barcode: "UNASSIGNED_API")
+    unassigned_plate.unassign_location!
+
+    # Assign the existing plate
+    @plate.move_to_location!(@location)
+
+    get api_v1_plates_url(assigned: 'false'), as: :json
+    assert_response :success
+    
+    json_response = JSON.parse(response.body)
+    plate_barcodes = json_response["data"].map { |p| p["barcode"] }
+    assert_includes plate_barcodes, "UNASSIGNED_API"
+    assert_not_includes plate_barcodes, @plate.barcode
+  end
+
+  test "should filter assigned plates" do
+    # Create an unassigned plate
+    unassigned_plate = Plate.create!(barcode: "UNASSIGNED_API2")
+    unassigned_plate.unassign_location!
+
+    # Assign the existing plate
+    @plate.move_to_location!(@location)
+
+    get api_v1_plates_url(assigned: 'true'), as: :json
+    assert_response :success
+    
+    json_response = JSON.parse(response.body)
+    plate_barcodes = json_response["data"].map { |p| p["barcode"] }
+    assert_includes plate_barcodes, @plate.barcode
+    assert_not_includes plate_barcodes, "UNASSIGNED_API2"
+  end
+
   test "should show plate" do
     get api_v1_plate_url(@plate.barcode), as: :json
     assert_response :success
@@ -65,6 +99,39 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
 
     @plate.reload
     assert_equal @location, @plate.current_location
+  end
+
+  test "should unassign plate from location" do
+    # First move plate to a location
+    @plate.move_to_location!(@location)
+
+    # Then unassign it
+    post unassign_location_api_v1_plate_url(@plate.barcode), as: :json
+
+    assert_response :success
+    json_response = JSON.parse(response.body)
+    assert_nil json_response["data"]["location"]
+
+    @plate.reload
+    assert_nil @plate.current_location
+    assert @plate.unassigned?
+  end
+
+  test "should move plate to null location via move_to_location endpoint" do
+    # First move plate to a location
+    @plate.move_to_location!(@location)
+
+    # Then move to null location (unassign)
+    post move_to_location_api_v1_plate_url(@plate.barcode), params: {
+      location_id: nil
+    }, as: :json
+
+    assert_response :success
+    json_response = JSON.parse(response.body)
+    assert_nil json_response["data"]["location"]
+
+    @plate.reload
+    assert_nil @plate.current_location
   end
 
   test "should get location history" do

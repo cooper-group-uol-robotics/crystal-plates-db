@@ -217,6 +217,11 @@ class PlatesController < ApplicationController
     end
 
     def find_or_create_location_from_params
+      # Handle unassigned location type
+      if params[:location_type] == "unassigned"
+        return nil
+      end
+      
       # Check if carousel position parameters are provided
       if params[:carousel_position].present? && params[:hotel_position].present?
         carousel_pos = params[:carousel_position].to_i
@@ -233,6 +238,8 @@ class PlatesController < ApplicationController
     end
 
     def validate_location_availability(location)
+      return if location.nil? # Skip validation for unassigned plates
+      
       # Check if location is already occupied by another plate
       # Find plates whose most recent location (anywhere) is this location
       latest_locations_subquery = PlateLocation

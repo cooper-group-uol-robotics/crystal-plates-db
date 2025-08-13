@@ -23,6 +23,36 @@ class Plate < ApplicationRecord
       with_current_location.where(plate_locations: { location_id: location.id })
     }
 
+    # Scope to get plates that are currently unassigned
+    scope :unassigned, -> {
+      # Get latest plate location for each plate where location_id is NULL
+      latest_location_ids = PlateLocation
+        .select("MAX(id)")
+        .group(:plate_id)
+
+      unassigned_plate_ids = PlateLocation
+        .where(location_id: nil)
+        .where("id IN (#{latest_location_ids.to_sql})")
+        .pluck(:plate_id)
+
+      where(id: unassigned_plate_ids)
+    }
+
+    # Scope to get plates that are currently assigned to any location
+    scope :assigned, -> {
+      # Get latest plate location for each plate where location_id is NOT NULL
+      latest_location_ids = PlateLocation
+        .select("MAX(id)")
+        .group(:plate_id)
+
+      assigned_plate_ids = PlateLocation
+        .where.not(location_id: nil)
+        .where("id IN (#{latest_location_ids.to_sql})")
+        .pluck(:plate_id)
+
+      where(id: assigned_plate_ids)
+    }
+
     def really_destroy!
         wells.each(&:destroy!)
         plate_locations.each(&:destroy!)
@@ -49,29 +79,43 @@ class Plate < ApplicationRecord
         plate_locations.recent_first.includes(:location)
     end
 
+    def assigned?
+        current_location.present?
+    end
+
+    def unassigned?
+        !assigned?
+    end
+
     def move_to_location!(location)
-        # Check if location is already occupied by another plate
-        # Find plates whose most recent location (anywhere) is this location
-        latest_locations_subquery = PlateLocation
-          .select("plate_id, MAX(id) as latest_id")
-          .group(:plate_id)
+        # Check if location is already occupied by another plate (only if location is not nil)
+        if location.present?
+          # Find plates whose most recent location (anywhere) is this location
+          latest_locations_subquery = PlateLocation
+            .select("plate_id, MAX(id) as latest_id")
+            .group(:plate_id)
 
-        occupied_by = PlateLocation.joins(:plate)
-                                  .joins("INNER JOIN (#{latest_locations_subquery.to_sql}) latest ON plate_locations.plate_id = latest.plate_id AND plate_locations.id = latest.latest_id")
-                                  .where(location: location)
-                                  .where.not(plate_id: self.id)
-                                  .includes(:plate)
-                                  .first
+          occupied_by = PlateLocation.joins(:plate)
+                                    .joins("INNER JOIN (#{latest_locations_subquery.to_sql}) latest ON plate_locations.plate_id = latest.plate_id AND plate_locations.id = latest.latest_id")
+                                    .where(location: location)
+                                    .where.not(plate_id: self.id)
+                                    .includes(:plate)
+                                    .first
 
-        if occupied_by
-            errors.add(:base, "Location #{location.display_name} is already occupied by plate #{occupied_by.plate.barcode}")
-            raise ActiveRecord::RecordInvalid, self
+          if occupied_by
+              errors.add(:base, "Location #{location.display_name} is already occupied by plate #{occupied_by.plate.barcode}")
+              raise ActiveRecord::RecordInvalid, self
+          end
         end
 
         plate_locations.create!(
             location: location,
             moved_at: Time.current
         )
+    end
+
+    def unassign_location!
+        move_to_location!(nil)
     end
 
     def rows

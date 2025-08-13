@@ -1,11 +1,21 @@
 module Api::V1
   class PlatesController < BaseController
-    before_action :set_plate, only: [ :show, :update, :destroy, :move_to_location, :location_history, :points_of_interest ]
+    before_action :set_plate, only: [ :show, :update, :destroy, :move_to_location, :unassign_location, :location_history, :points_of_interest ]
 
     # GET /api/v1/plates
     def index
-      plates = Plate.includes(:wells, :plate_locations).all
-      render_success(plates.map { |plate| plate_json(plate, include_wells: false, include_points_of_interest: false) })
+      plates = Plate.includes(:wells, :plate_locations)
+      
+      # Filter by assignment status if requested
+      if params[:assigned].present?
+        if params[:assigned] == 'true'
+          plates = plates.assigned
+        elsif params[:assigned] == 'false'
+          plates = plates.unassigned
+        end
+      end
+      
+      render_success(plates.all.map { |plate| plate_json(plate, include_wells: false, include_points_of_interest: false) })
     end
 
     # GET /api/v1/plates/:barcode
@@ -47,17 +57,46 @@ module Api::V1
 
     # POST /api/v1/plates/:barcode/move_to_location
     def move_to_location
-      location = Location.find(params[:location_id])
+      location = params[:location_id].present? ? Location.find(params[:location_id]) : nil
 
       begin
         @plate.move_to_location!(location)
+        
+        if location
+          render_success(
+            {
+              plate: plate_json(@plate),
+              location: location_json(location),
+              message: "Plate #{@plate.barcode} moved to #{location.display_name}"
+            },
+            message: "Plate moved successfully"
+          )
+        else
+          render_success(
+            {
+              plate: plate_json(@plate),
+              location: nil,
+              message: "Plate #{@plate.barcode} unassigned from location"
+            },
+            message: "Plate unassigned successfully"
+          )
+        end
+      rescue ActiveRecord::RecordInvalid => e
+        render_error(e.message, status: :unprocessable_entity)
+      end
+    end
+
+    # POST /api/v1/plates/:barcode/unassign_location
+    def unassign_location
+      begin
+        @plate.unassign_location!
         render_success(
           {
             plate: plate_json(@plate),
-            location: location_json(location),
-            message: "Plate #{@plate.barcode} moved to #{location.display_name}"
+            location: nil,
+            message: "Plate #{@plate.barcode} unassigned from location"
           },
-          message: "Plate moved successfully"
+          message: "Plate unassigned successfully"
         )
       rescue ActiveRecord::RecordInvalid => e
         render_error(e.message, status: :unprocessable_entity)

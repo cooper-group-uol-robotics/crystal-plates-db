@@ -107,7 +107,7 @@
     <div class="card mb-3">
       <div class="card-body">
         <div class="row">
-          <div class="col-md-6">
+          <div class="col-md-4">
             <div class="form-check">
               <input class="form-check-input" type="radio" name="location_type" id="carousel_location" value="carousel" <%= is_carousel ? 'checked' : '' %>>
               <label class="form-check-label fw-semibold" for="carousel_location">
@@ -115,11 +115,19 @@
               </label>
             </div>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-4">
             <div class="form-check">
               <input class="form-check-input" type="radio" name="location_type" id="special_location" value="special" <%= is_other ? 'checked' : '' %>>
               <label class="form-check-label fw-semibold" for="special_location">
                 <i class="bi bi-geo-alt me-2"></i>Special Location
+              </label>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="location_type" id="unassigned_location" value="unassigned" <%= current_location.nil? && !@preselected_location ? 'checked' : '' %>>
+              <label class="form-check-label fw-semibold" for="unassigned_location">
+                <i class="bi bi-question-circle me-2"></i>Unassigned
               </label>
             </div>
           </div>
@@ -165,6 +173,7 @@
       // Location logic
       const carouselRadio = document.getElementById('carousel_location');
       const specialRadio = document.getElementById('special_location');
+      const unassignedRadio = document.getElementById('unassigned_location');
       const carouselFields = document.getElementById('carousel_fields');
       const specialFields = document.getElementById('special_fields');
       const carouselInputs = carouselFields.querySelectorAll('input');
@@ -176,19 +185,22 @@
           specialFields.classList.add('d-none');
           carouselInputs.forEach(input => input.disabled = false);
           specialInputs.forEach(input => input.disabled = true);
-        } else {
+        } else if (specialRadio.checked) {
           carouselFields.classList.add('d-none');
           specialFields.classList.remove('d-none');
-          if (!specialRadio.checked) {
-            specialRadio.checked = true;
-          }
           carouselInputs.forEach(input => input.disabled = true);
           specialInputs.forEach(input => input.disabled = false);
+        } else if (unassignedRadio.checked) {
+          carouselFields.classList.add('d-none');
+          specialFields.classList.add('d-none');
+          carouselInputs.forEach(input => input.disabled = true);
+          specialInputs.forEach(input => input.disabled = true);
         }
       }
 
       carouselRadio.addEventListener('change', toggleFields);
       specialRadio.addEventListener('change', toggleFields);
+      unassignedRadio.addEventListener('change', toggleFields);
       toggleFields();
 
       // Prototype logic
