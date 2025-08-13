@@ -45,7 +45,7 @@ class Plate < ApplicationRecord
     }
 
     # Efficiently bulk load current location data for plates to avoid N+1 queries
-    def self.with_current_location_data
+    scope :with_current_location_data, -> {
       # Get the latest plate_location for each plate
       latest_plate_location_ids = PlateLocation
         .select("MAX(id) as latest_id")
@@ -57,14 +57,16 @@ class Plate < ApplicationRecord
         .select('plate_locations.plate_id, locations.id as location_id, locations.name as location_name, 
                  locations.carousel_position, locations.hotel_position')
 
-      query = self
-        .joins("LEFT JOIN (#{current_locations.to_sql}) current_locations ON plates.id = current_locations.plate_id")
+      joins("LEFT JOIN (#{current_locations.to_sql}) current_locations ON plates.id = current_locations.plate_id")
         .select('plates.*, current_locations.location_id as current_location_id, 
                  current_locations.location_name as current_location_name,
                  current_locations.carousel_position as current_location_carousel_position,
                  current_locations.hotel_position as current_location_hotel_position')
+    }
 
-      query.map do |plate|
+    # Process plates with cached location data after they've been loaded
+    def self.cache_current_location_data(plates)
+      plates.each do |plate|
         # Cache the current location data to avoid N+1 queries
         if plate.try(:current_location_id)
           current_location = Location.new(
@@ -79,8 +81,8 @@ class Plate < ApplicationRecord
           # Cache nil to avoid future queries for unassigned plates
           plate.define_singleton_method(:current_location) { nil }
         end
-        plate
       end
+      plates
     end
 
     def really_destroy!
