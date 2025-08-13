@@ -38,20 +38,50 @@ class Plate < ApplicationRecord
       where(id: unassigned_plate_ids)
     }
 
-    # Scope to get plates that are currently assigned to any location
+        # Scope to get plates that are currently assigned to any location
     scope :assigned, -> {
-      # Get latest plate location for each plate where location_id is NOT NULL
-      latest_location_ids = PlateLocation
-        .select("MAX(id)")
+      # Get plates that don't have unassigned as their latest location
+      where.not(id: unassigned.pluck(:id))
+    }
+
+    # Efficiently bulk load current location data for plates to avoid N+1 queries
+    def self.with_current_location_data
+      # Get the latest plate_location for each plate
+      latest_plate_location_ids = PlateLocation
+        .select("MAX(id) as latest_id")
         .group(:plate_id)
 
-      assigned_plate_ids = PlateLocation
-        .where.not(location_id: nil)
-        .where("id IN (#{latest_location_ids.to_sql})")
-        .pluck(:plate_id)
+      current_locations = PlateLocation
+        .joins("INNER JOIN (#{latest_plate_location_ids.to_sql}) latest ON plate_locations.id = latest.latest_id")
+        .left_joins(:location)
+        .select('plate_locations.plate_id, locations.id as location_id, locations.name as location_name, 
+                 locations.carousel_position, locations.hotel_position')
 
-      where(id: assigned_plate_ids)
-    }
+      query = self
+        .joins("LEFT JOIN (#{current_locations.to_sql}) current_locations ON plates.id = current_locations.plate_id")
+        .select('plates.*, current_locations.location_id as current_location_id, 
+                 current_locations.location_name as current_location_name,
+                 current_locations.carousel_position as current_location_carousel_position,
+                 current_locations.hotel_position as current_location_hotel_position')
+
+      query.map do |plate|
+        # Cache the current location data to avoid N+1 queries
+        if plate.try(:current_location_id)
+          current_location = Location.new(
+            id: plate.current_location_id,
+            name: plate.current_location_name,
+            carousel_position: plate.current_location_carousel_position,
+            hotel_position: plate.current_location_hotel_position
+          )
+          # Cache the location to avoid future queries
+          plate.define_singleton_method(:current_location) { current_location }
+        else
+          # Cache nil to avoid future queries for unassigned plates
+          plate.define_singleton_method(:current_location) { nil }
+        end
+        plate
+      end
+    end
 
     def really_destroy!
         wells.each(&:destroy!)

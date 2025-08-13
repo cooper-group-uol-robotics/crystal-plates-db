@@ -171,9 +171,7 @@ class PlatesController < ApplicationController
 
   # GET /plates/deleted
   def deleted
-    @plates = Plate.only_deleted.includes(plate_locations: :location)
-                  .order(:deleted_at)
-                  .page(params[:page]).per(25)
+    @plates = Plate.only_deleted.with_current_location_data.order(:deleted_at).page(params[:page]).per(25)
   end
 
   # PATCH /plates/1/restore
