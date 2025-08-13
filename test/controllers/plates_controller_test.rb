@@ -175,6 +175,55 @@ class PlatesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to plate_url(@plate)
   end
 
+  test "should unassign plate location on update" do
+    # Create a location and assign the plate to it
+    location = Location.create!(name: "Test Location")
+    @plate.move_to_location!(location)
+
+    # Verify the plate is assigned
+    assert_not_nil @plate.current_location
+    assert_equal location.id, @plate.current_location.id
+
+    # Update the plate to be unassigned
+    patch plate_url(@plate), params: {
+      plate: { barcode: @plate.barcode },
+      location_type: "unassigned"
+    }
+
+    # Verify the update was successful
+    assert_redirected_to plate_url(@plate)
+
+    # Reload the plate and verify it's now unassigned
+    @plate.reload
+    assert_nil @plate.current_location, "Plate should be unassigned after update"
+    assert @plate.unassigned?, "Plate should be marked as unassigned"
+  end
+
+  test "should assign plate to location on update" do
+    # Create a location with unique positions
+    location = Location.create!(carousel_position: 99, hotel_position: 99)
+
+    # Ensure the plate starts unassigned
+    @plate.unassign_location! if @plate.current_location
+
+    # Update the plate to be assigned to the location
+    patch plate_url(@plate), params: {
+      plate: { barcode: @plate.barcode },
+      location_type: "carousel",
+      carousel_position: "99",
+      hotel_position: "99"
+    }
+
+    # Verify the update was successful
+    assert_redirected_to plate_url(@plate)
+
+    # Reload the plate and verify it's now assigned
+    @plate.reload
+    assert_not_nil @plate.current_location, "Plate should be assigned after update"
+    assert_equal location.id, @plate.current_location.id
+    assert @plate.assigned?, "Plate should be marked as assigned"
+  end
+
   test "should destroy plate" do
     assert_difference("Plate.count", -1) do
       delete plate_url(@plate)

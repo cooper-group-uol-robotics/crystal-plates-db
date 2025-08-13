@@ -131,9 +131,16 @@ class PlatesController < ApplicationController
   def update
     respond_to do |format|
       if @plate.update(plate_params.except(:location_id))
-        # Handle location assignment
+        # Handle location assignment/unassignment
         location = find_or_create_location_from_params
-        if location && @plate.current_location&.id != location.id
+
+        if params[:location_type] == "unassigned"
+          # User wants to unassign the plate
+          if @plate.current_location.present?
+            @plate.unassign_location!
+          end
+        elsif location && @plate.current_location&.id != location.id
+          # User wants to assign to a specific location
           begin
             @plate.move_to_location!(location)
           rescue ActiveRecord::RecordInvalid => e
