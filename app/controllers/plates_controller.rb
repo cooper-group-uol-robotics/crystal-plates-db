@@ -15,15 +15,18 @@ class PlatesController < ApplicationController
 
     case sort_column
     when "barcode"
-      @plates = Plate.includes(plate_locations: :location).order("barcode #{sort_direction}")
+      @plates = Plate.with_current_location_data.order("barcode #{sort_direction}")
     when "created_at"
-      @plates = Plate.includes(plate_locations: :location).order("created_at #{sort_direction}")
+      @plates = Plate.with_current_location_data.order("created_at #{sort_direction}")
     else
-      @plates = Plate.includes(plate_locations: :location).order(:barcode)
+      @plates = Plate.with_current_location_data.order(:barcode)
     end
 
     # Add pagination
     @plates = @plates.page(params[:page]).per(25)
+    
+    # Cache the current location data to avoid N+1 queries
+    Plate.cache_current_location_data(@plates)
 
     @sort_column = sort_column
     @sort_direction = sort_direction
