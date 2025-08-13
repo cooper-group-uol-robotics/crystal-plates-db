@@ -24,8 +24,8 @@ class Plate < ApplicationRecord
     }
 
     def really_destroy!
-        wells.each(&:really_destroy!)
-        plate_locations.each(&:really_destroy!)
+        wells.each(&:destroy!)
+        plate_locations.each(&:destroy!)
         super
     end
 

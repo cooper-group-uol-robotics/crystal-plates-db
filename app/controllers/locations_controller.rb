@@ -63,12 +63,11 @@ class LocationsController < ApplicationController
   def grid
     @grid_dimensions = get_grid_dimensions
     @carousel_grid = build_carousel_grid
-    @other_locations = Location.where(carousel_position: nil, hotel_position: nil)
-                               .includes(:plate_locations, :plates)
-                               .order(:name)
-
-    # Preload all current plate data to avoid N+1 queries
-    preload_current_plates_for_locations(@other_locations)
+    
+    # Use efficient bulk loading to avoid N+1 queries
+    @other_locations = Location.with_current_occupation_data
+                               .select { |loc| loc.carousel_position.nil? && loc.hotel_position.nil? }
+                               .sort_by { |loc| loc.name || "" }
   end
 
   # POST /locations/initialise_carousel
@@ -117,12 +116,9 @@ class LocationsController < ApplicationController
       end
     end
 
-    # Load all carousel locations with their current plates in a single query
-    carousel_locations = Location.where.not(carousel_position: nil, hotel_position: nil)
-                                .includes(:plate_locations, :plates)
-
-    # Preload current plates data
-    preload_current_plates_for_locations(carousel_locations)
+    # Load all carousel locations with their current plates efficiently
+    carousel_locations = Location.with_current_occupation_data
+                                .select { |loc| loc.carousel_position.present? && loc.hotel_position.present? }
 
     carousel_locations.each do |location|
       carousel = location.carousel_position
@@ -137,33 +133,6 @@ class LocationsController < ApplicationController
     end
 
     grid
-  end
-
-  def preload_current_plates_for_locations(locations)
-    return if locations.empty?
-
-    # Get all location IDs
-    location_ids = locations.map(&:id)
-
-    # Find the most recent plate location for each plate, filtered to our locations
-    latest_plate_locations_subquery = PlateLocation
-      .select("plate_id, MAX(id) as latest_id")
-      .group(:plate_id)
-
-    current_plates_data = PlateLocation
-      .joins(:plate)
-      .joins("INNER JOIN (#{latest_plate_locations_subquery.to_sql}) latest ON plate_locations.plate_id = latest.plate_id AND plate_locations.id = latest.latest_id")
-      .where(location_id: location_ids)
-      .includes(:plate)
-      .group_by(&:location_id)
-
-    # Cache the current plate for each location to avoid repeated queries
-    locations.each do |location|
-      plate_location = current_plates_data[location.id]&.first
-      current_plate = plate_location&.plate
-      location.instance_variable_set(:@cached_current_plate, current_plate)
-      location.instance_variable_set(:@cached_has_current_plate, current_plate.present?)
-    end
   end
 
   def get_grid_dimensions

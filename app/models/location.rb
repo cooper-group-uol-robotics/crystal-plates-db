@@ -10,32 +10,58 @@ class Location < ApplicationRecord
       return cached_plate ? [ cached_plate ] : []
     end
 
-    # Fallback to database query
-    Plate.joins(:plate_locations)
-         .merge(PlateLocation.most_recent_for_each_plate)
-         .where(plate_locations: { location_id: id })
+    # Use ActiveRecord with subquery to find latest locations for this location
+    latest_location_ids = PlateLocation
+      .select("MAX(id)")
+      .group(:plate_id)
+
+    current_plate_location_ids = PlateLocation
+      .where(location_id: id)
+      .where("id IN (#{latest_location_ids.to_sql})")
+      .pluck(:plate_id)
+
+    Plate.where(id: current_plate_location_ids)
   end
 
   # Method to get current plate locations for this location
   def current_plate_locations
-    # Find plates whose most recent location is this location
-    current_plate_ids = current_plates.pluck(:id)
+    # Use the same logic as current_plates but return the plate_locations
+    latest_location_ids = PlateLocation
+      .select("MAX(id)")
+      .group(:plate_id)
 
-    # Get the most recent plate_location record for each of those plates at this location
-    PlateLocation.where(plate_id: current_plate_ids, location_id: id)
-                 .where(
-                   id: PlateLocation.where(plate_id: current_plate_ids)
-                                   .select("MAX(id)")
-                                   .group(:plate_id)
-                 )
+    PlateLocation.where(location_id: id)
+                 .where("id IN (#{latest_location_ids.to_sql})")
   end
 
-  # Scope to efficiently load occupation status - simplified since we're using methods
-  scope :with_occupation_status, -> { all }
+  # Scope to efficiently load occupation status with optimized query
+  scope :with_occupation_status, -> { 
+    # Use a subquery to find latest plate locations without window functions in WHERE
+    latest_plate_location_ids = PlateLocation
+      .select("MAX(id) as latest_id")
+      .group(:plate_id)
 
-  # Scope to preload current plate data to avoid N+1 queries
+    current_plate_locations = PlateLocation
+      .joins("INNER JOIN (#{latest_plate_location_ids.to_sql}) latest ON plate_locations.id = latest.latest_id")
+      .select(:location_id, :plate_id)
+
+    joins("LEFT JOIN (#{current_plate_locations.to_sql}) current_locations ON locations.id = current_locations.location_id")
+      .select('locations.*, current_locations.plate_id as current_plate_id')
+  }
+
+  # Scope to preload current plate data efficiently
   scope :with_current_plate_data, -> {
-    includes(:plate_locations, :plates)
+    # Use the same efficient query as with_occupation_status
+    latest_plate_location_ids = PlateLocation
+      .select("MAX(id) as latest_id")
+      .group(:plate_id)
+
+    current_plate_locations = PlateLocation
+      .joins("INNER JOIN (#{latest_plate_location_ids.to_sql}) latest ON plate_locations.id = latest.latest_id")
+      .select(:location_id, :plate_id)
+
+    joins("LEFT JOIN (#{current_plate_locations.to_sql}) current_locations ON locations.id = current_locations.location_id")
+      .select('locations.*, current_locations.plate_id as current_plate_id')
   }
 
   validates :carousel_position, numericality: { greater_than: 0 }, allow_nil: true
@@ -49,6 +75,42 @@ class Location < ApplicationRecord
   # Ensure either name is present OR both carousel and hotel positions are present
   validate :name_or_positions_present
 
+  # Class method for efficiently bulk loading location occupation data
+  def self.with_current_occupation_data
+    # Use a more SQLite-friendly approach without window functions in WHERE clauses
+    latest_plate_location_ids = PlateLocation
+      .select("MAX(id) as latest_id")
+      .group(:plate_id)
+
+    current_plate_locations = PlateLocation
+      .joins("INNER JOIN (#{latest_plate_location_ids.to_sql}) latest ON plate_locations.id = latest.latest_id")
+      .joins(:plate)
+      .select('plate_locations.location_id, plates.id as plate_id, plates.barcode as plate_barcode, plates.name as plate_name')
+
+    query = Location
+      .joins("LEFT JOIN (#{current_plate_locations.to_sql}) current_plates ON locations.id = current_plates.location_id")
+      .select('locations.*, current_plates.plate_id as current_plate_id, current_plates.plate_barcode as current_plate_barcode, current_plates.plate_name as current_plate_name')
+      .order(:id)
+
+    query.map do |location|
+      # Cache the current plate data to avoid N+1 queries
+      if location.try(:current_plate_id)
+        current_plate = Plate.new(
+          id: location.current_plate_id,
+          barcode: location.current_plate_barcode,
+          name: location.current_plate_name
+        )
+        location.instance_variable_set(:@cached_current_plate, current_plate)
+        location.instance_variable_set(:@cached_has_current_plate, true)
+      else
+        location.instance_variable_set(:@cached_current_plate, nil)
+        location.instance_variable_set(:@cached_has_current_plate, false)
+      end
+      
+      location
+    end
+  end
+
   def display_name
     if name.present?
       name
@@ -60,12 +122,23 @@ class Location < ApplicationRecord
   end
 
   def occupied?
+    # Use virtual attribute if available (from with_occupation_status scope)
+    if attributes.key?('current_plate_id')
+      return attributes['current_plate_id'].present?
+    end
+    
     # Check if there are current plates at this location
     current_plates.any?
   end
 
   # Get the current plate ID efficiently from preloaded data
   def current_plate_id
+    # Check if we have a virtual attribute from a scope (like with_occupation_status)
+    if attributes.key?('current_plate_id')
+      return attributes['current_plate_id']
+    end
+    
+    # Fall back to querying current_plates
     current_plates.first&.id
   end
 

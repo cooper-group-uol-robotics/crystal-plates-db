@@ -4,23 +4,24 @@ module Api::V1
 
     # GET /api/v1/locations
     def index
-      locations = Location.includes(:plates, :plate_locations).all
+      # Use efficient bulk loading to avoid N+1 queries
+      locations = Location.with_current_occupation_data
 
       # Apply search filters
       if params[:name].present?
-        locations = locations.where("name LIKE ?", "%#{params[:name]}%")
+        locations = locations.select { |loc| loc.name&.downcase&.include?(params[:name].downcase) }
       end
 
       if params[:carousel_position].present?
-        locations = locations.where(carousel_position: params[:carousel_position])
+        locations = locations.select { |loc| loc.carousel_position == params[:carousel_position].to_i }
       end
 
       if params[:hotel_position].present?
-        locations = locations.where(hotel_position: params[:hotel_position])
+        locations = locations.select { |loc| loc.hotel_position == params[:hotel_position].to_i }
       end
 
       # Apply ordering
-      locations = locations.order(:name, :carousel_position, :hotel_position)
+      locations = locations.sort_by { |loc| [loc.name || "", loc.carousel_position || 0, loc.hotel_position || 0] }
 
       render_success(
         locations.map do |location|
@@ -34,9 +35,11 @@ module Api::V1
 
     # GET /api/v1/locations/carousel
     def carousel
-      locations = Location.where.not(carousel_position: nil, hotel_position: nil)
-                          .order(:carousel_position, :hotel_position)
-                          .includes(:plates, :plate_locations)
+      # Use efficient bulk loading to avoid N+1 queries
+      locations = Location.with_current_occupation_data
+                          .select { |loc| loc.carousel_position.present? && loc.hotel_position.present? }
+                          .sort_by { |loc| [loc.carousel_position, loc.hotel_position] }
+
       render_success(
         locations.map do |location|
           data = location_json(location)
@@ -49,9 +52,11 @@ module Api::V1
 
     # GET /api/v1/locations/special
     def special
-      locations = Location.where(carousel_position: nil, hotel_position: nil)
-                          .order(:name)
-                          .includes(:plates, :plate_locations)
+      # Use efficient bulk loading to avoid N+1 queries
+      locations = Location.with_current_occupation_data
+                          .select { |loc| loc.carousel_position.nil? && loc.hotel_position.nil? }
+                          .sort_by { |loc| loc.name || "" }
+
       render_success(
         locations.map do |location|
           data = location_json(location)
