@@ -5,4 +5,11 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     get pages_home_url
     assert_response :success
   end
+
+  test "should get api docs" do
+    get api_docs_url
+    assert_response :success
+    assert_select "h1", text: "API Documentation"
+    assert_match "Crystal Plates Database REST API Documentation", response.body
+  end
 end

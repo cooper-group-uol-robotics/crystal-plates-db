@@ -1,0 +1,164 @@
+<% content_for :title, "API Documentation" %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">API Documentation</h1>
+        <div>
+          <%= link_to "Back to Dashboard", root_path, class: "btn btn-outline-secondary" %>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-body">
+          <div class="api-documentation">
+            <%= markdown(@markdown_content) %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .api-documentation {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    color: #333;
+  }
+  
+  .api-documentation h1 {
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+    margin-top: 30px;
+    margin-bottom: 20px;
+  }
+  
+  .api-documentation h2 {
+    color: #34495e;
+    border-bottom: 1px solid #bdc3c7;
+    padding-bottom: 8px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+  }
+  
+  .api-documentation h3 {
+    color: #2980b9;
+    margin-top: 20px;
+    margin-bottom: 10px;
+  }
+  
+  .api-documentation h4 {
+    color: #8e44ad;
+    margin-top: 15px;
+    margin-bottom: 8px;
+  }
+  
+  .api-documentation code {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+    color: #e83e8c;
+  }
+  
+  .api-documentation pre {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+  
+  .api-documentation pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #212529;
+    font-size: 0.875em;
+  }
+  
+  .api-documentation blockquote {
+    border-left: 4px solid #3498db;
+    margin: 15px 0;
+    padding: 10px 20px;
+    background-color: #f8f9fa;
+    font-style: italic;
+  }
+  
+  .api-documentation table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 15px 0;
+  }
+  
+  .api-documentation table th,
+  .api-documentation table td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  
+  .api-documentation table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+  
+  .api-documentation ul, .api-documentation ol {
+    margin: 10px 0;
+    padding-left: 20px;
+  }
+  
+  .api-documentation li {
+    margin: 5px 0;
+  }
+  
+  .api-documentation a {
+    color: #3498db;
+    text-decoration: none;
+  }
+  
+  .api-documentation a:hover {
+    color: #2980b9;
+    text-decoration: underline;
+  }
+  
+  .api-documentation strong {
+    color: #2c3e50;
+  }
+  
+  /* HTTP method badges */
+  .api-documentation li strong {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    margin-right: 5px;
+  }
+  
+  .api-documentation li strong:contains("GET") {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .api-documentation li strong:contains("POST") {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .api-documentation li strong:contains("PUT"),
+  .api-documentation li strong:contains("PATCH") {
+    background-color: #ffc107;
+    color: #212529;
+  }
+  
+  .api-documentation li strong:contains("DELETE") {
+    background-color: #dc3545;
+    color: white;
+  }
+</style>

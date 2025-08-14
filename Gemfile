@@ -69,4 +69,6 @@ gem "paranoia", "~> 3.0"
 
 gem "kaminari", "~> 1.2"
 
+gem "redcarpet", "~> 3.6"
+
 gem "solargraph"

@@ -1,6 +1,6 @@
 module Api::V1
   class LocationsController < BaseController
-    before_action :set_location, only: [ :show, :update, :destroy, :current_plates, :history ]
+    before_action :set_location, only: [ :show, :update, :destroy, :current_plates, :history, :unassign_all_plates ]
 
     # GET /api/v1/locations
     def index
@@ -124,6 +124,64 @@ module Api::V1
           }
         end
       )
+    end
+
+    # POST /api/v1/locations/:id/unassign_all_plates
+    def unassign_all_plates
+      current_plates = @location.current_plates
+      
+      if current_plates.empty?
+        render_success(
+          {
+            location: location_json(@location),
+            plates_unassigned: [],
+            message: "No plates found at location #{@location.display_name}"
+          },
+          message: "No plates to unassign"
+        )
+        return
+      end
+
+      unassigned_plates = []
+      errors = []
+
+      current_plates.each do |plate|
+        begin
+          plate.unassign_location!
+          unassigned_plates << {
+            barcode: plate.barcode,
+            status: "success"
+          }
+        rescue ActiveRecord::RecordInvalid => e
+          errors << {
+            barcode: plate.barcode,
+            error: e.message,
+            status: "error"
+          }
+        end
+      end
+
+      if errors.empty?
+        render_success(
+          {
+            location: location_json(@location),
+            plates_unassigned: unassigned_plates,
+            message: "Successfully unassigned #{unassigned_plates.count} plates from location #{@location.display_name}"
+          },
+          message: "All plates unassigned successfully"
+        )
+      else
+        render_error(
+          {
+            location: location_json(@location),
+            plates_unassigned: unassigned_plates,
+            errors: errors,
+            message: "#{unassigned_plates.count} plates unassigned successfully, #{errors.count} failed"
+          },
+          message: "Some plates failed to unassign",
+          status: :unprocessable_entity
+        )
+      end
     end
 
     private

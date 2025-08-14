@@ -47,6 +47,11 @@
               <%= link_to "Plates", plates_path, class: "nav-link #{'active' if controller_name == 'plates'}" %>
             </li>
           </ul>
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <%= link_to "API Docs", api_docs_path, class: "nav-link #{'active' if controller_name == 'pages' && action_name == 'api_docs'}" %>
+            </li>
+          </ul>
         </div>
       </div>
     </nav>

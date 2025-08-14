@@ -55,6 +55,7 @@ Rails.application.routes.draw do
 
   # Pages routes
   get "pages/home", to: "pages#home"
+  get "api/docs", to: "pages#api_docs"
 
   root "plates#index"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
@@ -93,6 +94,7 @@ Rails.application.routes.draw do
         member do
           get :current_plates
           get :history
+          post :unassign_all_plates
         end
       end
 

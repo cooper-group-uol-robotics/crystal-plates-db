@@ -285,6 +285,49 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **Description**: Get movement history for this location
 - **Response**: Array of plate movements with timestamps
 
+### Unassign Plate from Location
+- **POST** `/api/v1/locations/:id/unassign_all_plates`
+- **Description**: Unassign plate currently at this location, making it unassigned
+- **Response**: Success message with details of unassigned plate
+- **Example Response** (success):
+  ```json
+  {
+    "data": {
+      "location": {
+        "id": 1,
+        "name": null,
+        "carousel_position": 1,
+        "hotel_position": 5,
+        "display_name": "Carousel 1, Hotel 5"
+      },
+      "plates_unassigned": [
+        {
+          "barcode": "PLATE001",
+          "status": "success"
+        }
+      ],
+      "message": "Successfully unassigned 1 plates from location Carousel 1, Hotel 5"
+    },
+    "message": "All plates unassigned successfully"
+  }
+  ```
+- **Example Response** (no plates):
+  ```json
+  {
+    "data": {
+      "location": { ... },
+      "plates_unassigned": [],
+      "message": "No plates found at location Carousel 1, Hotel 5"
+    },
+    "message": "No plates to unassign"
+  }
+  ```
+- **Usage Example**:
+  ```bash
+  curl -X POST "http://localhost:3000/api/v1/locations/1/unassign_all_plates" \
+    -H "Content-Type: application/json"
+  ```
+
 ## Wells API
 
 ### List Wells

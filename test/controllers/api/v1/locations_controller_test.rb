@@ -143,4 +143,52 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
     assert json_response.key?("error")
     assert json_response.key?("details")
   end
+
+  test "should unassign all plates from location" do
+    # Create a unique location for this test using timestamp
+    unique_pos = Time.current.to_i % 1000
+    test_location = Location.create!(carousel_position: unique_pos, hotel_position: unique_pos)
+    
+    # Create a plate and assign it to the location (since each location can only hold one plate)
+    plate = Plate.create!(barcode: "UNASSIGN_TEST_#{unique_pos}")
+    plate.move_to_location!(test_location)
+
+    # Verify it is assigned
+    assert_equal test_location.id, plate.current_location.id
+
+    # Unassign all plates from the location
+    post unassign_all_plates_api_v1_location_url(test_location), as: :json
+    assert_response :success
+
+    json_response = JSON.parse(response.body)
+    assert json_response.key?("data")
+    assert_equal 1, json_response["data"]["plates_unassigned"].length
+    assert json_response["message"].include?("All plates unassigned successfully")
+
+    # Verify plate is now unassigned
+    plate.reload
+    assert_nil plate.current_location
+  end
+
+  test "should handle unassign all plates from empty location" do
+    # Ensure location has no plates
+    assert_equal 0, @location.current_plates.count
+
+    post unassign_all_plates_api_v1_location_url(@location), as: :json
+    assert_response :success
+
+    json_response = JSON.parse(response.body)
+    assert json_response.key?("data")
+    assert_equal 0, json_response["data"]["plates_unassigned"].length
+    assert json_response["message"].include?("No plates to unassign")
+  end
+
+  test "should return 404 for unassign all plates on non-existent location" do
+    post unassign_all_plates_api_v1_location_url(99999), as: :json
+    assert_response :not_found
+
+    json_response = JSON.parse(response.body)
+    assert json_response.key?("error")
+    assert json_response["error"].include?("Record not found")
+  end
 end
