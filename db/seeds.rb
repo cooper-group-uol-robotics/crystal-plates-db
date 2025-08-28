@@ -41,6 +41,50 @@ unless PlatePrototype.exists?(name: prototype_name)
   puts "Seeded #{wells.size} wells for prototype '#{prototype_name}'"
 end
 
+# Seed: Generic 24 well Plate Prototype
+prototype_name = "Generic 24 well Plate"
+unless PlatePrototype.exists?(name: prototype_name)
+  prototype = PlatePrototype.create!(name: prototype_name, description: "24 wells, 4 rows x 6 columns, 18mm grid spacing, origin at 0,0, z=0")
+  wells = []
+  (1..4).each do |row|
+    (1..6).each do |col|
+      wells << PrototypeWell.new(
+        plate_prototype: prototype,
+        well_row: row,
+        well_column: col,
+        subwell: 1,
+        x_mm: (col - 1) * 18.0,
+        y_mm: (row - 1) * 18.0,
+        z_mm: 0.0
+      )
+    end
+  end
+  PrototypeWell.import wells
+  puts "Seeded #{wells.size} wells for prototype '#{prototype_name}'"
+end
+
+# Seed: Generic 48 well Plate Prototype
+prototype_name = "Generic 48 well Plate"
+unless PlatePrototype.exists?(name: prototype_name)
+  prototype = PlatePrototype.create!(name: prototype_name, description: "48 wells, 6 rows x 8 columns, 13.5mm grid spacing, origin at 0,0, z=0")
+  wells = []
+  (1..6).each do |row|
+    (1..8).each do |col|
+      wells << PrototypeWell.new(
+        plate_prototype: prototype,
+        well_row: row,
+        well_column: col,
+        subwell: 1,
+        x_mm: (col - 1) * 13.5,
+        y_mm: (row - 1) * 13.5,
+        z_mm: 0.0
+      )
+    end
+  end
+  PrototypeWell.import wells
+  puts "Seeded #{wells.size} wells for prototype '#{prototype_name}'"
+end
+
 # Seed: Mitegen InSitu-1
 prototype_name = "Mitegen InSitu-1"
 unless PlatePrototype.exists?(name: prototype_name)
