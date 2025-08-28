@@ -1,0 +1,53 @@
+<%# app/views/pxrd_patterns/_gallery.html.erb %>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">PXRD Patterns (<%= @well.pxrd_patterns.count %>)</h5>
+  <a class="btn btn-primary btn-sm" href="<%= new_well_pxrd_pattern_path(@well) %>" target="_blank">
+    Add PXRD Pattern
+  </a>
+</div>
+<% if @well.pxrd_patterns.any? %>
+  <% selected_pattern = @well.pxrd_patterns.order(created_at: :desc).first %>
+  <div class="text-center mb-3">
+    <h5>PXRD Pattern: <%= selected_pattern.title.presence || "PXRD Pattern ##{selected_pattern.id}" %></h5>
+    <div id="pxrd-main-plot-container">
+      <%= render partial: 'pxrd_patterns/plot', locals: { pxrd_pattern: selected_pattern, include_chartjs: true } %>
+    </div>
+  </div>
+  <div class="d-flex flex-row flex-wrap justify-content-center mt-4 border-top pt-3" style="gap: 12px;">
+    <% @well.pxrd_patterns.order(created_at: :desc).each do |pattern| %>
+      <div class="pxrd-thumbnail text-center" style="cursor:pointer; min-width: 120px;" data-pattern-id="<%= pattern.id %>">
+        <div class="border rounded p-2 bg-light">
+          <div class="fw-bold small mb-1"><%= pattern.title.presence || "PXRD ##{pattern.id}" %></div>
+          <div class="text-muted" style="font-size: 11px;">
+            <%= pattern.created_at.strftime('%Y-%m-%d %H:%M') %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  <script>
+    document.querySelectorAll('.pxrd-thumbnail').forEach(function(thumb) {
+      thumb.addEventListener('click', function() {
+        var patternId = this.getAttribute('data-pattern-id');
+        fetch(`/pxrd_patterns/${patternId}/plot`)
+          .then(response => response.text())
+          .then(html => {
+            document.getElementById('pxrd-main-plot-container').innerHTML = html;
+            // Dynamically load Chart.js and plugin if not already loaded
+            if (!window.Chart) {
+              var script = document.createElement('script');
+              script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+              document.body.appendChild(script);
+              script.onload = function() {
+                var plugin = document.createElement('script');
+                plugin.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js';
+                document.body.appendChild(plugin);
+              };
+            }
+          });
+      });
+    });
+  </script>
+<% else %>
+  <div class="alert alert-info text-center">No PXRD patterns uploaded for this well.</div>
+<% end %>

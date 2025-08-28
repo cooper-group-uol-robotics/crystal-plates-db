@@ -148,7 +148,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
     # Create a unique location for this test using timestamp
     unique_pos = Time.current.to_i % 1000
     test_location = Location.create!(carousel_position: unique_pos, hotel_position: unique_pos)
-    
+
     # Create a plate and assign it to the location (since each location can only hold one plate)
     plate = Plate.create!(barcode: "UNASSIGN_TEST_#{unique_pos}")
     plate.move_to_location!(test_location)

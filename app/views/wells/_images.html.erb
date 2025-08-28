@@ -189,10 +189,7 @@ window.showImageInMain = function(imageId, imageUrl, largeImageUrl) {
   </div>
 
 <% else %>
-  <div class="text-center py-4">
-    <p class="text-muted">No images attached to this well.</p>
-    <%= link_to 'Add First Image', new_well_image_path(well), class: 'btn btn-primary' %>
-  </div>
+  <div class="alert alert-info text-center">No images uploaded for this well.</div>
 <% end %>
 
 <script>

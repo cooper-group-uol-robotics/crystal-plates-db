@@ -614,6 +614,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab" aria-controls="content" aria-selected="false">Stock Solutions</button>
           </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pxrd-tab" data-bs-toggle="tab" data-bs-target="#pxrd" type="button" role="tab" aria-controls="pxrd" aria-selected="false">PXRD</button>
+          </li>
         </ul>
 
         <!-- Tab content -->
@@ -626,6 +629,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="tab-pane fade" id="content" role="tabpanel" aria-labelledby="content-tab">
             <div id="wellContentForm">
               <!-- Stock solution form will be injected here -->
+            </div>
+          </div>
+          <div class="tab-pane fade" id="pxrd" role="tabpanel" aria-labelledby="pxrd-tab">
+            <div id="wellPxrdContent">
+              <!-- PXRD patterns will be injected here -->
             </div>
           </div>
         </div>
@@ -768,59 +776,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modalTitle.textContent = `Well ${wellLabel} Details`
 
+
     // Load images tab
-    console.log('Fetching:', `/wells/${wellId}/images`);
     fetch(`/wells/${wellId}/images`)
-      .then(response => {
-        console.log('Fetch response:', response);
-        return response.text();
-      })
+      .then(response => response.text())
       .then(html => {
-        console.log('Fetch HTML length:', html.length);
         wellImagesContent.innerHTML = html
-        // Initialize thumbnails after content is loaded
         setTimeout(() => {
           if (window.initializeThumbnails) {
-            console.log('Calling initializeThumbnails after AJAX load');
             window.initializeThumbnails();
           } else {
-            console.error('initializeThumbnails function not found, trying direct initialization');
-            // Try to call it directly from the loaded content
             const thumbnails = document.querySelectorAll('.image-thumbnail');
-            console.log('Found thumbnails directly:', thumbnails.length);
-            
             thumbnails.forEach((thumbnail, index) => {
-              if (thumbnail.hasAttribute('data-initialized')) {
-                return;
-              }
-              
+              if (thumbnail.hasAttribute('data-initialized')) return;
               thumbnail.setAttribute('data-initialized', 'true');
-              
-              // Add hover functionality for action buttons
               thumbnail.addEventListener('mouseenter', function() {
                 const actions = this.querySelector('.image-actions');
-                if (actions) {
-                  actions.classList.remove('d-none');
-                }
+                if (actions) actions.classList.remove('d-none');
               });
-              
               thumbnail.addEventListener('mouseleave', function() {
                 const actions = this.querySelector('.image-actions');
-                if (actions) {
-                  actions.classList.add('d-none');
-                }
+                if (actions) actions.classList.add('d-none');
               });
-              
               thumbnail.addEventListener('click', function(e) {
                 const imageId = this.getAttribute('data-image-id');
                 const imageUrl = this.getAttribute('data-image-url');
                 const largeImageUrl = this.getAttribute('data-large-image-url');
-                console.log('Direct thumbnail clicked:', imageId, imageUrl, largeImageUrl);
-                
                 if (imageId && imageUrl && window.showImageInMain) {
                   window.showImageInMain(imageId, imageUrl, largeImageUrl);
-                } else {
-                  console.error('showImageInMain not available');
                 }
               });
             });
@@ -828,9 +811,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200);
       })
       .catch((error) => {
-        console.error('Fetch error:', error);
         wellImagesContent.innerHTML = '<p>Error loading images.</p>'
       })
+
+    // Load PXRD tab
+    fetch(`/wells/${wellId}/pxrd_patterns`)
+      .then(response => response.text())
+      .then(html => {
+        document.getElementById('wellPxrdContent').innerHTML = html;
+      })
+      .catch((error) => {
+        document.getElementById('wellPxrdContent').innerHTML = '<p>Error loading PXRD patterns.</p>';
+      });
 
     // Load content tab
     fetch(`/wells/${wellId}/content_form`)

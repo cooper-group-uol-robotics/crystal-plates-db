@@ -9,7 +9,7 @@ module ApplicationHelper
       hard_wrap: true,
       link_attributes: { target: "_blank", rel: "noopener" }
     )
-    
+
     markdown = Redcarpet::Markdown.new(
       renderer,
       autolink: true,
@@ -22,7 +22,7 @@ module ApplicationHelper
       highlight: true,
       quote: true
     )
-    
+
     markdown.render(text).html_safe
   end
 end

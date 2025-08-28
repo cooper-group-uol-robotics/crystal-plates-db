@@ -1,0 +1,82 @@
+<%# app/views/pxrd_patterns/_plot.html.erb %>
+<% require 'nokogiri' %>
+<% if pxrd_pattern.xrdml_file.attached? %>
+  <% xrdml_xml = Nokogiri::XML(pxrd_pattern.xrdml_file.download) %>
+  <% start_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:startPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
+  <% end_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:endPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
+  <% intensities_str = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:intensities', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text rescue nil %>
+  <% if start_2theta && end_2theta && intensities_str %>
+    <% intensities = intensities_str.split.map(&:to_f) %>
+    <% n_points = intensities.size %>
+    <% step = (end_2theta - start_2theta) / (n_points - 1) %>
+    <% two_theta = Array.new(n_points) { |i| (start_2theta + i * step).round(2) } %>
+    <div class="my-2">
+      <canvas id="pxrd-plot-<%= pxrd_pattern.id %>" width="500" height="200"></canvas>
+    </div>
+    <% if local_assigns[:include_chartjs] %>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <% end %>
+    <script>
+      (function() {
+        function renderPxrdChart() {
+          const ctx = document.getElementById('pxrd-plot-<%= pxrd_pattern.id %>');
+          if (!ctx) return;
+          const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
+          new window.Chart(ctx.getContext('2d'), {
+            type: 'scatter',
+            data: {
+              datasets: [{
+                label: 'Intensity',
+                data: scatterData,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                showLine: true,
+                pointRadius: 0,
+                borderWidth: 1,
+                fill: false,
+                tension: 0.1
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                title: { display: false },
+                zoom: {
+                  pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+                  zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+                }
+              },
+              scales: {
+                x: {
+                  type: 'linear',
+                  title: { display: true, text: '2θ (degrees)' },
+                  ticks: {
+                    maxTicksLimit: 10,
+                    callback: function(value) { return parseFloat(value).toFixed(2); }
+                  }
+                },
+                y: {
+                  title: { display: true, text: 'Intensity (counts)' }
+                }
+              }
+            }
+          });
+        }
+        function waitForChartJs(cb) {
+          if (window.Chart && window.Chart.register) {
+            cb();
+          } else {
+            setTimeout(() => waitForChartJs(cb), 50);
+          }
+        }
+        waitForChartJs(renderPxrdChart);
+      })();
+    </script>
+  <% else %>
+    <div class="alert alert-warning">Could not parse XRMDL data for this pattern.</div>
+  <% end %>
+<% else %>
+  <div class="alert alert-warning">No XRMDL file attached.</div>
+<% end %>

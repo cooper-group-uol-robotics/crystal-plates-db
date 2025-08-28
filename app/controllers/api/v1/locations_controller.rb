@@ -129,7 +129,7 @@ module Api::V1
     # POST /api/v1/locations/:id/unassign_all_plates
     def unassign_all_plates
       current_plates = @location.current_plates
-      
+
       if current_plates.empty?
         render_success(
           {
