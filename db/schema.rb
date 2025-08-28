@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_28_171311) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_28_180833) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -149,6 +149,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_28_171311) do
     t.string "title"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "measured_at"
     t.index ["well_id"], name: "index_pxrd_patterns_on_well_id"
   end
 

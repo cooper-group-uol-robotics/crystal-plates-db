@@ -10,42 +10,45 @@
     <% n_points = intensities.size %>
     <% step = (end_2theta - start_2theta) / (n_points - 1) %>
     <% two_theta = Array.new(n_points) { |i| (start_2theta + i * step).round(2) } %>
-    <div class="my-2">
-      <canvas id="pxrd-plot-<%= pxrd_pattern.id %>" width="500" height="200"></canvas>
+    <div class="my-2" style="position: relative; height: 400px;">
+      <canvas id="pxrd-main-plot"></canvas>
     </div>
-    <% if local_assigns[:include_chartjs] %>
-      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
-    <% end %>
     <script>
       (function() {
         function renderPxrdChart() {
-          const ctx = document.getElementById('pxrd-plot-<%= pxrd_pattern.id %>');
-          if (!ctx) return;
+          const ctx = document.getElementById('pxrd-main-plot');
+          if (!ctx || !window.Chart) return;
+          
+          // Destroy existing chart if it exists
+          if (window.currentPxrdChart) {
+            window.currentPxrdChart.destroy();
+          }
+          
           const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
-          new window.Chart(ctx.getContext('2d'), {
+          window.currentPxrdChart = new window.Chart(ctx.getContext('2d'), {
             type: 'scatter',
             data: {
               datasets: [{
-                label: 'Intensity',
+                label: '<%= pxrd_pattern.title %>',
                 data: scatterData,
                 borderColor: 'rgba(54, 162, 235, 1)',
                 backgroundColor: 'rgba(54, 162, 235, 0.1)',
                 showLine: true,
                 pointRadius: 0,
-                borderWidth: 1,
+                borderWidth: 2,
                 fill: false,
                 tension: 0.1
               }]
             },
             options: {
               responsive: true,
+              maintainAspectRatio: false,
               plugins: {
                 legend: { display: false },
                 title: { display: false },
                 zoom: {
                   pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
-                  zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+                  zoom: { drag: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
                 }
               },
               scales: {
@@ -64,14 +67,9 @@
             }
           });
         }
-        function waitForChartJs(cb) {
-          if (window.Chart && window.Chart.register) {
-            cb();
-          } else {
-            setTimeout(() => waitForChartJs(cb), 50);
-          }
-        }
-        waitForChartJs(renderPxrdChart);
+        
+        // Render immediately since Chart.js should be available
+        renderPxrdChart();
       })();
     </script>
   <% else %>

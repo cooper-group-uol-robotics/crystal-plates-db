@@ -1,18 +1,4 @@
-<%# Helper to extract 2theta and intensity arrays from XRMDL file %>
-<% require 'nokogiri' %>
-<% if @pxrd_pattern.xrdml_file.attached? %>
-  <% xrdml_xml = Nokogiri::XML(@pxrd_pattern.xrdml_file.download) %>
-  <% start_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:startPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
-  <% end_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:endPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
-  <% intensities_str = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:intensities', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text rescue nil %>
-  <% if start_2theta && end_2theta && intensities_str %>
-    <% intensities = intensities_str.split.map(&:to_f) %>
-    <% n_points = intensities.size %>
-    <% step = (end_2theta - start_2theta) / (n_points - 1) %>
-    <% two_theta = Array.new(n_points) { |i| (start_2theta + i * step).round(2) } %>
-  <% end %>
-<% end %>
-<% content_for :title, "PXRD Pattern Details for Well \\#{@well.well_label_with_subwell}" %>
+<% content_for :title, "PXRD Pattern Details for Well #{@well.well_label_with_subwell}" %>
 
 <div class="container">
   <div class="row justify-content-center">
@@ -27,6 +13,16 @@
             <dt class="col-sm-3">Title</dt>
             <dd class="col-sm-9"><%= @pxrd_pattern.title %></dd>
 
+            <dt class="col-sm-3">Measured</dt>
+            <dd class="col-sm-9">
+              <%= (@pxrd_pattern.measured_at || @pxrd_pattern.created_at).strftime('%Y-%m-%d %H:%M') %>
+              <% if @pxrd_pattern.measured_at %>
+                <small class="text-muted">(from XRDML file)</small>
+              <% else %>
+                <small class="text-muted">(upload time)</small>
+              <% end %>
+            </dd>
+
             <dt class="col-sm-3">Uploaded</dt>
             <dd class="col-sm-9"><%= @pxrd_pattern.created_at.strftime('%Y-%m-%d %H:%M') %></dd>
 
@@ -40,69 +36,7 @@
             </dd>
           </dl>
 
-          <% if defined?(two_theta) && defined?(intensities) && two_theta && intensities && two_theta.size == intensities.size && two_theta.size > 1 %>
-            <div class="my-4">
-              <canvas id="pxrd-plot" width="700" height="300"></canvas>
-            </div>
-            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
-            <script>
-              const ctx = document.getElementById('pxrd-plot').getContext('2d');
-              // Prepare scatter data: [{x: 2theta, y: intensity}, ...]
-              const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
-              const pxrdChart = new Chart(ctx, {
-                type: 'scatter',
-                data: {
-                  datasets: [{
-                    label: 'Intensity',
-                    data: scatterData,
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                    showLine: true,
-                    pointRadius: 0,
-                    borderWidth: 1,
-                    fill: false,
-                    tension: 0.1
-                  }]
-                },
-                options: {
-                  responsive: true,
-                  plugins: {
-                    legend: { display: false },
-                    title: { display: false },
-                    zoom: {
-                      pan: {
-                        enabled: true,
-                        mode: 'xy',
-                        modifierKey: 'ctrl',
-                      },
-                      zoom: {
-                        wheel: { enabled: true },
-                        pinch: { enabled: true },
-                        drag: { enabled: true },
-                        mode: 'xy',
-                      }
-                    }
-                  },
-                  scales: {
-                    x: {
-                      type: 'linear',
-                      title: { display: true, text: '2θ (degrees)' },
-                      ticks: {
-                        maxTicksLimit: 10,
-                        callback: function(value, index, ticks) {
-                          return parseFloat(value).toFixed(2);
-                        }
-                      }
-                    },
-                    y: {
-                      title: { display: true, text: 'Intensity (counts)' }
-                    }
-                  }
-                }
-              });
-            </script>
-          <% end %>
+          <%= render partial: 'pxrd_patterns/plot', locals: { pxrd_pattern: @pxrd_pattern } %>
 
           <div class="mt-3">
             <%= link_to 'Edit', edit_well_pxrd_pattern_path(@well, @pxrd_pattern), class: 'btn btn-primary' %>

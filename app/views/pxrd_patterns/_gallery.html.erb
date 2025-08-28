@@ -8,7 +8,15 @@
 <% if @well.pxrd_patterns.any? %>
   <% selected_pattern = @well.pxrd_patterns.order(created_at: :desc).first %>
   <div class="text-center mb-3">
-    <h5>PXRD Pattern: <%= selected_pattern.title.presence || "PXRD Pattern ##{selected_pattern.id}" %></h5>
+    <div class="d-flex justify-content-center align-items-center mb-2" style="gap: 15px;">
+      <h5 class="mb-0" id="pxrd-title">PXRD Pattern: <%= selected_pattern.title.presence || "#{selected_pattern.id}" %></h5>
+      <% if selected_pattern.xrdml_file.attached? %>
+        <a href="<%= url_for(selected_pattern.xrdml_file) %>" download="<%= selected_pattern.xrdml_file.filename %>" 
+           class="btn btn-outline-primary btn-sm" id="pxrd-download-btn" title="Download XRDML file">
+          <i class="bi bi-download"></i> Download
+        </a>
+      <% end %>
+    </div>
     <div id="pxrd-main-plot-container">
       <%= render partial: 'pxrd_patterns/plot', locals: { pxrd_pattern: selected_pattern, include_chartjs: true } %>
     </div>
@@ -17,32 +25,124 @@
     <% @well.pxrd_patterns.order(created_at: :desc).each do |pattern| %>
       <div class="pxrd-thumbnail text-center" style="cursor:pointer; min-width: 120px;" data-pattern-id="<%= pattern.id %>">
         <div class="border rounded p-2 bg-light">
+          <canvas id="thumb-<%= pattern.id %>" width="100" height="60" style="border: 1px solid #ddd;"></canvas>
           <div class="fw-bold small mb-1"><%= pattern.title.presence || "PXRD ##{pattern.id}" %></div>
           <div class="text-muted" style="font-size: 11px;">
-            <%= pattern.created_at.strftime('%Y-%m-%d %H:%M') %>
+            <%= (pattern.measured_at || pattern.created_at).strftime('%Y-%m-%d %H:%M') %>
           </div>
         </div>
       </div>
     <% end %>
   </div>
   <script>
+    // Initialize PXRD gallery
+    setTimeout(function() {
+      <% @well.pxrd_patterns.order(created_at: :desc).each do |pattern| %>
+        <% if pattern.xrdml_file.attached? %>
+          <% require 'nokogiri' %>
+          <% xrdml_xml = Nokogiri::XML(pattern.xrdml_file.download) %>
+          <% start_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:startPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
+          <% end_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:endPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
+          <% intensities_str = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:intensities', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text rescue nil %>
+          <% if start_2theta && end_2theta && intensities_str %>
+            <% intensities = intensities_str.split.map(&:to_f) %>
+            <% n_points = intensities.size %>
+            <% step = (end_2theta - start_2theta) / (n_points - 1) %>
+            <% two_theta = Array.new(n_points) { |i| (start_2theta + i * step).round(2) } %>
+            
+            (function() {
+              const canvas = document.getElementById('thumb-<%= pattern.id %>');
+              if (canvas && window.Chart) {
+                const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
+                new Chart(canvas.getContext('2d'), {
+                  type: 'scatter',
+                  data: {
+                    datasets: [{
+                      data: scatterData,
+                      borderColor: 'rgba(54, 162, 235, 1)',
+                      backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                      showLine: true,
+                      pointRadius: 0,
+                      borderWidth: 1,
+                      fill: false
+                    }]
+                  },
+                  options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                      legend: { display: false },
+                      tooltip: { enabled: false }
+                    },
+                    scales: {
+                      x: { display: false },
+                      y: { display: false }
+                    },
+                    elements: { point: { radius: 0 } },
+                    animation: false
+                  }
+                });
+              }
+            })();
+          <% end %>
+        <% end %>
+      <% end %>
+    }, 200);
+
+    // Handle thumbnail clicks
     document.querySelectorAll('.pxrd-thumbnail').forEach(function(thumb) {
       thumb.addEventListener('click', function() {
         var patternId = this.getAttribute('data-pattern-id');
+        
+        // Update the main plot
         fetch(`/pxrd_patterns/${patternId}/plot`)
           .then(response => response.text())
           .then(html => {
-            document.getElementById('pxrd-main-plot-container').innerHTML = html;
-            // Dynamically load Chart.js and plugin if not already loaded
-            if (!window.Chart) {
-              var script = document.createElement('script');
-              script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-              document.body.appendChild(script);
-              script.onload = function() {
-                var plugin = document.createElement('script');
-                plugin.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js';
-                document.body.appendChild(plugin);
-              };
+            const container = document.getElementById('pxrd-main-plot-container');
+            container.innerHTML = html;
+            
+            // Execute any scripts that were injected
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(script => {
+              try {
+                eval(script.innerHTML);
+              } catch(e) {
+                console.error('Error executing plot script:', e);
+              }
+            });
+          })
+          .catch(error => {
+            console.error('Error loading plot:', error);
+          });
+          
+        // Update the title and download button
+        fetch(`/wells/<%= @well.id %>/pxrd_patterns/${patternId}`, {
+          headers: { 'Accept': 'application/json' }
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
+            }
+            return response.json();
+          })
+          .then(data => {
+            const titleText = data.title || `${data.id}`;
+            document.getElementById('pxrd-title').textContent = `PXRD Pattern: ${titleText}`;
+            
+            const downloadBtn = document.getElementById('pxrd-download-btn');
+            if (data.file_url && downloadBtn) {
+              downloadBtn.href = data.file_url;
+              downloadBtn.style.display = 'inline-block';
+            } else if (downloadBtn) {
+              downloadBtn.style.display = 'none';
+            }
+          })
+          .catch(error => {
+            console.error('Error loading pattern details:', error);
+            // Fallback: use data from thumbnail
+            const titleElement = this.querySelector('.fw-bold');
+            if (titleElement) {
+              document.getElementById('pxrd-title').textContent = 'PXRD Pattern: ' + titleElement.textContent;
             }
           });
       });

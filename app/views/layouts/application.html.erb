@@ -20,6 +20,9 @@
     
     <!-- Rails JavaScript -->
     <%= javascript_importmap_tags %>
+    
+    <!-- Additional head content from views -->
+    <%= yield :head %>
   </head>
 
   <body class="bg-light">

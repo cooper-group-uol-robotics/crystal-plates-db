@@ -2,9 +2,6 @@ class PxrdPatternsController < ApplicationController
   before_action :set_well, except: [ :plot ]
   before_action :set_pxrd_pattern, only: [ :show, :edit, :update, :destroy ]
 
-  # Allow index and plot as public actions
-  public :index, :plot
-
   # GET /wells/:well_id/pxrd_patterns
   def index
     @pxrd_patterns = @well.pxrd_patterns.order(created_at: :desc)
@@ -46,6 +43,7 @@ class PxrdPatternsController < ApplicationController
           id: @pxrd_pattern.id,
           title: @pxrd_pattern.title,
           file_url: @pxrd_pattern.xrdml_file.attached? ? url_for(@pxrd_pattern.xrdml_file) : nil,
+          measured_at: @pxrd_pattern.measured_at,
           created_at: @pxrd_pattern.created_at
         }
       end

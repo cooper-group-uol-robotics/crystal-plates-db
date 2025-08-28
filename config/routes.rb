@@ -37,6 +37,13 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  # Standalone PXRD pattern routes for AJAX calls
+  resources :pxrd_patterns, only: [] do
+    member do
+      get :plot
+    end
+  end
   resources :plates do
     collection do
       get :deleted
