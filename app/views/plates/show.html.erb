@@ -60,6 +60,30 @@
   </div>
 </div>
 
+<!-- Bulk Upload Section -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Bulk Upload Well Contents</h5>
+        <p class="text-muted small mb-3">
+          Upload a CSV file to bulk populate well contents. Format: First row contains stock solution IDs, 
+          first column contains well labels (A1, B2, etc.), body contains volumes in µL. Empty cells or 0 values will be skipped.
+        </p>
+        <%= form_with url: bulk_upload_contents_plate_path(@plate), method: :post, 
+                      local: true, multipart: true, class: "d-flex align-items-end gap-3" do |f| %>
+          <div class="flex-grow-1">
+            <%= f.file_field :csv_file, accept: ".csv", class: "form-control", required: true %>
+          </div>
+          <div>
+            <%= f.submit "Upload CSV", class: "btn btn-primary", 
+                         data: { confirm: "This will update well contents. Existing contents for the same stock solutions will be overwritten. Continue?" } %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
 
 <h2 class="mb-3">Wells</h2>
 <div class="mb-2">

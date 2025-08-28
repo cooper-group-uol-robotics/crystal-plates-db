@@ -51,6 +51,7 @@ Rails.application.routes.draw do
     member do
       patch :restore
       delete :permanent_delete
+      post :bulk_upload_contents
     end
   end
 

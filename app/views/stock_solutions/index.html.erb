@@ -28,6 +28,7 @@
         <table class="table table-hover">
           <thead>
             <tr>
+              <th width="80">ID</th>
               <th>Name</th>
               <th>Components</th>
               <th>Used in Wells</th>
@@ -37,6 +38,9 @@
           <tbody>
             <% @stock_solutions.each do |stock_solution| %>
               <tr>
+                <td>
+                  <strong><%= stock_solution.id %></strong>
+                </td>
                 <td>
                   <%= link_to stock_solution.display_name, stock_solution_path(stock_solution), 
                               class: "text-decoration-none" %>

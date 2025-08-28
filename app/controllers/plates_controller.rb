@@ -1,5 +1,5 @@
 class PlatesController < ApplicationController
-  before_action :set_plate, only: %i[ show edit update destroy ]
+  before_action :set_plate, only: %i[ show edit update destroy bulk_upload_contents ]
   before_action :set_deleted_plate, only: %i[ restore permanent_delete ]
 
   # GET /plates or /plates.json
@@ -206,6 +206,36 @@ class PlatesController < ApplicationController
     end
   end
 
+  # POST /plates/:id/bulk_upload_contents
+  def bulk_upload_contents
+    require "csv"
+
+    unless params[:csv_file].present?
+      redirect_to @plate, alert: "Please select a CSV file to upload."
+      return
+    end
+
+    begin
+      csv_content = params[:csv_file].read
+      csv = CSV.parse(csv_content, headers: true)
+
+      results = process_bulk_contents_csv(csv)
+
+      if results[:errors].any?
+        flash[:alert] = "Upload completed with errors: #{results[:errors].join(', ')}"
+      else
+        flash[:notice] = "Successfully uploaded #{results[:success_count]} well contents."
+      end
+
+    rescue CSV::MalformedCSVError => e
+      flash[:alert] = "Invalid CSV file: #{e.message}"
+    rescue => e
+      flash[:alert] = "Error processing CSV: #{e.message}"
+    end
+
+    redirect_to @plate
+  end
+
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_plate
@@ -275,5 +305,102 @@ class PlatesController < ApplicationController
       else
         Rails.logger.debug "Location appears to be available"
       end
+    end
+
+    def process_bulk_contents_csv(csv)
+      results = { success_count: 0, errors: [] }
+
+      # Get stock solution mapping from headers (skip first column which is well labels)
+      headers = csv.headers[1..-1] # Remove first column (well labels)
+      stock_solution_mapping = {}
+
+      headers.each do |header|
+        next if header.nil? || header.strip.empty? || header.downcase.include?("total")
+
+        # Try to find stock solution by ID first, then by name
+        stock_solution = nil
+        if header.match?(/^\d+$/) # If header is just a number, treat as ID
+          stock_solution = StockSolution.find_by(id: header.to_i)
+        else
+          # Try to find by name (case insensitive)
+          stock_solution = StockSolution.find_by("name ILIKE ?", header.strip)
+        end
+
+        if stock_solution
+          stock_solution_mapping[header] = stock_solution
+        else
+          results[:errors] << "Stock solution not found: #{header}"
+        end
+      end
+
+      return results if stock_solution_mapping.empty?
+
+      csv.each do |row|
+        well_label = row[0]&.strip
+        next if well_label.nil? || well_label.empty? || well_label.downcase.include?("total")
+
+        # Parse well label (e.g., "A1" -> row: 1, column: 1, subwell: 1; "A1.2" -> row: 1, column: 1, subwell: 2)
+        well_row, well_column, subwell = parse_well_label(well_label)
+        unless well_row && well_column && subwell
+          results[:errors] << "Invalid well label format: #{well_label}"
+          next
+        end
+
+        # Find the well by row, column, and subwell
+        well = @plate.wells.find_by(well_row: well_row, well_column: well_column, subwell: subwell)
+        unless well
+          results[:errors] << "Well not found: #{well_label} (row: #{well_row}, column: #{well_column}, subwell: #{subwell})"
+          next
+        end
+
+        # Process each stock solution for this well
+        headers.each do |header|
+          next unless stock_solution_mapping[header]
+
+          volume_str = row[header]&.strip
+          next if volume_str.nil? || volume_str.empty? || volume_str == "0"
+
+          # Add default unit of μL if the value is purely numeric
+          if volume_str.match?(/^\d+(?:\.\d+)?$/)
+            volume_str = "#{volume_str} μL"
+          end
+
+          begin
+
+            stock_solution = stock_solution_mapping[header]
+
+            # Find or create well content
+            well_content = well.well_contents.find_or_initialize_by(stock_solution: stock_solution)
+            well_content.volume_with_unit = volume_str  # Use the virtual attribute that handles parsing
+            well_content.save!
+
+            results[:success_count] += 1
+          rescue => e
+            results[:errors] << "Error saving content for well #{well_label}: #{e.message}"
+          end
+        end
+      end
+
+      results
+    end
+
+    def parse_well_label(label)
+      # Parse labels like "A1", "B12", "A1.2", "B5-3", "C10_4", etc.
+      # First extract the base well (letter + number) and any subwell after delimiter
+      match = label.upcase.match(/^([A-Z]+)(\d+)([^A-Z0-9]+(\d+))?$/)
+      return nil unless match
+
+      row_letter = match[1]
+      column_number = match[2].to_i
+      subwell_number = match[4]&.to_i || 1  # Default to subwell 1 if no delimiter found
+
+      # Convert letter to row number (A=1, B=2, etc.)
+      # Handle multi-letter combinations like AA, AB, etc.
+      row_number = 0
+      row_letter.chars.each do |char|
+        row_number = row_number * 26 + (char.ord - "A".ord + 1)
+      end
+
+      [ row_number, column_number, subwell_number ]
     end
 end
