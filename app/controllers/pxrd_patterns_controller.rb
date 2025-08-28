@@ -1,6 +1,21 @@
 class PxrdPatternsController < ApplicationController
-  before_action :set_well
+  before_action :set_well, except: [ :plot ]
   before_action :set_pxrd_pattern, only: [ :show, :edit, :update, :destroy ]
+
+  # Allow index and plot as public actions
+  public :index, :plot
+
+  # GET /wells/:well_id/pxrd_patterns
+  def index
+    @pxrd_patterns = @well.pxrd_patterns.order(created_at: :desc)
+    render partial: "pxrd_patterns/gallery", locals: { well: @well }
+  end
+
+  # GET /pxrd_patterns/:id/plot
+  def plot
+    pattern = PxrdPattern.find(params[:id])
+    render partial: "pxrd_patterns/plot", locals: { pxrd_pattern: pattern }
+  end
 
   # GET /wells/:well_id/pxrd_patterns/new
   def new
