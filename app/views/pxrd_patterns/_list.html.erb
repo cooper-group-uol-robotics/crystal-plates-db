@@ -1,0 +1,17 @@
+<h3>PXRD Patterns</h3>
+
+<% if @well.pxrd_patterns.any? %>
+  <ul>
+    <% @well.pxrd_patterns.each do |pattern| %>
+      <li>
+        <%= link_to pattern.title.presence || "PXRD Pattern ##{pattern.id}", well_pxrd_pattern_path(@well, pattern) %>
+        (<%= link_to 'Edit', edit_well_pxrd_pattern_path(@well, pattern) %> |
+         <%= link_to 'Delete', well_pxrd_pattern_path(@well, pattern), method: :delete, data: { confirm: 'Are you sure?' } %>)
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p>No PXRD patterns uploaded for this well.</p>
+<% end %>
+
+<%= link_to 'Upload New PXRD Pattern', new_well_pxrd_pattern_path(@well) %>

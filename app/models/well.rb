@@ -5,6 +5,8 @@ class Well < ApplicationRecord
   has_many :images, dependent: :destroy
   has_many :point_of_interests, through: :images, dependent: :destroy
 
+  has_many :pxrd_patterns, dependent: :destroy
+
   validates :well_row, :well_column, presence: true
   validates :subwell, presence: true, numericality: { greater_than: 0 }
   validates :subwell, uniqueness: { scope: [ :plate_id, :well_row, :well_column ] }

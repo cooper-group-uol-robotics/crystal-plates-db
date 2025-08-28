@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_13_131737) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_28_171311) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -144,6 +144,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_13_131737) do
     t.index ["plate_prototype_id"], name: "index_prototype_wells_on_plate_prototype_id"
   end
 
+  create_table "pxrd_patterns", force: :cascade do |t|
+    t.integer "well_id", null: false
+    t.string "title"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["well_id"], name: "index_pxrd_patterns_on_well_id"
+  end
+
   create_table "stock_solution_components", force: :cascade do |t|
     t.integer "stock_solution_id", null: false
     t.integer "chemical_id", null: false
@@ -203,6 +211,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_13_131737) do
   add_foreign_key "plates", "plate_prototypes"
   add_foreign_key "point_of_interests", "images"
   add_foreign_key "prototype_wells", "plate_prototypes"
+  add_foreign_key "pxrd_patterns", "wells"
   add_foreign_key "stock_solution_components", "chemicals"
   add_foreign_key "stock_solution_components", "stock_solutions"
   add_foreign_key "stock_solution_components", "units"

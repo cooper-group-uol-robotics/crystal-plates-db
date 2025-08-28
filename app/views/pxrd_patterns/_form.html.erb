@@ -1,0 +1,32 @@
+<%# app/views/pxrd_patterns/_form.html.erb %>
+<%= form_with(model: [@well, @pxrd_pattern], local: true, html: { multipart: true }) do |form| %>
+  <% if @pxrd_pattern.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@pxrd_pattern.errors.count, "error") %> prohibited this PXRD pattern from being saved:</h2>
+      <ul>
+        <% @pxrd_pattern.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= form.label :title, class: 'form-label' %>
+    <%= form.text_field :title, class: 'form-control' %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :xrdml_file, "XRMDL File", class: 'form-label' %>
+    <%= form.file_field :xrdml_file, class: 'form-control' %>
+    <% if @pxrd_pattern.xrdml_file.attached? %>
+      <div class="mt-2">
+        Current file: <%= link_to @pxrd_pattern.xrdml_file.filename, url_for(@pxrd_pattern.xrdml_file) %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="actions">
+    <%= form.submit class: 'btn btn-primary' %>
+  </div>
+<% end %>

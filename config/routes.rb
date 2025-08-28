@@ -30,6 +30,7 @@ Rails.application.routes.draw do
     resources :images, except: [ :index ] do
       resources :point_of_interests, except: [ :new, :edit ]
     end
+    resources :pxrd_patterns, except: [ :index ]
     resources :well_contents do
       collection do
         delete :destroy_all
