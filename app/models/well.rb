@@ -50,6 +50,15 @@ class Well < ApplicationRecord
     end
   end
 
+  # Check if well has any PXRD patterns
+  def has_pxrd_patterns?
+    if association(:pxrd_patterns).loaded?
+      pxrd_patterns.any?
+    else
+      pxrd_patterns.exists?
+    end
+  end
+
   # Get the most recent image
   def latest_image
     images.recent.first

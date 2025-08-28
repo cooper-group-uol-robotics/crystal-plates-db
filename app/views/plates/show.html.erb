@@ -141,12 +141,13 @@
               <% wells_in_position.sort_by(&:subwell).each do |well| %>
               <% has_image = well.has_images? %>
               <% has_content = well.has_content? %>
+              <% has_pxrd = well.has_pxrd_patterns? %>
               <% 
-                if has_image
-                bg_color = '#198754'  # Green - has images
+                if has_image || has_pxrd
+                bg_color = '#198754'  # Green - has images or PXRD patterns
                 text_color = 'white'
                 elsif has_content
-                bg_color = '#ffc107'  # Yellow - has stock solutions but no images
+                bg_color = '#ffc107'  # Yellow - has stock solutions but no images/PXRD
                 text_color = 'black'
                 else
                 bg_color = '#dc3545'  # Red - empty
