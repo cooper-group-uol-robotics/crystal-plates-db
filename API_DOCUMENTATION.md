@@ -10,6 +10,8 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 
 ## Common Response Format
 
+Most API endpoints wrap their responses in a standard format for consistency:
+
 ### Success Response
 ```json
 {
@@ -26,6 +28,8 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 }
 ```
 
+**Note**: Some endpoints may return data directly without the `data` wrapper for backwards compatibility. Always check the specific endpoint documentation for the exact response format.
+
 ## Stock Solutions API
 
 ### List All Stock Solutions
@@ -40,9 +44,8 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
     {
       "id": 1,
       "name": "Buffer A",
-      "description": "Tris-HCl buffer pH 7.4",
       "display_name": "Buffer A",
-      "component_summary": "Tris-HCl (50 mM), NaCl (150 mM)",
+      "total_components": 2,
       "used_in_wells_count": 5,
       "can_be_deleted": false,
       "created_at": "2025-07-19T10:00:00Z",
@@ -62,9 +65,8 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
   {
     "id": 1,
     "name": "Buffer A",
-    "description": "Tris-HCl buffer pH 7.4",
     "display_name": "Buffer A",
-    "component_summary": "Tris-HCl (50 mM), NaCl (150 mM)",
+    "total_components": 2,
     "used_in_wells_count": 5,
     "can_be_deleted": false,
     "created_at": "2025-07-19T10:00:00Z",
@@ -97,11 +99,17 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
   {
     "stock_solution": {
       "name": "Buffer Solution A",
-      "description": "Tris-HCl buffer pH 7.4"
+      "stock_solution_components_attributes": [
+        {
+          "chemical_id": 1,
+          "amount": 50.0,
+          "unit_id": 1
+        }
+      ]
     }
   }
   ```
-- **Response**: Created stock solution object
+- **Response**: Created stock solution object with components
 
 ### Update Stock Solution
 - **PUT/PATCH** `/api/v1/stock_solutions/:id`
@@ -111,8 +119,14 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 
 ### Delete Stock Solution
 - **DELETE** `/api/v1/stock_solutions/:id`
-- **Description**: Delete a stock solution
-- **Response**: Success message
+- **Description**: Delete a stock solution (only if not used in wells)
+- **Response**: Success message (204 No Content) or error if stock solution is in use
+- **Error Response** (422 if in use):
+  ```json
+  {
+    "error": "Cannot delete stock solution that is used in wells"
+  }
+  ```
 
 ## Chemicals API
 
@@ -130,7 +144,7 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
       "name": "Tris-HCl",
       "cas": "1185-53-1",
       "barcode": "CHEM001",
-      "display_text": "Tris-HCl (CAS: 1185-53-1)"
+      "display_text": "Tris-HCl | CAS: 1185-53-1 | Barcode: CHEM001"
     }
   ]
   ```
@@ -156,6 +170,37 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **Parameters**: 
   - `barcode` (string): Plate barcode
 - **Response**: Detailed plate object with wells information
+- **Example Response**:
+  ```json
+  {
+    "data": {
+      "barcode": "PLATE001",
+      "name": "Test Plate",
+      "display_name": "PLATE001 - Test Plate",
+      "created_at": "2025-07-19T10:00:00Z",
+      "updated_at": "2025-07-19T10:00:00Z",
+      "rows": 8,
+      "columns": 12,
+      "current_location": {
+        "id": 1,
+        "display_name": "Carousel 1, Hotel 5",
+        "carousel_position": 1,
+        "hotel_position": 5,
+        "name": null
+      },
+      "wells": [
+        {
+          "id": 1,
+          "well_row": 1,
+          "well_column": 1,
+          "position": "A1"
+        }
+      ],
+      "points_of_interest": [],
+      "points_of_interest_count": 0
+    }
+  }
+  ```
 
 ### Create Plate
 - **POST** `/api/v1/plates`
@@ -208,6 +253,43 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **GET** `/api/v1/plates/:barcode/location_history`
 - **Description**: Get the movement history of a plate
 - **Response**: Array of location movements with timestamps
+
+### Get Plate Points of Interest
+- **GET** `/api/v1/plates/:barcode/points_of_interest`
+- **Description**: Get all points of interest for all wells and images in this plate
+- **Response**: Array of points of interest with real-world coordinates and context
+- **Example Response**:
+  ```json
+  {
+    "data": [
+      {
+        "id": 1,
+        "pixel_x": 150,
+        "pixel_y": 200,
+        "real_world_x_mm": 15.0,
+        "real_world_y_mm": 20.0,
+        "real_world_z_mm": 5.0,
+        "point_type": "crystal",
+        "description": "Large crystal",
+        "marked_at": "2025-07-19T10:00:00Z",
+        "display_name": "Crystal at (15.0, 20.0)",
+        "created_at": "2025-07-19T10:00:00Z",
+        "updated_at": "2025-07-19T10:00:00Z",
+        "image": {
+          "id": 1,
+          "filename": "image_001.jpg",
+          "well_id": 123
+        },
+        "well": {
+          "id": 123,
+          "well_row": 1,
+          "well_column": 1,
+          "position": "A1"
+        }
+      }
+    ]
+  }
+  ```
 
 ## Locations API
 
@@ -343,33 +425,37 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **Example Response**:
   ```json
   {
-    "id": 1,
-    "plate_id": 1,
-    "well_row": 1,
-    "well_column": 1,
-    "subwell": 1,
-    "well_label": "A1",
-    "well_label_with_subwell": "A1-1",
-    "plate_barcode": "PLATE001",
-    "x_mm": 12.5000,
-    "y_mm": 8.7500,
-    "z_mm": 1.0000,
-    "has_coordinates": true,
-    "well_contents": [
-      {
-        "id": 1,
-        "stock_solution": "Buffer A",
-        "volume": "50.0 μL"
-      }
-    ],
-    "images": [
-      {
-        "id": 1,
-        "filename": "image_001.jpg",
-        "description": "Crystal formation",
-        "captured_at": "2025-07-19T10:00:00Z"
-      }
-    ]
+    "data": {
+      "id": 1,
+      "well_row": 1,
+      "well_column": 1,
+      "subwell": 1,
+      "position": "A1",
+      "plate_barcode": "PLATE001",
+      "x_mm": 12.5000,
+      "y_mm": 8.7500,
+      "z_mm": 1.0000,
+      "has_coordinates": true,
+      "well_contents": [
+        {
+          "id": 1,
+          "stock_solution": "Buffer A",
+          "volume": "50.0 μL"
+        }
+      ],
+      "images": [
+        {
+          "id": 1,
+          "pixel_size_x_mm": 0.1,
+          "pixel_size_y_mm": 0.1,
+          "captured_at": "2025-07-19T10:00:00Z",
+          "description": "Crystal formation",
+          "file_url": "http://localhost:3000/rails/active_storage/blobs/xyz.jpg"
+        }
+      ],
+      "created_at": "2025-07-19T10:00:00Z",
+      "updated_at": "2025-07-19T10:00:00Z"
+    }
   }
   ```
 
@@ -445,6 +531,101 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 ### Delete Image
 - **DELETE** `/api/v1/wells/:well_id/images/:id`
 - **Description**: Delete an image and its file
+- **Response**: Success message
+
+## Points of Interest API
+
+Points of Interest are markers placed on images to identify features like crystals or particles. They support real-world coordinate mapping based on the image's spatial metadata.
+
+### List Points of Interest for Image
+- **GET** `/api/v1/wells/:well_id/images/:image_id/points_of_interest`
+- **GET** `/api/v1/plates/:barcode/wells/:well_id/images/:image_id/points_of_interest`
+- **Description**: Get all points of interest for a specific image
+- **Response**: Array of point of interest objects with real-world coordinates
+
+### List All Points of Interest
+- **GET** `/api/v1/points_of_interest`
+- **Description**: Get all points of interest across the system with context information
+- **Response**: Array of point objects with image and well context
+
+### Filter Points of Interest by Type
+- **GET** `/api/v1/points_of_interest/by_type`
+- **Description**: Get points of interest filtered by type
+- **Query Parameters**:
+  - `type` (string, required): Point type to filter by (e.g., "crystal", "particle")
+- **Response**: Array of filtered point objects
+
+### Get Recent Points of Interest
+- **GET** `/api/v1/points_of_interest/recent`
+- **Description**: Get recently created points of interest
+- **Query Parameters**:
+  - `limit` (integer, optional): Maximum number of results (default: 50)
+- **Response**: Array of recent point objects
+
+### Get Crystal Points
+- **GET** `/api/v1/points_of_interest/crystals`
+- **Description**: Get all points of interest marked as crystals
+- **Response**: Array of crystal point objects
+
+### Get Particle Points  
+- **GET** `/api/v1/points_of_interest/particles`
+- **Description**: Get all points of interest marked as particles
+- **Response**: Array of particle point objects
+
+### Get Point of Interest Details
+- **GET** `/api/v1/wells/:well_id/images/:image_id/points_of_interest/:id`
+- **GET** `/api/v1/plates/:barcode/wells/:well_id/images/:image_id/points_of_interest/:id`
+- **Description**: Get detailed information about a specific point of interest
+- **Response**: Detailed point object with real-world coordinates
+- **Example Response**:
+  ```json
+  {
+    "data": {
+      "id": 1,
+      "pixel_x": 150,
+      "pixel_y": 200,
+      "real_world_x_mm": 15.0,
+      "real_world_y_mm": 20.0,
+      "real_world_z_mm": 5.0,
+      "point_type": "crystal",
+      "description": "Large crystal formation",
+      "marked_at": "2025-07-19T10:00:00Z",
+      "display_name": "Crystal at (15.0, 20.0)",
+      "created_at": "2025-07-19T10:00:00Z",
+      "updated_at": "2025-07-19T10:00:00Z"
+    }
+  }
+  ```
+
+### Create Point of Interest
+- **POST** `/api/v1/wells/:well_id/images/:image_id/points_of_interest`
+- **POST** `/api/v1/plates/:barcode/wells/:well_id/images/:image_id/points_of_interest`
+- **Description**: Create a new point of interest on an image
+- **Body Parameters**:
+  ```json
+  {
+    "point_of_interest": {
+      "pixel_x": 150,
+      "pixel_y": 200,
+      "point_type": "crystal",
+      "description": "Large crystal formation",
+      "marked_at": "2025-07-19T10:00:00Z"
+    }
+  }
+  ```
+- **Response**: Created point of interest object with real-world coordinates
+
+### Update Point of Interest
+- **PUT/PATCH** `/api/v1/wells/:well_id/images/:image_id/points_of_interest/:id`
+- **PUT/PATCH** `/api/v1/plates/:barcode/wells/:well_id/images/:image_id/points_of_interest/:id`
+- **Description**: Update point of interest information
+- **Body Parameters**: Same as create
+- **Response**: Updated point of interest object
+
+### Delete Point of Interest
+- **DELETE** `/api/v1/wells/:well_id/images/:image_id/points_of_interest/:id`
+- **DELETE** `/api/v1/plates/:barcode/wells/:well_id/images/:image_id/points_of_interest/:id`
+- **Description**: Delete a point of interest
 - **Response**: Success message
 
 ## PXRD Patterns API
@@ -569,6 +750,12 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **DELETE** `/api/v1/pxrd_patterns/:id`
 - **Description**: Delete a PXRD pattern and its file
 - **Response**: Success message
+- **Example Response**:
+  ```json
+  {
+    "message": "PXRD pattern successfully deleted"
+  }
+  ```
 
 ## Utility Endpoints
 
@@ -619,11 +806,6 @@ curl -X POST http://localhost:3000/api/v1/plates/TEST001/move_to_location \
   -d '{"location_id": 1, "moved_by": "api_test"}'
 ```
 
-### Get grid layout
-```bash
-curl http://localhost:3000/api/v1/locations/grid
-```
-
 ### Get system statistics
 ```bash
 curl http://localhost:3000/api/v1/stats
@@ -662,6 +844,33 @@ curl http://localhost:3000/api/v1/pxrd_patterns/456/data
 
 # List all PXRD patterns in the system
 curl http://localhost:3000/api/v1/pxrd_patterns
+```
+
+### Work with Points of Interest
+```bash
+# Create a point of interest on an image
+curl -X POST http://localhost:3000/api/v1/wells/123/images/456/points_of_interest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "point_of_interest": {
+      "pixel_x": 150,
+      "pixel_y": 200,
+      "point_type": "crystal",
+      "description": "Large crystal formation"
+    }
+  }'
+
+# Get all points of interest for an image
+curl http://localhost:3000/api/v1/wells/123/images/456/points_of_interest
+
+# Get all crystal points in the system
+curl http://localhost:3000/api/v1/points_of_interest/crystals
+
+# Get recent points of interest
+curl "http://localhost:3000/api/v1/points_of_interest/recent?limit=20"
+
+# Get all points of interest for a plate
+curl http://localhost:3000/api/v1/plates/PLATE001/points_of_interest
 ```
 
 ## Error Codes
