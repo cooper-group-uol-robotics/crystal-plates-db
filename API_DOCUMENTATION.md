@@ -447,6 +447,129 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - **Description**: Delete an image and its file
 - **Response**: Success message
 
+## PXRD Patterns API
+
+### List All PXRD Patterns
+- **GET** `/api/v1/pxrd_patterns`
+- **Description**: Get all PXRD patterns across all wells
+- **Response**: Array of PXRD pattern objects
+- **Example Response**:
+  ```json
+  [
+    {
+      "id": 1,
+      "title": "Crystal A1 - Day 3",
+      "well_id": 123,
+      "well_label": "A1:1",
+      "plate_barcode": "PLATE001",
+      "measured_at": "2025-07-19T10:00:00Z",
+      "file_attached": true,
+      "file_url": "http://localhost:3000/rails/active_storage/blobs/xyz.xrdml",
+      "file_size": 45678,
+      "created_at": "2025-07-19T10:30:00Z",
+      "updated_at": "2025-07-19T10:30:00Z"
+    }
+  ]
+  ```
+
+### List Well PXRD Patterns
+- **GET** `/api/v1/wells/:well_id/pxrd_patterns`
+- **Description**: Get all PXRD patterns for a specific well
+- **Response**: Array of PXRD pattern objects for the well
+
+### Get PXRD Pattern Details
+- **GET** `/api/v1/pxrd_patterns/:id`
+- **Description**: Get detailed information about a specific PXRD pattern
+- **Response**: Detailed PXRD pattern object
+- **Example Response**:
+  ```json
+  {
+    "id": 1,
+    "title": "Crystal A1 - Day 3",
+    "well_id": 123,
+    "well_label": "A1:1",
+    "plate_barcode": "PLATE001",
+    "measured_at": "2025-07-19T10:00:00Z",
+    "file_attached": true,
+    "file_url": "http://localhost:3000/rails/active_storage/blobs/xyz.xrdml",
+    "file_size": 45678,
+    "created_at": "2025-07-19T10:30:00Z",
+    "updated_at": "2025-07-19T10:30:00Z",
+    "well": {
+      "id": 123,
+      "label": "A1:1",
+      "row": 1,
+      "column": 1,
+      "subwell": 1,
+      "plate": {
+        "id": 1,
+        "barcode": "PLATE001",
+        "name": "Test Plate"
+      }
+    },
+    "file_metadata": {
+      "filename": "pattern_001.xrdml",
+      "content_type": "application/xml",
+      "byte_size": 45678,
+      "created_at": "2025-07-19T10:30:00Z"
+    }
+  }
+  ```
+
+### Get PXRD Pattern Data
+- **GET** `/api/v1/pxrd_patterns/:id/data`
+- **Description**: Get the parsed diffraction data from the XRDML file
+- **Response**: Diffraction data with 2θ values and intensities
+- **Example Response**:
+  ```json
+  {
+    "data": {
+      "two_theta": [5.0, 5.1, 5.2, 5.3, ...],
+      "intensities": [120.5, 125.8, 130.2, 128.9, ...],
+      "metadata": {
+        "title": "Crystal A1 - Day 3",
+        "measured_at": "2025-07-19T10:00:00Z",
+        "total_points": 8000
+      }
+    }
+  }
+  ```
+
+### Upload PXRD Pattern
+- **POST** `/api/v1/wells/:well_id/pxrd_patterns`
+- **Description**: Upload a new PXRD pattern to a well
+- **Content-Type**: `multipart/form-data`
+- **Body Parameters**:
+  ```
+  pxrd_pattern[title]: (string) Title or description of the pattern
+  pxrd_pattern[xrdml_file]: (file) PXRD data file in XRDML format
+  ```
+- **Response**: Created PXRD pattern object with auto-parsed timestamp
+- **Example**:
+  ```bash
+  curl -X POST http://localhost:3000/api/v1/wells/123/pxrd_patterns \
+    -F "pxrd_pattern[title]=Crystal A1 - Day 3" \
+    -F "pxrd_pattern[xrdml_file]=@/path/to/pattern.xrdml"
+  ```
+
+### Update PXRD Pattern
+- **PUT/PATCH** `/api/v1/pxrd_patterns/:id`
+- **Description**: Update PXRD pattern information (title only, file cannot be changed)
+- **Body Parameters**:
+  ```json
+  {
+    "pxrd_pattern": {
+      "title": "Updated title"
+    }
+  }
+  ```
+- **Response**: Updated PXRD pattern object
+
+### Delete PXRD Pattern
+- **DELETE** `/api/v1/pxrd_patterns/:id`
+- **Description**: Delete a PXRD pattern and its file
+- **Response**: Success message
+
 ## Utility Endpoints
 
 ### Health Check
@@ -522,6 +645,23 @@ curl -X POST http://localhost:3000/api/v1/wells/123/images \
 ### Get images for a well
 ```bash
 curl http://localhost:3000/api/v1/wells/123/images
+```
+
+### Upload and work with PXRD patterns
+```bash
+# Upload PXRD pattern to a well
+curl -X POST http://localhost:3000/api/v1/wells/123/pxrd_patterns \
+  -F "pxrd_pattern[title]=Crystal formation day 5" \
+  -F "pxrd_pattern[xrdml_file]=@/path/to/diffraction.xrdml"
+
+# Get all PXRD patterns for a well
+curl http://localhost:3000/api/v1/wells/123/pxrd_patterns
+
+# Get parsed diffraction data
+curl http://localhost:3000/api/v1/pxrd_patterns/456/data
+
+# List all PXRD patterns in the system
+curl http://localhost:3000/api/v1/pxrd_patterns
 ```
 
 ## Error Codes

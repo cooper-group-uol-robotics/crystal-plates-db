@@ -92,6 +92,7 @@ Rails.application.routes.draw do
           resources :images, only: [ :index, :show, :create, :update, :destroy ] do
             resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
           end
+          resources :pxrd_patterns, only: [ :index, :create ]
         end
       end
 
@@ -110,6 +111,14 @@ Rails.application.routes.draw do
       resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
         resources :images, only: [ :index, :show, :create, :update, :destroy ] do
           resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
+        end
+        resources :pxrd_patterns, only: [ :index, :create ]
+      end
+
+      # Standalone PXRD pattern routes
+      resources :pxrd_patterns, only: [ :index, :show, :update, :destroy ] do
+        member do
+          get :data
         end
       end
 
