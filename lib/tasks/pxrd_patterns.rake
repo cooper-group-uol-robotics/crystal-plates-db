@@ -6,11 +6,11 @@ namespace :pxrd_patterns do
     count = 0
     errors = 0
 
-    PxrdPattern.where(measured_at: nil).includes(xrdml_file_attachment: :blob).find_each do |pattern|
-      next unless pattern.xrdml_file.attached?
+    PxrdPattern.where(measured_at: nil).includes(pxrd_data_file_attachment: :blob).find_each do |pattern|
+      next unless pattern.pxrd_data_file.attached?
 
       begin
-        xrdml_xml = Nokogiri::XML(pattern.xrdml_file.download)
+        xrdml_xml = Nokogiri::XML(pattern.pxrd_data_file.download)
         start_timestamp_str = xrdml_xml.at_xpath("//xmlns:startTimeStamp", "xmlns" => "http://www.xrdml.com/XRDMeasurement/1.5")&.text
 
         if start_timestamp_str.present?

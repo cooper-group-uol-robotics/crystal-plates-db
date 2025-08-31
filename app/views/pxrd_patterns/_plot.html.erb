@@ -1,16 +1,23 @@
 <%# app/views/pxrd_patterns/_plot.html.erb %>
-<% require 'nokogiri' %>
-<% if pxrd_pattern.xrdml_file.attached? %>
-  <% xrdml_xml = Nokogiri::XML(pxrd_pattern.xrdml_file.download) %>
-  <% start_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:startPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
-  <% end_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:endPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
-  <% intensities_str = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:intensities', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text rescue nil %>
-  <% if start_2theta && end_2theta && intensities_str %>
-    <% intensities = intensities_str.split.map(&:to_f) %>
-    <% n_points = intensities.size %>
-    <% step = (end_2theta - start_2theta) / (n_points - 1) %>
-    <% two_theta = Array.new(n_points) { |i| (start_2theta + i * step).round(2) } %>
-    <div class="my-2" style="position: relative; height: 400px;">
+
+<% if local_assigns[:include_chartjs] %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+<% end %>
+
+<% if pxrd_pattern.pxrd_data_file.attached? %>
+  <% 
+    # Parse diffraction data using the model method
+    data = pxrd_pattern.parse_diffraction_data
+    two_theta = data[:two_theta]
+    intensities = data[:intensities]
+    file_format = data[:format]
+    
+    parsing_success = two_theta&.any? && intensities&.any?
+  %>
+  
+  <% if parsing_success %>
+    <div class="py-4" style="position: relative; height: 400px;">
       <canvas id="pxrd-main-plot"></canvas>
     </div>
     <script>
@@ -29,7 +36,7 @@
             type: 'scatter',
             data: {
               datasets: [{
-                label: '<%= pxrd_pattern.title %>',
+                label: '<%= pxrd_pattern.title %> (<%= file_format&.upcase %>)',
                 data: scatterData,
                 borderColor: 'rgba(54, 162, 235, 1)',
                 backgroundColor: 'rgba(54, 162, 235, 0.1)',
@@ -61,7 +68,8 @@
                   }
                 },
                 y: {
-                  title: { display: true, text: 'Intensity (counts)' }
+                  title: { display: true, text: 'Intensity (counts)' },
+                  beginAtZero: true
                 }
               }
             }
@@ -73,8 +81,10 @@
       })();
     </script>
   <% else %>
-    <div class="alert alert-warning">Could not parse XRMDL data for this pattern.</div>
+    <div class="alert alert-warning">
+      <h6>Could not parse diffraction data for this pattern</h6>
+    </div>
   <% end %>
 <% else %>
-  <div class="alert alert-warning">No XRMDL file attached.</div>
+  <div class="alert alert-warning">No diffraction data file attached.</div>
 <% end %>

@@ -42,7 +42,7 @@ class PxrdPatternsController < ApplicationController
         render json: {
           id: @pxrd_pattern.id,
           title: @pxrd_pattern.title,
-          file_url: @pxrd_pattern.xrdml_file.attached? ? url_for(@pxrd_pattern.xrdml_file) : nil,
+          file_url: @pxrd_pattern.pxrd_data_file.attached? ? url_for(@pxrd_pattern.pxrd_data_file) : nil,
           measured_at: @pxrd_pattern.measured_at,
           created_at: @pxrd_pattern.created_at
         }
@@ -87,6 +87,6 @@ class PxrdPatternsController < ApplicationController
   end
 
   def pxrd_pattern_params
-    params.require(:pxrd_pattern).permit(:title, :xrdml_file)
+    params.require(:pxrd_pattern).permit(:title, :pxrd_data_file)
   end
 end

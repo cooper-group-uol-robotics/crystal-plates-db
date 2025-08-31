@@ -17,11 +17,14 @@
   </div>
 
   <div class="mb-3">
-    <%= form.label :xrdml_file, "XRMDL File", class: 'form-label' %>
-    <%= form.file_field :xrdml_file, class: 'form-control' %>
-    <% if @pxrd_pattern.xrdml_file.attached? %>
+    <%= form.label :pxrd_data_file, "Diffraction Data File", class: 'form-label' %>
+    <%= form.file_field :pxrd_data_file, class: 'form-control', accept: '.xrdml,.xye' %>
+    <div class="form-text">
+      Supported formats: .xrdml (Panalytical XRDML) or .xye (space-separated 2θ intensity data)
+    </div>
+    <% if @pxrd_pattern.pxrd_data_file.attached? %>
       <div class="mt-2">
-        Current file: <%= link_to @pxrd_pattern.xrdml_file.filename, url_for(@pxrd_pattern.xrdml_file) %>
+        Current file: <%= link_to @pxrd_pattern.pxrd_data_file.filename, url_for(@pxrd_pattern.pxrd_data_file) %>
       </div>
     <% end %>
   </div>

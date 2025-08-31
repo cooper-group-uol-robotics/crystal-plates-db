@@ -723,14 +723,14 @@ Points of Interest are markers placed on images to identify features like crysta
 - **Body Parameters**:
   ```
   pxrd_pattern[title]: (string) Title or description of the pattern
-  pxrd_pattern[xrdml_file]: (file) PXRD data file in XRDML format
+  pxrd_pattern[pxrd_data_file]: (file) PXRD data file in XRDML format
   ```
 - **Response**: Created PXRD pattern object with auto-parsed timestamp
 - **Example**:
   ```bash
   curl -X POST http://localhost:3000/api/v1/wells/123/pxrd_patterns \
     -F "pxrd_pattern[title]=Crystal A1 - Day 3" \
-    -F "pxrd_pattern[xrdml_file]=@/path/to/pattern.xrdml"
+    -F "pxrd_pattern[pxrd_data_file]=@/path/to/pattern.xrdml"
   ```
 
 ### Update PXRD Pattern
@@ -834,7 +834,7 @@ curl http://localhost:3000/api/v1/wells/123/images
 # Upload PXRD pattern to a well
 curl -X POST http://localhost:3000/api/v1/wells/123/pxrd_patterns \
   -F "pxrd_pattern[title]=Crystal formation day 5" \
-  -F "pxrd_pattern[xrdml_file]=@/path/to/diffraction.xrdml"
+  -F "pxrd_pattern[pxrd_data_file]=@/path/to/diffraction.xrdml"
 
 # Get all PXRD patterns for a well
 curl http://localhost:3000/api/v1/wells/123/pxrd_patterns

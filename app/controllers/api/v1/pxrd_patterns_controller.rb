@@ -84,7 +84,7 @@ class Api::V1::PxrdPatternsController < Api::V1::BaseController
   end
 
   def pxrd_pattern_params
-    params.require(:pxrd_pattern).permit(:title, :xrdml_file)
+    params.require(:pxrd_pattern).permit(:title, :pxrd_data_file)
   end
 
   def format_pxrd_pattern(pattern)
@@ -95,9 +95,9 @@ class Api::V1::PxrdPatternsController < Api::V1::BaseController
       well_label: pattern.well.well_label_with_subwell,
       plate_barcode: pattern.well.plate.barcode,
       measured_at: pattern.measured_at,
-      file_attached: pattern.xrdml_file.attached?,
-      file_url: pattern.xrdml_file.attached? ? url_for(pattern.xrdml_file) : nil,
-      file_size: pattern.xrdml_file.attached? ? pattern.xrdml_file.byte_size : nil,
+      file_attached: pattern.pxrd_data_file.attached?,
+      file_url: pattern.pxrd_data_file.attached? ? url_for(pattern.pxrd_data_file) : nil,
+      file_size: pattern.pxrd_data_file.attached? ? pattern.pxrd_data_file.byte_size : nil,
       created_at: pattern.created_at,
       updated_at: pattern.updated_at
     }
@@ -120,11 +120,11 @@ class Api::V1::PxrdPatternsController < Api::V1::BaseController
           name: pattern.well.plate.name
         }
       },
-      file_metadata: pattern.xrdml_file.attached? ? {
-        filename: pattern.xrdml_file.filename.to_s,
-        content_type: pattern.xrdml_file.content_type,
-        byte_size: pattern.xrdml_file.byte_size,
-        created_at: pattern.xrdml_file.created_at
+      file_metadata: pattern.pxrd_data_file.attached? ? {
+        filename: pattern.pxrd_data_file.filename.to_s,
+        content_type: pattern.pxrd_data_file.content_type,
+        byte_size: pattern.pxrd_data_file.byte_size,
+        created_at: pattern.pxrd_data_file.created_at
       } : nil
     })
   end

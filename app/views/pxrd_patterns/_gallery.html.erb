@@ -1,153 +1,252 @@
 <%# app/views/pxrd_patterns/_gallery.html.erb %>
+<script>
+// Define function in global scope for PXRD pattern switching
+window.showPxrdPatternInMain = function(patternId, patternTitle, patternUrl) {
+  console.log('showPxrdPatternInMain called with:', patternId, patternTitle, patternUrl);
+  
+  // Update the main plot
+  fetch(`/pxrd_patterns/${patternId}/plot`)
+    .then(response => response.text())
+    .then(html => {
+      const container = document.getElementById('pxrd-main-plot-container');
+      container.innerHTML = html;
+      
+      // Execute any scripts that were injected
+      const scripts = container.querySelectorAll('script');
+      scripts.forEach(script => {
+        try {
+          eval(script.innerHTML);
+        } catch(e) {
+          console.error('Error executing plot script:', e);
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Error loading plot:', error);
+    });
+    
+  // Update pattern info
+  document.getElementById('current-pxrd-title').textContent = patternTitle;
+  
+  // Update action buttons
+  const viewButton = document.getElementById('main-pxrd-view-btn');
+  const editButton = document.getElementById('main-pxrd-edit-btn');
+  if (viewButton) viewButton.href = patternUrl;
+  if (editButton) editButton.href = patternUrl.replace(/\/\d+$/, `/${patternId}/edit`);
+  
+  // Update thumbnail highlighting
+  document.querySelectorAll('.pxrd-thumbnail').forEach(thumb => {
+    thumb.classList.remove('border-primary');
+  });
+  const selectedThumb = document.querySelector(`[data-pattern-id="${patternId}"]`);
+  if (selectedThumb) {
+    selectedThumb.classList.add('border-primary');
+  }
+  
+  // Update download button
+  fetch(`/wells/<%= @well.id %>/pxrd_patterns/${patternId}`, {
+    headers: { 'Accept': 'application/json' }
+  })
+    .then(response => response.json())
+    .then(data => {
+      const downloadBtn = document.getElementById('main-pxrd-download-btn');
+      if (data.file_url && downloadBtn) {
+        downloadBtn.href = data.file_url;
+        downloadBtn.style.display = 'inline-block';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading pattern details:', error);
+    });
+};
+</script>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0">PXRD Patterns (<%= @well.pxrd_patterns.count %>)</h5>
   <a class="btn btn-primary btn-sm" href="<%= new_well_pxrd_pattern_path(@well) %>" target="_blank">
     Add PXRD Pattern
   </a>
 </div>
+
 <% if @well.pxrd_patterns.any? %>
   <% selected_pattern = @well.pxrd_patterns.order(created_at: :desc).first %>
-  <div class="text-center mb-3">
-    <div class="d-flex justify-content-center align-items-center mb-2" style="gap: 15px;">
-      <h5 class="mb-0" id="pxrd-title">PXRD Pattern: <%= selected_pattern.title.presence || "#{selected_pattern.id}" %></h5>
-      <% if selected_pattern.xrdml_file.attached? %>
-        <a href="<%= url_for(selected_pattern.xrdml_file) %>" download="<%= selected_pattern.xrdml_file.filename %>" 
-           class="btn btn-outline-primary btn-sm" id="pxrd-download-btn" title="Download XRDML file">
-          <i class="bi bi-download"></i> Download
-        </a>
-      <% end %>
-    </div>
-    <div id="pxrd-main-plot-container">
-      <%= render partial: 'pxrd_patterns/plot', locals: { pxrd_pattern: selected_pattern, include_chartjs: true } %>
-    </div>
-  </div>
-  <div class="d-flex flex-row flex-wrap justify-content-center mt-4 border-top pt-3" style="gap: 12px;">
-    <% @well.pxrd_patterns.order(created_at: :desc).each do |pattern| %>
-      <div class="pxrd-thumbnail text-center" style="cursor:pointer; min-width: 120px;" data-pattern-id="<%= pattern.id %>">
-        <div class="border rounded p-2 bg-light">
-          <canvas id="thumb-<%= pattern.id %>" width="100" height="60" style="border: 1px solid #ddd;"></canvas>
-          <div class="fw-bold small mb-1"><%= pattern.title.presence || "PXRD ##{pattern.id}" %></div>
-          <div class="text-muted" style="font-size: 11px;">
-            <%= (pattern.measured_at || pattern.created_at).strftime('%Y-%m-%d %H:%M') %>
+  <% selected_data = selected_pattern.parse_diffraction_data %>
+  
+  <!-- Main PXRD Display -->
+  <div class="mb-4">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold">PXRD Viewer</span>
+        <small class="text-muted" id="current-pxrd-info">
+          <% if selected_pattern.measured_at %>
+            Measured: <%= selected_pattern.measured_at.strftime("%Y-%m-%d %H:%M") %>
+          <% elsif selected_pattern.created_at %>
+            Uploaded: <%= selected_pattern.created_at.strftime("%Y-%m-%d %H:%M") %>
+          <% end %>
+        </small>
+      </div>
+      <div class="card-body p-0">
+        <div class="position-relative">
+          <div id="pxrd-main-plot-container" style="min-height: 400px; background: #f8f9fa;">
+            <%= render partial: 'pxrd_patterns/plot', locals: { pxrd_pattern: selected_pattern, include_chartjs: true } %>
+          </div>
+          
+          <!-- PXRD Info Overlay -->
+          <div class="position-absolute bottom-0 start-0 bg-dark bg-opacity-75 text-white p-2 m-2 rounded" id="pxrd-info-overlay">
+            <small>
+              Format: <%= selected_data[:format]&.upcase %> | 
+              Points: <%= selected_data[:two_theta]&.size || 0 %>
+              <% if selected_data[:two_theta]&.any? %>
+                | Range: <%= selected_data[:two_theta].first.round(2) %>° - <%= selected_data[:two_theta].last.round(2) %>°
+              <% end %>
+            </small>
           </div>
         </div>
       </div>
-    <% end %>
+      <div class="card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="btn-group btn-group-sm">
+            <%= link_to 'View Full', well_pxrd_pattern_path(@well, selected_pattern), class: 'btn btn-outline-primary', id: 'main-pxrd-view-btn' %>
+            <%= link_to 'Edit', edit_well_pxrd_pattern_path(@well, selected_pattern), class: 'btn btn-outline-secondary', id: 'main-pxrd-edit-btn' %>
+            <% if selected_pattern.pxrd_data_file.attached? %>
+              <a href="<%= url_for(selected_pattern.pxrd_data_file) %>" download="<%= selected_pattern.pxrd_data_file.filename %>" 
+                 class="btn btn-outline-success" id="main-pxrd-download-btn" title="Download data file">
+                <i class="bi bi-download"></i> Download
+              </a>
+            <% end %>
+          </div>
+          <small class="text-muted" id="current-pxrd-title">
+            <%= selected_pattern.title.presence || "PXRD Pattern ##{selected_pattern.id}" %>
+          </small>
+        </div>
+      </div>
+    </div>
   </div>
-  <script>
-    // Initialize PXRD gallery
-    setTimeout(function() {
-      <% @well.pxrd_patterns.order(created_at: :desc).each do |pattern| %>
-        <% if pattern.xrdml_file.attached? %>
-          <% require 'nokogiri' %>
-          <% xrdml_xml = Nokogiri::XML(pattern.xrdml_file.download) %>
-          <% start_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:startPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
-          <% end_2theta = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:positions[@axis="2Theta"]//xmlns:endPosition', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text.to_f rescue nil %>
-          <% intensities_str = xrdml_xml.at_xpath('//xmlns:dataPoints/xmlns:intensities', 'xmlns' => 'http://www.xrdml.com/XRDMeasurement/1.5').text rescue nil %>
-          <% if start_2theta && end_2theta && intensities_str %>
-            <% intensities = intensities_str.split.map(&:to_f) %>
-            <% n_points = intensities.size %>
-            <% step = (end_2theta - start_2theta) / (n_points - 1) %>
-            <% two_theta = Array.new(n_points) { |i| (start_2theta + i * step).round(2) } %>
-            
-            (function() {
-              const canvas = document.getElementById('thumb-<%= pattern.id %>');
-              if (canvas && window.Chart) {
-                const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
-                new Chart(canvas.getContext('2d'), {
-                  type: 'scatter',
-                  data: {
-                    datasets: [{
-                      data: scatterData,
-                      borderColor: 'rgba(54, 162, 235, 1)',
-                      backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                      showLine: true,
-                      pointRadius: 0,
-                      borderWidth: 1,
-                      fill: false
-                    }]
-                  },
-                  options: {
-                    responsive: false,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                      legend: { display: false },
-                      tooltip: { enabled: false }
-                    },
-                    scales: {
-                      x: { display: false },
-                      y: { display: false }
-                    },
-                    elements: { point: { radius: 0 } },
-                    animation: false
-                  }
-                });
-              }
-            })();
+
+  <!-- All PXRD Patterns Thumbnail Gallery -->
+  <div class="mb-3">
+    <h6 class="text-muted">All Patterns (<%= @well.pxrd_patterns.count %>)</h6>
+    <div class="border rounded p-2" style="background: #f8f9fa;">
+      <div class="d-flex overflow-auto gap-2 p-2" style="scroll-behavior: smooth;">
+        <% @well.pxrd_patterns.order(created_at: :desc).each_with_index do |pattern, index| %>
+          <% if pattern.pxrd_data_file.attached? %>
+            <% 
+              data = pattern.parse_diffraction_data
+              two_theta = data[:two_theta]
+              intensities = data[:intensities]
+            %>
+            <% if two_theta.any? && intensities.any? %>
+              <div class="flex-shrink-0 position-relative" style="width: 150px;">
+                <div class="card h-100 pxrd-thumbnail <%= 'border-primary' if index == 0 %>" style="cursor: pointer;" 
+                     data-pattern-id="<%= pattern.id %>"
+                     data-pattern-url="<%= well_pxrd_pattern_path(@well, pattern) %>"
+                     data-pattern-title="<%= pattern.title.presence || "PXRD Pattern ##{pattern.id}" %>">
+                  <div class="card-body p-2" style="height: 120px;">
+                    <canvas id="thumb-<%= pattern.id %>" width="130" height="80" style="width: 100%; height: 100%;"></canvas>
+                  </div>
+                  <div class="card-footer p-1">
+                    <div class="small text-center">
+                      <div class="fw-bold"><%= truncate(pattern.title.presence || "Pattern ##{pattern.id}", length: 15) %></div>
+                      <div class="text-muted" style="font-size: 11px;">
+                        <%= (pattern.measured_at || pattern.created_at).strftime('%m/%d %H:%M') %>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Actions overlay on hover -->
+                  <div class="position-absolute top-0 end-0 p-1 d-none pxrd-actions">
+                    <div class="btn-group-vertical btn-group-sm">
+                      <%= link_to well_pxrd_pattern_path(@well, pattern), class: 'btn btn-outline-light btn-sm', title: 'View' do %>
+                        <i class="bi bi-eye"></i>
+                      <% end %>
+                      <%= link_to edit_well_pxrd_pattern_path(@well, pattern), class: 'btn btn-outline-light btn-sm', title: 'Edit' do %>
+                        <i class="bi bi-pencil"></i>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           <% end %>
         <% end %>
-      <% end %>
-    }, 200);
+      </div>
+    </div>
+  </div>
 
-    // Handle thumbnail clicks
+<% else %>
+  <div class="alert alert-info text-center">
+    <h6>No PXRD Patterns</h6>
+    <p>No PXRD patterns have been uploaded for this well yet.</p>
+    <a href="<%= new_well_pxrd_pattern_path(@well) %>" class="btn btn-primary">Add First PXRD Pattern</a>
+  </div>
+<% end %>
+
+<script>
+  setTimeout(function() {
+    // Initialize thumbnails with Chart.js
+    <% @well.pxrd_patterns.order(created_at: :desc).each do |pattern| %>
+      <% if pattern.pxrd_data_file.attached? %>
+        <% 
+          data = pattern.parse_diffraction_data
+          two_theta = data[:two_theta]
+          intensities = data[:intensities]
+        %>
+        <% if two_theta.any? && intensities.any? %>
+          (function() {
+            const canvas = document.getElementById('thumb-<%= pattern.id %>');
+            if (canvas && window.Chart) {
+              const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
+              new Chart(canvas.getContext('2d'), {
+                type: 'scatter',
+                data: {
+                  datasets: [{
+                    data: scatterData,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    showLine: true,
+                    pointRadius: 0,
+                    borderWidth: 1,
+                    fill: false
+                  }]
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { 
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                  },
+                  scales: {
+                    x: { display: false },
+                    y: { display: false, beginAtZero: true }
+                  },
+                  elements: { point: { radius: 0 } },
+                  animation: false
+                }
+              });
+            }
+          })();
+        <% end %>
+      <% end %>
+    <% end %>
+    
+    // Initialize thumbnail click handlers
     document.querySelectorAll('.pxrd-thumbnail').forEach(function(thumb) {
       thumb.addEventListener('click', function() {
-        var patternId = this.getAttribute('data-pattern-id');
+        const patternId = this.getAttribute('data-pattern-id');
+        const patternTitle = this.getAttribute('data-pattern-title');
+        const patternUrl = this.getAttribute('data-pattern-url');
         
-        // Update the main plot
-        fetch(`/pxrd_patterns/${patternId}/plot`)
-          .then(response => response.text())
-          .then(html => {
-            const container = document.getElementById('pxrd-main-plot-container');
-            container.innerHTML = html;
-            
-            // Execute any scripts that were injected
-            const scripts = container.querySelectorAll('script');
-            scripts.forEach(script => {
-              try {
-                eval(script.innerHTML);
-              } catch(e) {
-                console.error('Error executing plot script:', e);
-              }
-            });
-          })
-          .catch(error => {
-            console.error('Error loading plot:', error);
-          });
-          
-        // Update the title and download button
-        fetch(`/wells/<%= @well.id %>/pxrd_patterns/${patternId}`, {
-          headers: { 'Accept': 'application/json' }
-        })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('Network response was not ok');
-            }
-            return response.json();
-          })
-          .then(data => {
-            const titleText = data.title || `${data.id}`;
-            document.getElementById('pxrd-title').textContent = `PXRD Pattern: ${titleText}`;
-            
-            const downloadBtn = document.getElementById('pxrd-download-btn');
-            if (data.file_url && downloadBtn) {
-              downloadBtn.href = data.file_url;
-              downloadBtn.style.display = 'inline-block';
-            } else if (downloadBtn) {
-              downloadBtn.style.display = 'none';
-            }
-          })
-          .catch(error => {
-            console.error('Error loading pattern details:', error);
-            // Fallback: use data from thumbnail
-            const titleElement = this.querySelector('.fw-bold');
-            if (titleElement) {
-              document.getElementById('pxrd-title').textContent = 'PXRD Pattern: ' + titleElement.textContent;
-            }
-          });
+        window.showPxrdPatternInMain(patternId, patternTitle, patternUrl);
+      });
+      
+      // Show actions on hover
+      thumb.addEventListener('mouseenter', function() {
+        this.querySelector('.pxrd-actions').classList.remove('d-none');
+      });
+      thumb.addEventListener('mouseleave', function() {
+        this.querySelector('.pxrd-actions').classList.add('d-none');
       });
     });
-  </script>
-<% else %>
-  <div class="alert alert-info text-center">No PXRD patterns uploaded for this well.</div>
-<% end %>
+  }, 200);
+</script>
