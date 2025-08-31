@@ -1,0 +1,12 @@
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">Storage Location</h5>
+    <p class="card-text mb-0">
+      <% if @plate.current_location %>
+        Location: <strong><%= @plate.current_location.display_name %></strong>
+      <% else %>
+        Location: <strong>Not assigned</strong>
+      <% end %>
+    </p>
+  </div>
+</div>

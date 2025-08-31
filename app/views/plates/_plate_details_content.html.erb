@@ -1,0 +1,35 @@
+<h5 class="mb-3">Plate Details</h5>
+<% stats = plate_summary_stats(@plate, @wells, @points_of_interest) %>
+<table class="table table-sm">
+  <tr>
+    <td><strong>Barcode:</strong></td>
+    <td><%= @plate.barcode %></td>
+  </tr>
+  <% if @plate.name.present? %>
+  <tr>
+    <td><strong>Name:</strong></td>
+    <td><%= @plate.name %></td>
+  </tr>
+  <% end %>
+  <tr>
+    <td><strong>Dimensions:</strong></td>
+    <td><%= @rows %> rows × <%= @columns %> columns</td>
+  </tr>
+  <tr>
+    <td><strong>Total Wells:</strong></td>
+    <td>
+      <%= stats[:total_wells] %>
+      <small class="text-muted">
+        (<%= stats[:wells_with_content] %> with content, 
+         <%= stats[:wells_with_images] %> with images,
+         <%= stats[:wells_with_pxrd] %> with PXRD)
+      </small>
+    </td>
+  </tr>
+  <% if stats[:total_points] > 0 %>
+  <tr>
+    <td><strong>Points of Interest:</strong></td>
+    <td><%= stats[:total_points] %></td>
+  </tr>
+  <% end %>
+</table>

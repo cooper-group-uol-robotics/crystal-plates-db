@@ -1,0 +1,107 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header p-2">
+        <button class="btn btn-link p-0 text-decoration-none d-flex align-items-center w-100" 
+                type="button" 
+                data-bs-toggle="collapse" 
+                data-bs-target="#bulkUploadCollapse" 
+                aria-expanded="false" 
+                aria-controls="bulkUploadCollapse">
+          <i class="bi bi-upload me-2 text-muted"></i>
+          <span class="text-muted">Bulk Upload Well Contents</span>
+          <i class="fas fa-chevron-down ms-auto text-muted"></i>
+        </button>
+      </div>
+      <div class="collapse" id="bulkUploadCollapse">
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            Upload a CSV file to bulk populate well contents. 
+            <strong>Format:</strong> First row contains stock solution IDs, 
+            first column contains well labels (A1, B2, etc.), body contains volumes in µL. 
+            Empty cells or 0 values will be skipped.
+            <a href="#" class="text-decoration-none" data-bs-toggle="collapse" data-bs-target="#csvFormatExample">
+              <small>(Show example)</small>
+            </a>
+          </p>
+          
+          <div class="collapse" id="csvFormatExample">
+            <div class="alert alert-info small mb-3">
+              <strong>Example CSV format:</strong><br>
+              <code>
+                ,123,124,125<br>
+                A1,50,25,0<br>
+                A2,0,50,30<br>
+                B1,25,25,25
+              </code>
+              <br><small class="text-muted">Where 123, 124, 125 are stock solution IDs</small>
+            </div>
+          </div>
+
+        <%= form_with url: bulk_upload_contents_plate_path(@plate), method: :post, 
+                      local: true, multipart: true, class: "d-flex align-items-end gap-3", 
+                      id: "bulkUploadForm" do |f| %>
+          <div class="flex-grow-1">
+            <%= f.file_field :csv_file, accept: ".csv", class: "form-control", required: true, 
+                             id: "csvFileInput" %>
+            <div class="form-text">
+              <small class="text-muted">Maximum file size: 10MB. Only CSV files are allowed.</small>
+            </div>
+          </div>
+          <div>
+            <%= f.submit "Upload CSV", class: "btn btn-primary", id: "uploadButton",
+                         data: { confirm: "This will update well contents. Existing contents for the same stock solutions will be overwritten. Continue?" } %>
+          </div>
+        <% end %>
+        
+        <div id="uploadProgress" class="mt-2 d-none">
+          <div class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
+              Processing...
+            </div>
+          </div>
+        </div>
+      </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('bulkUploadForm');
+  const fileInput = document.getElementById('csvFileInput');
+  const uploadButton = document.getElementById('uploadButton');
+  const progressDiv = document.getElementById('uploadProgress');
+  
+  // File validation
+  fileInput.addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    
+    // Check file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      this.value = '';
+      return;
+    }
+    
+    // Check file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      alert('Please select a CSV file');
+      this.value = '';
+      return;
+    }
+    
+    uploadButton.disabled = false;
+  });
+  
+  // Form submission
+  form.addEventListener('submit', function() {
+    uploadButton.disabled = true;
+    uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+    progressDiv.classList.remove('d-none');
+  });
+});
+</script>

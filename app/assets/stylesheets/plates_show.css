@@ -1,0 +1,304 @@
+/* Plates Show Page Styles */
+
+/* ==========================================================================
+   Well Grid Styles
+   ========================================================================== */
+
+.well-grid-container {
+  background: #f8f9fa;
+}
+
+.well-position {
+  background: white;
+  min-height: 80px;
+  transition: box-shadow 0.2s ease;
+}
+
+.well-position:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.well-select-btn {
+  transition: all 0.2s ease;
+}
+
+.well-select-btn:hover {
+  transform: scale(1.05);
+}
+
+/* Well Button Styling */
+.well-btn, .well-select-btn {
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-weight: 500;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.well-btn:hover, .well-select-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #007bff;
+  z-index: 2;
+}
+
+.well-btn:active, .well-select-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Well color states with improved contrast */
+.btn-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border-color: #28a745;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+  border-color: #ffc107;
+  color: #000;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.btn-warning:hover {
+  background: linear-gradient(135deg, #e0a800 0%, #e55a00 100%);
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+  color: #000;
+}
+
+.btn-outline-danger {
+  border-color: #dc3545;
+  color: #dc3545;
+  background: transparent;
+}
+
+.btn-outline-danger:hover {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  border-color: #007bff;
+  color: white;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Selection indicators */
+.well-select-btn.border-info {
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  animation: pulse-selection 1.5s infinite;
+}
+
+@keyframes pulse-selection {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 123, 255, 0.15);
+  }
+}
+
+/* Header buttons */
+.row-header-btn,
+.col-header-btn,
+.subwell-header-btn {
+  transition: background-color 0.2s ease;
+}
+
+.row-header-btn:not(:disabled):hover,
+.col-header-btn:not(:disabled):hover,
+.subwell-header-btn:not(:disabled):hover {
+  background-color: var(--bs-secondary) !important;
+  color: white !important;
+}
+
+/* ==========================================================================
+   Image Gallery Styles
+   ========================================================================== */
+
+.image-thumbnail {
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.image-thumbnail:hover {
+  border-color: #0dcaf0 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.image-thumbnail.border-primary {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(13, 202, 240, 0.3);
+}
+
+.image-actions {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.image-thumbnail:hover .image-actions {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Modal and Dropdown Styles
+   ========================================================================== */
+
+.dropdown-menu.show {
+  display: block;
+  animation: fadeIn 0.15s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal transitions */
+.modal.fade .modal-dialog {
+  transform: translate(0, -50px);
+  transition: transform 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+  transform: none;
+}
+
+/* ==========================================================================
+   Alert and Message Styles
+   ========================================================================== */
+
+.alert {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
+
+.loading-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Form enhancements */
+.form-control:focus {
+  border-color: #0dcaf0;
+  box-shadow: 0 0 0 0.2rem rgba(13, 202, 240, 0.25);
+}
+
+/* Button improvements */
+.btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-btn-focus-shadow-rgb), 0.5);
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .well-position {
+    min-height: 60px;
+  }
+  
+  .well-select-btn {
+    height: 20px;
+    font-size: 8px;
+  }
+  
+  .image-thumbnail {
+    margin-bottom: 1rem;
+  }
+}
+
+/* ==========================================================================
+   Collapsible Card Styling (General)
+   ========================================================================== */
+
+.card-header .btn-link {
+  border: none;
+  background: none;
+  box-shadow: none;
+  text-align: left;
+}
+
+.card-header .btn-link:focus {
+  box-shadow: none;
+}
+
+.card-header .fa-chevron-down {
+  transition: transform 0.3s ease;
+}
+
+.card-header .btn-link[aria-expanded="true"] .fa-chevron-down {
+  transform: rotate(180deg);
+}
+
+.collapse {
+  transition: height 0.35s ease;
+}
+
+/* Help Card Specific Styling */
+.badge {
+  font-size: 0.75em;
+  padding: 0.35em 0.65em;
+  border-radius: 0.375rem;
+  font-weight: 500;
+}
+
+/* Keyboard shortcut kbd styling */
+kbd {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  color: #495057;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875em;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25em 0.4em;
+  white-space: nowrap;
+}
+
+/* Responsive improvements for help card */
+@media (max-width: 768px) {
+  .card-body .row > .col-md-6:first-child {
+    margin-bottom: 1rem;
+  }
+}

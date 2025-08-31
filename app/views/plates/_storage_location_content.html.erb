@@ -1,0 +1,16 @@
+<h5 class="mb-3">Storage Location</h5>
+<div class="d-flex align-items-center">
+  <div class="me-3">
+    <i class="fas fa-map-marker-alt text-muted fa-2x"></i>
+  </div>
+  <div>
+    <p class="mb-1">
+      <% if @plate.current_location %>
+        <strong class="text-success"><%= @plate.current_location.display_name %></strong>
+      <% else %>
+        <strong class="text-muted">Not assigned</strong>
+      <% end %>
+    </p>
+    <small class="text-muted">Current location</small>
+  </div>
+</div>

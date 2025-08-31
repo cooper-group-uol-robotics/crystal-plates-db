@@ -1,0 +1,68 @@
+<% if @points_of_interest.any? %>
+  <div class="card mt-4 shadow-sm">
+    <div class="card-header">
+      <h5 class="mb-0">Points of Interest (<%= @points_of_interest.count %>)</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped">
+          <thead class="table-light">
+            <tr>
+              <th>Well</th>
+              <th>Type</th>
+              <th>Real World Coordinates (mm)</th>
+              <th>Pixel Coordinates</th>
+              <th>Marked At</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @points_of_interest.each do |point| %>
+              <% 
+                well = point.image.well
+                well_position = well_position_label(well)
+                
+                # Calculate real-world coordinates
+                image = point.image
+                real_x = nil
+                real_y = nil
+                if image.reference_x_mm && image.pixel_size_x_mm
+                  real_x = image.reference_x_mm + (point.pixel_x * image.pixel_size_x_mm)
+                end
+                if image.reference_y_mm && image.pixel_size_y_mm
+                  real_y = image.reference_y_mm + (point.pixel_y * image.pixel_size_y_mm)
+                end
+              %>
+              <tr>
+                <td>
+                  <span class="fw-bold"><%= well_position %></span>
+                </td>
+                <td>
+                  <span class="badge bg-<%= point_type_badge_class(point.point_type) %>">
+                    <%= point.point_type.capitalize %>
+                  </span>
+                </td>
+                <td>
+                  <%= format_coordinates(real_x, real_y, image.reference_z_mm) %>
+                </td>
+                <td class="text-muted">
+                  (<%= point.pixel_x %>, <%= point.pixel_y %>)
+                </td>
+                <td class="text-muted">
+                  <%= format_marked_time(point) %>
+                </td>
+                <td>
+                  <% if point.description.present? %>
+                    <%= truncate(point.description, length: 50) %>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
