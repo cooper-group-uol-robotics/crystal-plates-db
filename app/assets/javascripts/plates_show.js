@@ -553,6 +553,8 @@ class WellModal {
   constructor() {
     this.modal = document.getElementById('wellImagesModal');
     this.contentContainer = document.getElementById('wellContentForm');
+    this.currentWellId = null;
+    this.pxrdLoaded = false;
     this.init();
   }
 
@@ -565,8 +567,20 @@ class WellModal {
 
     this.modal.addEventListener('hidden.bs.modal', () => {
       console.log('Modal closed, refreshing page to update well colors...');
+      this.pxrdLoaded = false; // Reset for next time
       window.location.reload();
     });
+
+    // Add tab click listeners for lazy loading
+    const pxrdTab = document.getElementById('pxrd-tab');
+    if (pxrdTab) {
+      pxrdTab.addEventListener('click', () => {
+        if (this.currentWellId && !this.pxrdLoaded) {
+          this.loadPxrdTab(this.currentWellId);
+          this.pxrdLoaded = true;
+        }
+      });
+    }
 
     if (this.contentContainer) {
       this.bindContentEvents();
@@ -590,56 +604,151 @@ class WellModal {
       return;
     }
 
+    // Store current well ID for lazy loading
+    this.currentWellId = wellId;
+    this.pxrdLoaded = false;
+
+    // Update modal title immediately
     document.getElementById('wellImagesModalLabel').textContent = `Well ${wellLabel} Details`;
 
-    // Load images tab
-    this.loadImagesTab(wellId);
+    // Show immediate loading states for all tabs
+    document.getElementById('wellImagesContent').innerHTML = `
+      <div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+          <span class="visually-hidden">Loading images...</span>
+        </div>
+        <div class="text-muted small">Loading images...</div>
+      </div>
+    `;
+
+    document.getElementById('wellContentForm').innerHTML = `
+      <div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm text-secondary mb-2" role="status">
+          <span class="visually-hidden">Loading content...</span>
+        </div>
+        <div class="text-muted small">Loading content...</div>
+      </div>
+    `;
+
+    // Load images tab with priority
+    setTimeout(() => this.loadImagesTab(wellId), 0);
     
-    // Load PXRD tab
-    this.loadPxrdTab(wellId);
+    // Load content tab with slight delay
+    setTimeout(() => this.loadContentTab(wellId), 50);
     
-    // Load content tab
-    this.loadContentTab(wellId);
+    // Show placeholder in PXRD tab for lazy loading
+    document.getElementById('wellPxrdContent').innerHTML = `
+      <div class="text-center py-4 text-muted">
+        <i class="fas fa-chart-line fa-2x mb-2"></i>
+        <div>Click to load PXRD patterns</div>
+        <small>PXRD data will be loaded when you view this tab</small>
+      </div>
+    `;
   }
 
   loadImagesTab(wellId) {
-    fetch(`/wells/${wellId}/images`)
-      .then(response => response.text())
-      .then(html => {
-        document.getElementById('wellImagesContent').innerHTML = html;
-        setTimeout(() => {
-          if (window.initializeThumbnails) {
-            window.initializeThumbnails();
-          } else {
-            this.initializeThumbnails();
-          }
-        }, 200);
+    const startTime = performance.now();
+    const container = document.getElementById('wellImagesContent');
+    
+    // Show immediate loading state
+    container.innerHTML = `
+      <div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+          <span class="visually-hidden">Loading images...</span>
+        </div>
+        <div class="text-muted small">Loading images...</div>
+      </div>
+    `;
+
+    fetch(`/wells/${wellId}/images`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html',
+        'X-Requested-With': 'XMLHttpRequest',
+        // Add cache headers for better performance
+        'Cache-Control': 'max-age=300'
+      }
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.text();
       })
-      .catch(() => {
-        document.getElementById('wellImagesContent').innerHTML = '<p>Error loading images.</p>';
+      .then(html => {
+        const loadTime = performance.now() - startTime;
+        console.log(`Images loaded in ${Math.round(loadTime)}ms`);
+        
+        container.innerHTML = html;
+        
+        // Initialize thumbnails immediately without setTimeout delay
+        if (window.initializeThumbnails) {
+          window.initializeThumbnails();
+        } else {
+          this.initializeThumbnails();
+        }
+      })
+      .catch((error) => {
+        console.error('Error loading images:', error);
+        container.innerHTML = `
+          <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Unable to load images. 
+            <button class="btn btn-link p-0 ms-2" onclick="window.wellModal.loadImagesTab('${wellId}')">
+              Try again
+            </button>
+          </div>
+        `;
       });
   }
 
   loadPxrdTab(wellId) {
+    const container = document.getElementById('wellPxrdContent');
+    
+    // Show loading indicator
+    container.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-secondary mb-2" role="status">
+          <span class="visually-hidden">Loading PXRD data...</span>
+        </div>
+        <div class="text-muted small">Loading PXRD patterns...</div>
+      </div>
+    `;
+
     fetch(`/wells/${wellId}/pxrd_patterns`)
-      .then(response => response.text())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.text();
+      })
       .then(html => {
-        const container = document.getElementById('wellPxrdContent');
         container.innerHTML = html;
         
         // Execute any scripts that were injected
         const scripts = container.querySelectorAll('script');
         scripts.forEach(script => {
           try {
-            eval(script.innerHTML);
+            // Use Function constructor instead of eval for better security
+            new Function(script.innerHTML)();
           } catch(e) {
             console.error('Error executing PXRD script:', e);
           }
         });
+        
+        console.log('PXRD data loaded successfully for well', wellId);
       })
       .catch((error) => {
         console.error('Error loading PXRD patterns:', error);
-        document.getElementById('wellPxrdContent').innerHTML = '<p>Error loading PXRD patterns.</p>';
+        container.innerHTML = `
+          <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Unable to load PXRD patterns. 
+            <button class="btn btn-link p-0 ms-2" onclick="window.wellModal.loadPxrdTab('${wellId}')">
+              Try again
+            </button>
+          </div>
+        `;
       });
   }
 
@@ -1074,6 +1183,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  new WellSelector();
-  new WellModal();
+  window.wellSelector = new WellSelector();
+  window.wellModal = new WellModal();
 });

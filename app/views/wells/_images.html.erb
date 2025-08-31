@@ -2,6 +2,36 @@
 console.log('START: Wells _images.html.erb script executing');
 console.log('Wells _images.html.erb partial loaded');
 
+// Lazy load remaining thumbnails
+function loadRemainingThumbnails() {
+  const placeholders = document.querySelectorAll('.thumbnail-placeholder');
+  
+  placeholders.forEach((placeholder, index) => {
+    // Stagger loading to avoid overwhelming the server
+    setTimeout(() => {
+      const imageUrl = placeholder.dataset.imageUrl;
+      const imageId = placeholder.dataset.imageId;
+      
+      if (imageUrl && imageId) {
+        const img = document.createElement('img');
+        img.onload = () => {
+          placeholder.replaceWith(img);
+        };
+        img.onerror = () => {
+          placeholder.innerHTML = '<small class="text-muted">Preview error</small>';
+        };
+        img.src = imageUrl;
+        img.className = 'card-img-top';
+        img.style = 'height: 120px; object-fit: cover;';
+        img.id = `thumb-image-${imageId}`;
+      }
+    }, index * 50); // 50ms delay between each image
+  });
+}
+
+// Load remaining thumbnails after a short delay
+setTimeout(loadRemainingThumbnails, 500);
+
 // Define function in global scope first
 window.showImageInMain = function(imageId, imageUrl, largeImageUrl) {
   console.log('showImageInMain called with:', imageId, imageUrl, largeImageUrl);
@@ -149,15 +179,28 @@ window.showImageInMain = function(imageId, imageUrl, largeImageUrl) {
                  data-large-image-url="<%= url_for(image.file.variant(resize_to_limit: [800, 600])) %>"
                  data-image-info="<%= image.pixel_width %>×<%= image.pixel_height %>px<% if image.physical_width_mm && image.physical_height_mm %> | <%= sprintf("%.2f", image.physical_width_mm) %>×<%= sprintf("%.2f", image.physical_height_mm) %>mm<% end %>"
                  data-image-captured="<%= image.captured_at&.strftime("%Y-%m-%d %H:%M") %>"
-                 data-image-description="<%= image.description %>">
-              <% begin %>
-                <%= image_tag image.file.variant(resize_to_limit: [150, 150]), 
-                    class: "card-img-top", 
-                    style: "height: 120px; object-fit: cover;",
-                    id: "thumb-image-#{image.id}" %>
-              <% rescue => e %>
-                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
-                  <small class="text-muted">No preview</small>
+                 data-image-description="<%= image.description %>"
+                 onclick="window.showImageInMain('<%= image.id %>', '<%= well_image_path(well, image) %>', '<%= url_for(image.file.variant(resize_to_limit: [800, 600])) %>')">
+              <% if index < 10 %>
+                <!-- Load first 10 images immediately -->
+                <% begin %>
+                  <%= image_tag image.file.variant(resize_to_limit: [150, 150]), 
+                      class: "card-img-top", 
+                      style: "height: 120px; object-fit: cover;",
+                      id: "thumb-image-#{image.id}",
+                      loading: index < 3 ? "eager" : "lazy" %>
+                <% rescue => e %>
+                  <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
+                    <small class="text-muted">No preview</small>
+                  </div>
+                <% end %>
+              <% else %>
+                <!-- Lazy load remaining images with placeholder -->
+                <div class="card-img-top d-flex align-items-center justify-content-center bg-light thumbnail-placeholder" 
+                     style="height: 120px; cursor: pointer;"
+                     data-image-id="<%= image.id %>"
+                     data-image-url="<%= url_for(image.file.variant(resize_to_limit: [150, 150])) %>">
+                  <i class="fas fa-image text-muted"></i>
                 </div>
               <% end %>
               <div class="card-body p-1">

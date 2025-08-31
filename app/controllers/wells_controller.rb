@@ -123,7 +123,15 @@ class WellsController < ApplicationController
 
   def images
     @well = Well.find(params[:id])
-    @images = @well.images.includes(file_attachment: :blob).recent
+    # Optimize query with better includes and limit recent images
+    @images = @well.images
+                   .includes(file_attachment: { blob: :variant_records })
+                   .recent
+                   .limit(50) # Limit to 50 most recent images for performance
+
+    # Set cache headers for better client-side caching
+    expires_in 5.minutes, public: false
+
     render partial: "images", locals: { well: @well, images: @images }
   rescue ActiveRecord::RecordNotFound
     render plain: "Well not found", status: 404
