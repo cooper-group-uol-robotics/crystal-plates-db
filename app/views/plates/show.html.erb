@@ -44,6 +44,70 @@
 
 <%= render 'points_of_interest' %>
 
+<!-- Collapsible Help Card -->
+<div class="card mt-4">
+  <div class="card-header p-2">
+    <button class="btn btn-link p-0 text-decoration-none d-flex align-items-center w-100" 
+            type="button" 
+            data-bs-toggle="collapse" 
+            data-bs-target="#wellsHelpCollapse" 
+            aria-expanded="false" 
+            aria-controls="wellsHelpCollapse">
+      <i class="fas fa-question-circle me-2 text-muted"></i>
+      <span class="text-muted">Well Colors & Keyboard Shortcuts</span>
+      <i class="fas fa-chevron-down ms-auto text-muted"></i>
+    </button>
+  </div>
+  <div class="collapse" id="wellsHelpCollapse">
+    <div class="card-body py-3">
+      <div class="row">
+        <div class="col-md-6">
+          <h6 class="mb-2">
+            <i class="fas fa-palette me-2"></i>Well Color Legend
+          </h6>
+          <div class="mb-3">
+            <small class="d-block mb-1">
+              <span class="badge me-2" style="background-color: #28a745; color: white;">Green</span> 
+              Wells with images or PXRD data
+            </small>
+            <small class="d-block mb-1">
+              <span class="badge me-2" style="background-color: #ffc107; color: black;">Yellow</span> 
+              Wells with content only
+            </small>
+            <small class="d-block">
+              <span class="badge me-2" style="background-color: #dc3545; color: white;">Red</span> 
+              Empty wells
+            </small>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h6 class="mb-2">
+            <i class="fas fa-keyboard me-2"></i>Keyboard Shortcuts
+          </h6>
+          <div class="row">
+            <div class="col-6">
+              <small class="d-block mb-1">
+                <kbd>S</kbd> Toggle multi-select
+              </small>
+              <small class="d-block">
+                <kbd>E</kbd> Edit selected wells
+              </small>
+            </div>
+            <div class="col-6">
+              <small class="d-block mb-1">
+                <kbd>C</kbd> Clear selection
+              </small>
+              <small class="d-block">
+                <kbd>Esc</kbd> Close/Cancel
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <%= render 'well_modal' %>
 
 <%= javascript_include_tag "plates_show" %>

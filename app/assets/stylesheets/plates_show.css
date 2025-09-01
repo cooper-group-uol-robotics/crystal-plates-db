@@ -8,6 +8,40 @@
   background: #f8f9fa;
 }
 
+/* Adaptive well grid styles */
+.adaptive-well-grid {
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 1200px) {
+  .adaptive-well-grid {
+    grid-template-columns: 40px repeat(var(--columns, 12), minmax(45px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 992px) {
+  .adaptive-well-grid {
+    grid-template-columns: 35px repeat(var(--columns, 12), minmax(40px, 1fr)) !important;
+    gap: 6px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .adaptive-well-grid {
+    grid-template-columns: 30px repeat(var(--columns, 12), minmax(35px, 1fr)) !important;
+    gap: 4px !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .adaptive-well-grid {
+    grid-template-columns: 25px repeat(var(--columns, 12), minmax(30px, 1fr)) !important;
+    gap: 3px !important;
+  }
+}
+
 .well-position {
   background: white;
   min-height: 80px;
@@ -27,27 +61,30 @@
 }
 
 /* Well Button Styling */
-.well-btn, .well-select-btn {
+.well-btn,
+.well-select-btn {
   border: 2px solid #dee2e6;
   border-radius: 6px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   font-weight: 500;
-  min-height: 40px;
+  min-height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.well-btn:hover, .well-select-btn:hover {
+.well-btn:hover,
+.well-select-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border-color: #007bff;
   z-index: 2;
 }
 
-.well-btn:active, .well-select-btn:active {
+.well-btn:active,
+.well-select-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
@@ -102,9 +139,12 @@
 }
 
 @keyframes pulse-selection {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
   }
+
   50% {
     box-shadow: 0 0 0 6px rgba(0, 123, 255, 0.15);
   }
@@ -170,8 +210,15 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Modal transitions */
@@ -193,8 +240,15 @@
 }
 
 @keyframes slideIn {
-  from { transform: translateY(-10px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* ==========================================================================
@@ -212,8 +266,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Form enhancements */
@@ -235,12 +294,12 @@
   .well-position {
     min-height: 60px;
   }
-  
+
   .well-select-btn {
     height: 20px;
     font-size: 8px;
   }
-  
+
   .image-thumbnail {
     margin-bottom: 1rem;
   }
@@ -298,7 +357,7 @@ kbd {
 
 /* Responsive improvements for help card */
 @media (max-width: 768px) {
-  .card-body .row > .col-md-6:first-child {
+  .card-body .row>.col-md-6:first-child {
     margin-bottom: 1rem;
   }
 }

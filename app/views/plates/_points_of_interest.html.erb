@@ -1,22 +1,32 @@
 <% if @points_of_interest.any? %>
   <div class="card mt-4 shadow-sm">
-    <div class="card-header">
-      <h5 class="mb-0">Points of Interest (<%= @points_of_interest.count %>)</h5>
+    <div class="card-header p-2">
+      <button class="btn btn-link p-0 text-decoration-none d-flex align-items-center w-100" 
+              type="button" 
+              data-bs-toggle="collapse" 
+              data-bs-target="#pointsOfInterestCollapse" 
+              aria-expanded="false" 
+              aria-controls="pointsOfInterestCollapse">
+        <i class="fas fa-map-marker-alt me-2 text-muted"></i>
+        <span class="text-muted">Points of Interest (<%= @points_of_interest.count %>)</span>
+        <i class="fas fa-chevron-down ms-auto text-muted"></i>
+      </button>
     </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-sm table-striped">
-          <thead class="table-light">
-            <tr>
-              <th>Well</th>
-              <th>Type</th>
-              <th>Real World Coordinates (mm)</th>
-              <th>Pixel Coordinates</th>
-              <th>Marked At</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
+    <div class="collapse" id="pointsOfInterestCollapse">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped">
+            <thead class="table-light">
+              <tr>
+                <th>Well</th>
+                <th>Type</th>
+                <th>Real World Coordinates (mm)</th>
+                <th>Pixel Coordinates</th>
+                <th>Marked At</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
             <% @points_of_interest.each do |point| %>
               <% 
                 well = point.image.well
@@ -62,6 +72,7 @@
             <% end %>
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   </div>

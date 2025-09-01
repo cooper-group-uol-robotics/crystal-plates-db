@@ -1,7 +1,5 @@
 <div class="container">
   <div class="">
-    <h2 class="mb-3">Wells</h2>
-
     <div class="mb-2 d-flex justify-content-between align-items-center">
   <div class="form-check form-switch d-inline-block">
     <input class="form-check-input" type="checkbox" id="selectModeSwitch">
@@ -22,9 +20,9 @@
     </button>
   </div>
 </div>
-<div class="d-inline-block border rounded p-2 shadow-sm" style="background: #f8f9fa;">
-  <div id="well-grid-container">
-    <div class="d-grid" style="grid-template-columns: 40px repeat(<%= @columns %>, 80px); gap: 8px;">
+<div class="d-flex justify-content-center" style="background: #f8f9fa;">
+  <div class="border rounded p-2 shadow-sm" id="well-grid-container">
+    <div class="d-grid adaptive-well-grid" style="grid-template-columns: 40px repeat(<%= @columns %>, minmax(65px, 1fr)); gap: 8px; max-width: calc(100vw - 40px);">
       <% wells_in_a1 = @wells.select { |w| w.well_row == 1 && w.well_column == 1 } %>
       <% subwell_selector_cols = subwell_grid_columns(wells_in_a1.length) %>
       <div class="d-grid" style="grid-template-columns: repeat(<%= subwell_selector_cols %>, 1fr); gap: 2px;">
@@ -51,17 +49,17 @@
         </button>
       <% (1..@columns).each do |col| %>
         <% wells_in_position = @wells.select { |w| w.well_row == row && w.well_column == col } %>
-        <div class="well-position border rounded p-1" style="background: white; min-height: 80px;">
+        <div class="well-position border rounded p-1" style="background: white; min-height: 20px;">
           <% if wells_in_position.any? %>
             <div class="text-center mb-1" style="font-size: 10px; font-weight: bold;">
-              <%= wells_in_position.first.well_label %>
+              <%= wells_in_position.first.well_label  if wells_in_position.length > 1 %>
             </div>
             <% grid_cols = subwell_grid_columns(wells_in_position.length) %>
             <div class="d-grid" style="grid-template-columns: repeat(<%= grid_cols %>, 1fr); gap: 2px;">
               <% wells_in_position.sort_by(&:subwell).each do |well| %>
               <% colors = well_color_class(well) %>
               <button type="button" class="btn btn-sm p-1 well-select-btn"
-                style="background-color: <%= colors[:bg_color] %>; color: <%= colors[:text_color] %>; height: 25px; font-size: 9px;"
+                style="background-color: <%= colors[:bg_color] %>; color: <%= colors[:text_color] %>; height: 20px; font-size: 9px;"
                 data-well-id="<%= well.id %>"
                 data-well-label="<%= well.well_label_with_subwell %>"
                 data-col="<%= well.well_column %>"
@@ -69,82 +67,22 @@
                 data-subwell="<%= well.subwell %>"
                 title="<%= well_tooltip_text(well) %>"
                 <%= raw 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>
+                <% if wells_in_position.length > 1 %>
                 <%= well.subwell %>
+                <% else %>
+                <%= wells_in_position.first.well_label %>
+                <% end%>
               </button>
               <% end %>
             </div>
           <% else %>
-            <div class="text-center text-muted" style="padding-top: 25px; font-size: 10px;">
+            <div class="text-center text-muted" style="padding-top: 18px; font-size: 10px;">
               Empty
             </div>
           <% end %>
         </div>
       <% end %>
     <% end %>
-  </div>
-</div>
-
-<!-- Collapsible Help Card -->
-<div class="card mt-4">
-  <div class="card-header p-2">
-    <button class="btn btn-link p-0 text-decoration-none d-flex align-items-center w-100" 
-            type="button" 
-            data-bs-toggle="collapse" 
-            data-bs-target="#wellsHelpCollapse" 
-            aria-expanded="false" 
-            aria-controls="wellsHelpCollapse">
-      <i class="fas fa-question-circle me-2 text-muted"></i>
-      <span class="text-muted">Well Colors & Keyboard Shortcuts</span>
-      <i class="fas fa-chevron-down ms-auto text-muted"></i>
-    </button>
-  </div>
-  <div class="collapse" id="wellsHelpCollapse">
-    <div class="card-body py-3">
-      <div class="row">
-        <div class="col-md-6">
-          <h6 class="mb-2">
-            <i class="fas fa-palette me-2"></i>Well Color Legend
-          </h6>
-          <div class="mb-3">
-            <small class="d-block mb-1">
-              <span class="badge me-2" style="background-color: #28a745; color: white;">Green</span> 
-              Wells with images or PXRD data
-            </small>
-            <small class="d-block mb-1">
-              <span class="badge me-2" style="background-color: #ffc107; color: black;">Yellow</span> 
-              Wells with content only
-            </small>
-            <small class="d-block">
-              <span class="badge me-2" style="background-color: #dc3545; color: white;">Red</span> 
-              Empty wells
-            </small>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <h6 class="mb-2">
-            <i class="fas fa-keyboard me-2"></i>Keyboard Shortcuts
-          </h6>
-          <div class="row">
-            <div class="col-6">
-              <small class="d-block mb-1">
-                <kbd>S</kbd> Toggle multi-select
-              </small>
-              <small class="d-block">
-                <kbd>E</kbd> Edit selected wells
-              </small>
-            </div>
-            <div class="col-6">
-              <small class="d-block mb-1">
-                <kbd>C</kbd> Clear selection
-              </small>
-              <small class="d-block">
-                <kbd>Esc</kbd> Close/Cancel
-              </small>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
   </div>
