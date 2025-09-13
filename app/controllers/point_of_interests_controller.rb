@@ -121,72 +121,71 @@ class PointOfInterestsController < ApplicationController
       return
     end
 
-    # Call the segmentation service
-    result = SegmentationApiService.segment_image(@image.file)
+    # Check if there's already a segmentation job queued for this image
+    existing_jobs = Solid::Queue::Job.where(
+      class_name: "AutoSegmentationJob",
+      arguments: [ @image.id, @well.id ].to_json,
+      finished_at: nil
+    )
 
-    if result[:error]
-      handle_segmentation_error(result[:error])
-    else
-      handle_segmentation_success(result[:data])
+    if existing_jobs.exists?
+      respond_to do |format|
+        format.json do
+          render json: {
+            status: "queued",
+            message: "Segmentation job is already queued or in progress for this image"
+          }, status: :accepted
+        end
+        format.html do
+          redirect_to well_image_path(@well, @image),
+                     notice: "Segmentation job is already queued or in progress for this image"
+        end
+      end
+      return
     end
-  end
 
-  private
-
-  def handle_segmentation_success(segmentation_data)
-    created_points = []
-
-    segmentation_data["segments"].each do |segment|
-      centroid = segment["centroid"]
-
-          point = @image.point_of_interests.create!(
-            pixel_x: centroid["x"].round,
-            pixel_y: centroid["y"].round,
-            point_type: Setting.auto_segment_point_type,
-            description: "Auto-segmented (confidence: #{segment['confidence'].round(3)})",
-            marked_at: Time.current
-          )
-
-          created_points << {
-        id: point.id,
-        pixel_x: point.pixel_x,
-        pixel_y: point.pixel_y,
-        real_world_x_mm: point.real_world_x_mm,
-        real_world_y_mm: point.real_world_y_mm,
-        real_world_z_mm: point.real_world_z_mm,
-        point_type: point.point_type,
-        description: point.description,
-        marked_at: point.marked_at,
-        display_name: point.display_name
-      }
-    end
+    # Queue the segmentation job
+    job = AutoSegmentationJob.perform_later(@image.id, @well.id)
 
     respond_to do |format|
       format.json do
         render json: {
-          message: "Successfully created #{created_points.length} points of interest",
-          points: created_points,
-          model_used: segmentation_data["model_used"],
-          segments_found: segmentation_data["segments"].length
-        }
+          status: "queued",
+          message: "Auto-segmentation job has been queued",
+          job_id: job.job_id,
+          image_id: @image.id,
+          well_id: @well.id
+        }, status: :accepted
       end
       format.html do
         redirect_to well_image_path(@well, @image),
-                   notice: "Successfully auto-segmented image and created #{created_points.length} points of interest"
+                   notice: "Auto-segmentation job has been queued. Results will appear when processing is complete."
       end
     end
   end
 
-  def handle_segmentation_error(error_message)
-    status = case error_message
-    when /timed out/i then :request_timeout
-    when /status/i then :service_unavailable
-    else :internal_server_error
-    end
+  # GET /wells/:well_id/images/:image_id/point_of_interests/auto_segment_status
+  def auto_segment_status
+    # Check for queued/running jobs
+    existing_jobs = Solid::Queue::Job.where(
+      class_name: "AutoSegmentationJob",
+      arguments: [ @image.id, @well.id ].to_json,
+      finished_at: nil
+    )
 
-    respond_to do |format|
-      format.json { render json: { error: error_message }, status: status }
-      format.html { redirect_to well_image_path(@well, @image), alert: error_message }
+    if existing_jobs.exists?
+      job = existing_jobs.first
+      render json: {
+        status: "processing",
+        message: "Segmentation job is #{job.finished_at ? 'completed' : 'in progress'}",
+        job_id: job.id,
+        queue_position: existing_jobs.where("id < ?", job.id).count + 1
+      }
+    else
+      render json: {
+        status: "ready",
+        message: "No segmentation job in progress"
+      }
     end
   end
 

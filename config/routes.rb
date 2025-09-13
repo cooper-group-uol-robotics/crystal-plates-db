@@ -1,8 +1,8 @@
 Rails.application.routes.draw do
   # Settings
-  get '/settings', to: 'settings#index'
-  patch '/settings', to: 'settings#update'
-  post '/settings/test_connection', to: 'settings#test_connection'
+  get "/settings", to: "settings#index"
+  patch "/settings", to: "settings#update"
+  post "/settings/test_connection", to: "settings#test_connection"
 
   resources :stock_solutions do
     collection do
@@ -36,6 +36,7 @@ Rails.application.routes.draw do
       resources :point_of_interests, except: [ :new, :edit ] do
         collection do
           post :auto_segment
+          get :auto_segment_status
         end
       end
     end
