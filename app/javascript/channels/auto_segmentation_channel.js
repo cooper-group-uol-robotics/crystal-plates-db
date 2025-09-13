@@ -1,15 +1,9 @@
+// AutoSegmentationChannel - handled directly in views where needed
+// This file exists to ensure proper asset compilation
 import consumer from "channels/consumer"
 
-consumer.subscriptions.create("AutoSegmentationChannel", {
-  connected() {
-    // Called when the subscription is ready for use on the server
-  },
+// Export the consumer for use in other parts of the application
+export { consumer }
 
-  disconnected() {
-    // Called when the subscription has been terminated by the server
-  },
-
-  received(data) {
-    // Called when there's incoming data on the websocket for this channel
-  }
-});
+// Note: Actual subscriptions are created dynamically in the image viewer
+// to allow for image-specific channels

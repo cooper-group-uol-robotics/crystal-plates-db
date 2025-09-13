@@ -41,13 +41,13 @@ class SegmentationApiService
 
   def file_upload
     file_io = StringIO.new
-    image_file.download { |chunk| file_io.write(chunk) }
+    @image_file.download { |chunk| file_io.write(chunk) }
     file_io.rewind
 
     Faraday::Multipart::FilePart.new(
       file_io,
-      image_file.content_type || "application/octet-stream",
-      image_file.filename.to_s
+      @image_file.content_type || "application/octet-stream",
+      @image_file.filename.to_s
     )
   end
 

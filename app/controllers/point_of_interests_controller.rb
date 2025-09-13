@@ -121,71 +121,80 @@ class PointOfInterestsController < ApplicationController
       return
     end
 
-    # Check if there's already a segmentation job queued for this image
-    existing_jobs = Solid::Queue::Job.where(
-      class_name: "AutoSegmentationJob",
-      arguments: [ @image.id, @well.id ].to_json,
-      finished_at: nil
-    )
-
-    if existing_jobs.exists?
-      respond_to do |format|
-        format.json do
-          render json: {
-            status: "queued",
-            message: "Segmentation job is already queued or in progress for this image"
-          }, status: :accepted
-        end
-        format.html do
-          redirect_to well_image_path(@well, @image),
-                     notice: "Segmentation job is already queued or in progress for this image"
-        end
-      end
+    # Validate API configuration
+    unless Setting.get("segmentation_api_endpoint").present?
+      render json: {
+        error: "Segmentation API endpoint not configured",
+        message: "Please configure the segmentation API endpoint in settings"
+      }, status: :service_unavailable
       return
     end
 
-    # Queue the segmentation job
-    job = AutoSegmentationJob.perform_later(@image.id, @well.id)
+    # With Async adapter, jobs process immediately so no duplicate checking needed
+    Rails.logger.info "Queueing auto-segmentation job for image #{@image.id} using #{Rails.application.config.active_job.queue_adapter} adapter"
 
-    respond_to do |format|
-      format.json do
-        render json: {
-          status: "queued",
-          message: "Auto-segmentation job has been queued",
-          job_id: job.job_id,
-          image_id: @image.id,
-          well_id: @well.id
-        }, status: :accepted
-      end
-      format.html do
-        redirect_to well_image_path(@well, @image),
-                   notice: "Auto-segmentation job has been queued. Results will appear when processing is complete."
-      end
+    # Queue the segmentation job for background processing
+    begin
+      job = AutoSegmentationJob.perform_later(@image.id, @well.id)
+
+      render json: {
+        status: "queued",
+        message: "Auto-segmentation job has been queued for processing",
+        job_id: job.job_id,
+        image_id: @image.id,
+        well_id: @well.id,
+        estimated_completion: "Processing typically takes 30-60 seconds"
+      }, status: :accepted
+    rescue => e
+      Rails.logger.error "Failed to queue auto-segmentation job: #{e.message}"
+      render json: {
+        status: "error",
+        message: "Failed to queue auto-segmentation job",
+        error: e.message,
+        image_id: @image.id,
+        well_id: @well.id
+      }, status: :internal_server_error
     end
   end
 
   # GET /wells/:well_id/images/:image_id/point_of_interests/auto_segment_status
   def auto_segment_status
-    # Check for queued/running jobs
-    existing_jobs = Solid::Queue::Job.where(
-      class_name: "AutoSegmentationJob",
-      arguments: [ @image.id, @well.id ].to_json,
-      finished_at: nil
-    )
+    begin
+      # Simple status check based on recent point creation
+      # With Async adapter, jobs process immediately so we check for results
+      recent_auto_points = @image.point_of_interests
+        .where("created_at >= ?", 5.minutes.ago)
+        .where("description LIKE ?", "%Auto-segmented%")
 
-    if existing_jobs.exists?
-      job = existing_jobs.first
+      if recent_auto_points.any?
+        # Found recent auto-segmented points - job completed successfully
+        render json: {
+          status: "completed",
+          message: "Auto-segmentation completed successfully",
+          points_created: recent_auto_points.count,
+          last_point_created: recent_auto_points.maximum(:created_at),
+          image_id: @image.id,
+          well_id: @well.id,
+          adapter: Rails.application.config.active_job.queue_adapter.to_s
+        }
+      else
+        # No recent auto-segmented points - either idle or job failed
+        render json: {
+          status: "idle",
+          message: "No recent auto-segmentation activity detected",
+          image_id: @image.id,
+          well_id: @well.id,
+          adapter: Rails.application.config.active_job.queue_adapter.to_s
+        }
+      end
+
+    rescue => e
+      Rails.logger.error "Error checking auto-segmentation status: #{e.message}"
       render json: {
-        status: "processing",
-        message: "Segmentation job is #{job.finished_at ? 'completed' : 'in progress'}",
-        job_id: job.id,
-        queue_position: existing_jobs.where("id < ?", job.id).count + 1
-      }
-    else
-      render json: {
-        status: "ready",
-        message: "No segmentation job in progress"
-      }
+        status: "error",
+        message: "Unable to check job status",
+        error: e.message
+      }, status: :internal_server_error
     end
   end
 

@@ -671,38 +671,8 @@ class InteractiveImageViewer {
   }
 
   setupSegmentationChannel() {
-    // Only set up if ActionCable is available
-    if (typeof App !== 'undefined' && App.cable) {
-      this.segmentationSubscription = App.cable.subscriptions.create(
-        { channel: "AutoSegmentationChannel", image_id: this.imageId },
-        {
-          received: (data) => {
-            const autoSegmentBtn = document.getElementById('auto-segment');
-            
-            if (data.status === 'completed') {
-              // Segmentation completed successfully
-              this.loadExistingPoints(); // Reload points to show new ones
-              this.showNotification(
-                `Auto-segmentation completed! Created ${data.segments_created} points using ${data.model_used} model`,
-                'success'
-              );
-              
-              // Re-enable button
-              autoSegmentBtn.disabled = false;
-              autoSegmentBtn.innerHTML = '<i class="bi bi-magic"></i> Auto Segment';
-              
-            } else if (data.status === 'failed') {
-              // Segmentation failed
-              this.showNotification(`Auto-segmentation failed: ${data.error}`, 'error');
-              
-              // Re-enable button
-              autoSegmentBtn.disabled = false;
-              autoSegmentBtn.innerHTML = '<i class="bi bi-magic"></i> Auto Segment';
-            }
-          }
-        }
-      );
-    }
+    // Skip ActionCable for now - use polling instead for reliability
+    console.log('ActionCable channel setup skipped - using polling instead');
   }
 
   showNotification(message, type = 'info') {
