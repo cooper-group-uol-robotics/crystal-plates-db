@@ -45,6 +45,15 @@
     font-size: 0.75rem;
     border-radius: 0.125rem;
   }
+  
+  .bi-arrow-clockwise {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 </style>
 
 <div class="container">
@@ -154,7 +163,12 @@ window.imageNavigation = {
                 </div>
                 
                 <button id="clear-points" class="btn btn-outline-danger btn-sm me-2">Clear All Points</button>
-                <button id="toggle-points" class="btn btn-outline-dark btn-sm">Hide Points</button>
+                <button id="toggle-points" class="btn btn-outline-dark btn-sm me-2">Hide Points</button>
+                <button id="auto-segment" class="btn btn-outline-success btn-sm" 
+                        data-well-id="<%= @well.id %>" 
+                        data-image-id="<%= @image.id %>">
+                  <i class="bi bi-magic"></i> Auto Segment
+                </button>
               </div>
               
               <!-- Points List -->
@@ -294,6 +308,12 @@ class InteractiveImageViewer {
     // Control buttons
     this.clearPointsBtn.addEventListener('click', () => this.clearAllPoints());
     this.togglePointsBtn.addEventListener('click', () => this.togglePointsVisibility());
+    
+    // Auto-segment button
+    const autoSegmentBtn = document.getElementById('auto-segment');
+    if (autoSegmentBtn) {
+      autoSegmentBtn.addEventListener('click', () => this.autoSegment());
+    }
     
     // Image load handler to ensure we have correct dimensions
     this.image.addEventListener('load', () => this.refreshPointPositions());
@@ -560,7 +580,49 @@ class InteractiveImageViewer {
       this.clearPointMarkers();
     }
   }
-  
+
+  async autoSegment() {
+    const autoSegmentBtn = document.getElementById('auto-segment');
+    
+    // Disable button and show loading state
+    autoSegmentBtn.disabled = true;
+    const originalText = autoSegmentBtn.innerHTML;
+    autoSegmentBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Segmenting...';
+    
+    try {
+      const response = await fetch(`/wells/${this.wellId}/images/${this.imageId}/point_of_interests/auto_segment`, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Add the new points to our display
+        result.points.forEach(point => {
+          this.addPointToDisplay(point);
+        });
+        
+        this.showNotification(
+          `Auto-segmentation completed! Created ${result.points.length} points using ${result.model_used} model`, 
+          'success'
+        );
+      } else {
+        const errorData = await response.json();
+        this.showNotification(`Auto-segmentation failed: ${errorData.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error during auto-segmentation:', error);
+      this.showNotification(`Network error during auto-segmentation: ${error.message}`, 'error');
+    } finally {
+      // Re-enable button and restore original text
+      autoSegmentBtn.disabled = false;
+      autoSegmentBtn.innerHTML = originalText;
+    }
+  }
+
   showNotification(message, type = 'info') {
     // Create a simple notification
     const notification = document.createElement('div');

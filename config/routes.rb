@@ -28,7 +28,11 @@ Rails.application.routes.draw do
       post :bulk_add_content
     end
     resources :images, except: [ :index ] do
-      resources :point_of_interests, except: [ :new, :edit ]
+      resources :point_of_interests, except: [ :new, :edit ] do
+        collection do
+          post :auto_segment
+        end
+      end
     end
     resources :pxrd_patterns
     resources :well_contents do
