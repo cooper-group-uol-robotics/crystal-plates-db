@@ -1,5 +1,5 @@
 class SettingsController < ApplicationController
-  before_action :set_settings, only: [:show, :index, :update]
+  before_action :set_settings, only: [ :show, :index, :update ]
 
   def show
     redirect_to settings_path
@@ -34,43 +34,46 @@ class SettingsController < ApplicationController
     timeout = params[:timeout]&.to_i || Setting.segmentation_api_timeout
 
     begin
-      require 'faraday'
-      
-      conn = Faraday.new(url: endpoint) do |f|
+      require "faraday"
+
+      uri = URI.parse(endpoint)
+      base_url = "#{uri.scheme}://#{uri.host}"
+      base_url += ":#{uri.port}" if uri.port && ![ 80, 443 ].include?(uri.port)
+      conn = Faraday.new(url: "#{base_url}/health") do |f|
         f.adapter Faraday.default_adapter
         f.options.timeout = timeout
         f.options.open_timeout = 5
       end
 
       response = conn.get
-      
+
       if response.status < 400
-        render json: { 
-          success: true, 
+        render json: {
+          success: true,
           message: "Connection successful (HTTP #{response.status})",
           status: response.status
         }
       else
-        render json: { 
-          success: false, 
+        render json: {
+          success: false,
           message: "Connection failed with HTTP #{response.status}",
           status: response.status
         }
       end
     rescue Faraday::ConnectionFailed => e
-      render json: { 
-        success: false, 
-        message: "Connection failed: #{e.message}" 
+      render json: {
+        success: false,
+        message: "Connection failed: #{e.message}"
       }
     rescue Faraday::TimeoutError => e
-      render json: { 
-        success: false, 
-        message: "Connection timed out: #{e.message}" 
+      render json: {
+        success: false,
+        message: "Connection timed out: #{e.message}"
       }
     rescue StandardError => e
-      render json: { 
-        success: false, 
-        message: "Error: #{e.message}" 
+      render json: {
+        success: false,
+        message: "Error: #{e.message}"
       }
     end
   end
