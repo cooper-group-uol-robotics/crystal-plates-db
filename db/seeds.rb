@@ -7,6 +7,7 @@
 #   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
+# Initialize default units
 [
   { name: "milligram", symbol: "mg", conversion_to_base: 1.0 },
   { name: "microliter", symbol: "µl", conversion_to_base: 1.0 },
@@ -18,6 +19,9 @@
     unit.conversion_to_base = attrs[:conversion_to_base]
   end
 end
+
+# Initialize default settings
+Setting.initialize_defaults!
 
 # Seed: Generic 96 well Plate Prototype
 prototype_name = "Generic 96 well Plate"

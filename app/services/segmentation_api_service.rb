@@ -10,7 +10,8 @@ class SegmentationApiService
 
   def initialize(image_file)
     @image_file = image_file
-    @endpoint = Rails.application.config.segmentation_api_endpoint
+    @endpoint = Setting.segmentation_api_endpoint
+    @timeout = Setting.segmentation_api_timeout
   end
 
   def segment
@@ -27,14 +28,14 @@ class SegmentationApiService
 
   private
 
-  attr_reader :image_file, :endpoint
+  attr_reader :image_file, :endpoint, :timeout
 
   def connection
     @connection ||= Faraday.new(url: endpoint) do |f|
       f.request :multipart
       f.request :url_encoded
       f.adapter Faraday.default_adapter
-      f.options.timeout = 30
+      f.options.timeout = timeout
     end
   end
 

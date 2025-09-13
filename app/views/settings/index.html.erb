@@ -1,0 +1,207 @@
+<% content_for :title, "Settings" %>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">
+            <i class="bi bi-gear"></i> System Settings
+          </h4>
+        </div>
+        <div class="card-body">
+          <%= form_with url: settings_path, method: :patch, local: true, html: { class: "needs-validation", novalidate: true } do |form| %>
+            
+            <!-- Segmentation API Settings -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="border-bottom pb-2">
+                  <i class="bi bi-cloud-arrow-up"></i> Segmentation API Configuration
+                </h5>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <label for="segmentation_api_endpoint" class="form-label">
+                  API Endpoint URL
+                  <small class="text-muted">*</small>
+                </label>
+                <div class="input-group">
+                  <%= form.url_field "settings[segmentation_api_endpoint]", 
+                      value: @settings['segmentation_api_endpoint']&.value,
+                      class: "form-control",
+                      id: "segmentation_api_endpoint",
+                      placeholder: "http://aicdocker.liv.ac.uk:8000/segment/opencv",
+                      required: true %>
+                  <button type="button" id="test-connection" class="btn btn-outline-secondary">
+                    <i class="bi bi-wifi"></i> Test Connection
+                  </button>
+                </div>
+                <div class="form-text">
+                  <%= @settings['segmentation_api_endpoint']&.description %>
+                </div>
+                <div id="connection-status" class="mt-2"></div>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="segmentation_api_timeout" class="form-label">
+                  Request Timeout (seconds)
+                  <small class="text-muted">*</small>
+                </label>
+                <%= form.number_field "settings[segmentation_api_timeout]", 
+                    value: @settings['segmentation_api_timeout']&.value,
+                    class: "form-control",
+                    id: "segmentation_api_timeout",
+                    min: 5,
+                    max: 300,
+                    step: 1,
+                    required: true %>
+                <div class="form-text">
+                  <%= @settings['segmentation_api_timeout']&.description %>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="auto_segment_point_type" class="form-label">
+                  Default Point Type
+                  <small class="text-muted">*</small>
+                </label>
+                <%= form.select "settings[auto_segment_point_type]", 
+                    options_for_select([
+                      ['Crystal', 'crystal'],
+                      ['Particle', 'particle'],
+                      ['Droplet', 'droplet'],
+                      ['Other', 'other']
+                    ], @settings['auto_segment_point_type']&.value),
+                    {},
+                    { class: "form-select", id: "auto_segment_point_type", required: true } %>
+                <div class="form-text">
+                  <%= @settings['auto_segment_point_type']&.description %>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="row mt-4">
+              <div class="col-12">
+                <hr>
+                <div class="d-flex justify-content-between">
+                  <%= link_to 'Back to Home', root_path, class: 'btn btn-outline-secondary' %>
+                  <div>
+                    <button type="button" id="reset-defaults" class="btn btn-outline-warning me-2">
+                      <i class="bi bi-arrow-clockwise"></i> Reset to Defaults
+                    </button>
+                    <%= form.submit 'Save Settings', class: 'btn btn-primary' %>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Info Panel -->
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-info-circle"></i> Information
+          </h5>
+        </div>
+        <div class="card-body">
+          <h6>Segmentation API</h6>
+          <p class="small text-muted">
+            The segmentation API automatically detects regions of interest in your images. 
+            Make sure the endpoint is accessible from your Rails application.
+          </p>
+
+          <h6>Network Considerations</h6>
+          <p class="small text-muted">
+            If running in Docker/containers, you may need to use internal IP addresses 
+            instead of external hostnames to avoid NAT routing issues.
+          </p>
+
+          <h6>Testing Connection</h6>
+          <p class="small text-muted">
+            Use the "Test Connection" button to verify the API endpoint is reachable 
+            before saving your settings.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const testButton = document.getElementById('test-connection');
+  const endpointInput = document.getElementById('segmentation_api_endpoint');
+  const timeoutInput = document.getElementById('segmentation_api_timeout');
+  const statusDiv = document.getElementById('connection-status');
+
+  testButton.addEventListener('click', function() {
+    const endpoint = endpointInput.value;
+    const timeout = timeoutInput.value;
+
+    if (!endpoint) {
+      showStatus('Please enter an endpoint URL first', 'danger');
+      return;
+    }
+
+    // Show loading state
+    testButton.disabled = true;
+    testButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Testing...';
+    statusDiv.innerHTML = '<div class="alert alert-info">Testing connection...</div>';
+
+    // Make test request
+    fetch('/settings/test_connection', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        endpoint: endpoint,
+        timeout: parseInt(timeout) || 30
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showStatus(data.message, 'success');
+      } else {
+        showStatus(data.message, 'danger');
+      }
+    })
+    .catch(error => {
+      showStatus('Test request failed: ' + error.message, 'danger');
+    })
+    .finally(() => {
+      // Restore button state
+      testButton.disabled = false;
+      testButton.innerHTML = '<i class="bi bi-wifi"></i> Test Connection';
+    });
+  });
+
+  function showStatus(message, type) {
+    statusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+  }
+
+  // Reset defaults functionality
+  document.getElementById('reset-defaults').addEventListener('click', function() {
+    if (confirm('Are you sure you want to reset all settings to their default values?')) {
+      document.getElementById('segmentation_api_endpoint').value = 'http://aicdocker.liv.ac.uk:8000/segment/opencv';
+      document.getElementById('segmentation_api_timeout').value = '30';
+      document.getElementById('auto_segment_point_type').value = 'other';
+    }
+  });
+});
+</script>

@@ -1,6 +1,11 @@
 # Configuration for image segmentation API
 Rails.application.configure do
   # URL for the external segmentation API
-  # Can be overridden with SEGMENTATION_API_ENDPOINT environment variable
-  config.segmentation_api_endpoint = ENV.fetch("SEGMENTATION_API_ENDPOINT", "http://10.10.1.100:8000/segment/sam")
+  # Now managed via database settings (see Settings model)
+  # Fallback to environment variable if database is not available (e.g., during migrations)
+  config.segmentation_api_endpoint = begin
+    Setting.segmentation_api_endpoint if defined?(Setting) && Setting.table_exists?
+  rescue
+    nil
+  end || ENV.fetch("SEGMENTATION_API_ENDPOINT", "http://aicdocker.liv.ac.uk:8000/segment/opencv")
 end

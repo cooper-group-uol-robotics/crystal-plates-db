@@ -1,4 +1,9 @@
 Rails.application.routes.draw do
+  # Settings
+  get '/settings', to: 'settings#index'
+  patch '/settings', to: 'settings#update'
+  post '/settings/test_connection', to: 'settings#test_connection'
+
   resources :stock_solutions do
     collection do
       get :search

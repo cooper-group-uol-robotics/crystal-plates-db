@@ -139,15 +139,15 @@ class PointOfInterestsController < ApplicationController
     segmentation_data["segments"].each do |segment|
       centroid = segment["centroid"]
 
-      point = @image.point_of_interests.create!(
-        pixel_x: centroid["x"].round,
-        pixel_y: centroid["y"].round,
-        point_type: "other", # Default type, could be made configurable
-        description: "Auto-segmented (confidence: #{segment['confidence'].round(3)})",
-        marked_at: Time.current
-      )
+          point = @image.point_of_interests.create!(
+            pixel_x: centroid["x"].round,
+            pixel_y: centroid["y"].round,
+            point_type: Setting.auto_segment_point_type,
+            description: "Auto-segmented (confidence: #{segment['confidence'].round(3)})",
+            marked_at: Time.current
+          )
 
-      created_points << {
+          created_points << {
         id: point.id,
         pixel_x: point.pixel_x,
         pixel_y: point.pixel_y,
