@@ -41,6 +41,13 @@ Rails.application.routes.draw do
       end
     end
     resources :pxrd_patterns
+    resources :scxrd_datasets do
+      member do
+        get :download
+        get :download_peak_table
+        get :download_first_image
+      end
+    end
     resources :well_contents do
       collection do
         delete :destroy_all

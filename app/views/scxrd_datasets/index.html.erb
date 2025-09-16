@@ -1,0 +1,104 @@
+<% content_for :title, "SCXRD Datasets for Well #{@well.well_label}" %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">
+      SCXRD Datasets for Well <%= @well.well_label %>
+    </h1>
+    <%= link_to "Add New Dataset", new_well_scxrd_dataset_path(@well), 
+        class: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+  </div>
+
+  <div class="mb-4">
+    <%= link_to "← Back to Well", @well, class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+
+  <% if @scxrd_datasets.any? %>
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Experiment Name
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Date Measured
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Lattice Centring
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Unit Cell
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Extracted Data
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @scxrd_datasets.each do |dataset| %>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <%= link_to dataset.experiment_name, [@well, dataset], 
+                    class: "text-blue-600 hover:text-blue-900" %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= dataset.date_measured.strftime("%Y-%m-%d") if dataset.date_measured %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= dataset.lattice_centring&.symbol %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <% if dataset.a.present? %>
+                  a=<%= number_with_precision(dataset.a, precision: 3) %>Å<br>
+                  b=<%= number_with_precision(dataset.b, precision: 3) %>Å<br>
+                  c=<%= number_with_precision(dataset.c, precision: 3) %>Å<br>
+                  α=<%= number_with_precision(dataset.alpha, precision: 1) %>°<br>
+                  β=<%= number_with_precision(dataset.beta, precision: 1) %>°<br>
+                  γ=<%= number_with_precision(dataset.gamma, precision: 1) %>°
+                <% else %>
+                  <span class="text-gray-500">Not specified</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div class="flex space-x-2">
+                  <% if dataset.has_peak_table? %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Peak Table
+                    </span>
+                  <% end %>
+                  <% if dataset.has_first_image? %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      First Image
+                    </span>
+                  <% end %>
+                  <% unless dataset.has_peak_table? || dataset.has_first_image? %>
+                    <span class="text-gray-400 text-xs">None</span>
+                  <% end %>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <%= link_to "View", [@well, dataset], class: "text-indigo-600 hover:text-indigo-900 mr-2" %>
+                <%= link_to "Edit", edit_well_scxrd_dataset_path(@well, dataset), class: "text-yellow-600 hover:text-yellow-900 mr-2" %>
+                <% if dataset.archive.attached? %>
+                  <%= link_to "Download", download_well_scxrd_dataset_path(@well, dataset), class: "text-green-600 hover:text-green-900 mr-2" %>
+                <% end %>
+                <%= link_to "Delete", [@well, dataset], method: :delete, 
+                    confirm: "Are you sure?", class: "text-red-600 hover:text-red-900" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg p-8 text-center">
+      <p class="text-gray-600 text-lg mb-4">No SCXRD datasets found for this well.</p>
+      <%= link_to "Add First Dataset", new_well_scxrd_dataset_path(@well), 
+          class: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+    </div>
+  <% end %>
+</div>

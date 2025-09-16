@@ -20,6 +20,10 @@
   end
 end
 
+# Lattice centrings
+seed_file = File.join(Rails.root, 'db', 'seeds', 'lattice_centrings.rb')
+load(seed_file) if File.exist?(seed_file)
+
 # Initialize default settings
 Setting.initialize_defaults!
 

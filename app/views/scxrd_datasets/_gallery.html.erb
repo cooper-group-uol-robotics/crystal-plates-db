@@ -1,0 +1,271 @@
+<%# app/views/scxrd_datasets/_gallery.html.erb %>
+<script>
+// Define function in global scope for SCXRD dataset switching
+window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) {
+  console.log('showScxrdDatasetInMain called with:', datasetId, experimentName, datasetUrl);
+  
+  // Update the main display panels
+  fetch(`/wells/<%= @well.id %>/scxrd_datasets/${datasetId}`, {
+    headers: { 'Accept': 'application/json' }
+  })
+    .then(response => response.json())
+    .then(data => {
+      // Update first diffraction image panel
+      const imagePanel = document.getElementById('scxrd-first-image-panel');
+      if (data.has_first_image) {
+        imagePanel.innerHTML = `
+          <div class="text-center p-3">
+            <i class="fas fa-camera fa-3x mb-3 text-primary"></i>
+            <h6>First Frame</h6>
+            <p class="text-muted small">Size: ${data.first_image_size}</p>
+            <a href="/wells/<%= @well.id %>/scxrd_datasets/${datasetId}/download_first_image" 
+               class="btn btn-sm btn-primary">
+              <i class="fas fa-download me-1"></i>Download
+            </a>
+          </div>
+        `;
+      } else {
+        imagePanel.innerHTML = `
+          <div class="text-center p-3 text-muted">
+            <i class="fas fa-camera fa-3x mb-3"></i>
+            <h6>First Frame</h6>
+            <p class="small">Not available</p>
+          </div>
+        `;
+      }
+
+      // Update peak table panel
+      const peakPanel = document.getElementById('scxrd-peak-table-panel');
+      if (data.has_peak_table) {
+        peakPanel.innerHTML = `
+          <div class="text-center p-3">
+            <i class="fas fa-table fa-3x mb-3 text-success"></i>
+            <h6>Reciprocal Lattice</h6>
+            <p class="text-muted small">Size: ${data.peak_table_size}</p>
+            <a href="/wells/<%= @well.id %>/scxrd_datasets/${datasetId}/download_peak_table" 
+               class="btn btn-sm btn-success">
+              <i class="fas fa-download me-1"></i>Download
+            </a>
+          </div>
+        `;
+      } else {
+        peakPanel.innerHTML = `
+          <div class="text-center p-3 text-muted">
+            <i class="fas fa-table fa-3x mb-3"></i>
+            <h6>Reciprocal Lattice</h6>
+            <p class="small">Not available</p>
+          </div>
+        `;
+      }
+
+      // Update structure panel (placeholder)
+      const structurePanel = document.getElementById('scxrd-structure-panel');
+      structurePanel.innerHTML = `
+        <div class="text-center p-3">
+          <i class="fas fa-cube fa-3x mb-3 text-info"></i>
+          <h6>Crystal Structure</h6>
+          <p class="text-muted small">3D visualization placeholder</p>
+          <button class="btn btn-sm btn-info" disabled>
+            <i class="fas fa-eye me-1"></i>View 3D
+          </button>
+        </div>
+      `;
+
+      // Update experiment info card
+      const infoCard = document.getElementById('scxrd-info-card');
+      let unitCellInfo = '';
+      if (data.unit_cell && data.unit_cell.a) {
+        unitCellInfo = `
+          <div class="mt-2">
+            <small class="text-muted">Unit Cell:</small><br>
+            <small>a=${data.unit_cell.a}Å, b=${data.unit_cell.b}Å, c=${data.unit_cell.c}Å</small><br>
+            <small>α=${data.unit_cell.alpha}°, β=${data.unit_cell.beta}°, γ=${data.unit_cell.gamma}°</small>
+          </div>
+        `;
+      }
+      
+      infoCard.innerHTML = `
+        <div class="card-body">
+          <h6 class="card-title">${experimentName}</h6>
+          <p class="card-text">
+            <small class="text-muted">
+              Measured: ${data.date_measured || 'Unknown'}
+              ${data.lattice_centring ? `| Lattice: ${data.lattice_centring}` : ''}
+            </small>
+            ${unitCellInfo}
+          </p>
+          <div class="btn-group btn-group-sm">
+            <a href="${datasetUrl}" class="btn btn-outline-primary">
+              <i class="fas fa-eye me-1"></i>View Details
+            </a>
+            <a href="${datasetUrl}/edit" class="btn btn-outline-secondary">
+              <i class="fas fa-edit me-1"></i>Edit
+            </a>
+            ${data.has_archive ? `
+              <a href="/wells/<%= @well.id %>/scxrd_datasets/${datasetId}/download" class="btn btn-outline-success">
+                <i class="fas fa-download me-1"></i>Archive
+              </a>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    })
+    .catch(error => {
+      console.error('Error loading SCXRD dataset details:', error);
+    });
+    
+  // Update thumbnail highlighting
+  document.querySelectorAll('.scxrd-thumbnail').forEach(thumb => {
+    thumb.classList.remove('border-primary');
+  });
+  const selectedThumb = document.querySelector(`[data-dataset-id="${datasetId}"]`);
+  if (selectedThumb) {
+    selectedThumb.classList.add('border-primary');
+  }
+};
+</script>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">SCXRD Datasets (<%= @well.scxrd_datasets.count %>)</h5>
+  <a class="btn btn-primary btn-sm" href="<%= new_well_scxrd_dataset_path(@well) %>" target="_blank">
+    Add SCXRD Dataset
+  </a>
+</div>
+
+<% if @scxrd_datasets.any? %>
+  <div class="row h-100">
+    <!-- Main Display Area -->
+    <div class="col-12 mb-3" style="height: 400px;">
+      <div class="row h-100">
+        <!-- First Diffraction Image Panel -->
+        <div class="col-4 h-100">
+          <div class="card h-100">
+            <div class="card-header text-center bg-light">
+              <small class="text-muted">First Frame</small>
+            </div>
+            <div id="scxrd-first-image-panel" class="card-body d-flex align-items-center justify-content-center">
+              <div class="text-center text-muted">
+                <i class="fas fa-camera fa-3x mb-3"></i>
+                <p>Select a dataset to view</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Peak Table Panel -->
+        <div class="col-4 h-100">
+          <div class="card h-100">
+            <div class="card-header text-center bg-light">
+              <small class="text-muted">Reciprocal Lattice</small>
+            </div>
+            <div id="scxrd-peak-table-panel" class="card-body d-flex align-items-center justify-content-center">
+              <div class="text-center text-muted">
+                <i class="fas fa-table fa-3x mb-3"></i>
+                <p>Select a dataset to view</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Structure Panel -->
+        <div class="col-4 h-100">
+          <div class="card h-100">
+            <div class="card-header text-center bg-light">
+              <small class="text-muted">Crystal Structure</small>
+            </div>
+            <div id="scxrd-structure-panel" class="card-body d-flex align-items-center justify-content-center">
+              <div class="text-center text-muted">
+                <i class="fas fa-cube fa-3x mb-3"></i>
+                <p>Select a dataset to view</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Experiment Info Card -->
+    <div class="col-12 mb-3">
+      <div class="card">
+        <div id="scxrd-info-card" class="text-center text-muted p-3">
+          <i class="fas fa-info-circle me-2"></i>
+          Select an SCXRD dataset to view experiment details
+        </div>
+      </div>
+    </div>
+
+    <!-- Dataset Navigator -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-bold">SCXRD Datasets (<%= @scxrd_datasets.count %>)</span>
+          <a href="<%= new_well_scxrd_dataset_path(@well) %>" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus me-1"></i>Add Dataset
+          </a>
+        </div>
+        <div class="card-body p-2">
+          <div class="row g-2">
+            <% @scxrd_datasets.each_with_index do |dataset, index| %>
+              <div class="col-6 col-md-4 col-lg-3">
+                <div class="card scxrd-thumbnail <%= 'border-primary' if index == 0 %>" 
+                     data-dataset-id="<%= dataset.id %>"
+                     style="cursor: pointer; transition: all 0.2s;"
+                     onclick="showScxrdDatasetInMain('<%= dataset.id %>', '<%= j(dataset.experiment_name) %>', '<%= well_scxrd_dataset_path(@well, dataset) %>')">
+                  <div class="card-body p-2 text-center">
+                    <div class="mb-2">
+                      <% if dataset.has_first_image? %>
+                        <i class="fas fa-camera fa-2x text-primary"></i>
+                      <% else %>
+                        <i class="fas fa-camera fa-2x text-muted"></i>
+                      <% end %>
+                    </div>
+                    <div class="small fw-bold text-truncate" title="<%= dataset.experiment_name %>">
+                      <%= dataset.experiment_name %>
+                    </div>
+                    <div class="text-muted" style="font-size: 0.75rem;">
+                      <%= dataset.date_measured&.strftime("%m/%d/%y") || "No date" %>
+                    </div>
+                    <div class="mt-1">
+                      <% if dataset.has_peak_table? %>
+                        <span class="badge bg-success" style="font-size: 0.6rem;">Peak Table</span>
+                      <% end %>
+                      <% if dataset.has_first_image? %>
+                        <span class="badge bg-primary" style="font-size: 0.6rem;">Image</span>
+                      <% end %>
+                      <% if dataset.lattice_centring %>
+                        <span class="badge bg-info" style="font-size: 0.6rem;"><%= dataset.lattice_centring.symbol %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-select first dataset when the gallery loads
+    <% if @scxrd_datasets.first %>
+      // Use setTimeout to ensure DOM is ready and function is available
+      setTimeout(() => {
+        if (typeof window.showScxrdDatasetInMain === 'function') {
+          showScxrdDatasetInMain(
+            '<%= @scxrd_datasets.first.id %>', 
+            '<%= j(@scxrd_datasets.first.experiment_name) %>', 
+            '<%= well_scxrd_dataset_path(@well, @scxrd_datasets.first) %>'
+          );
+        }
+      }, 200);
+    <% end %>
+  </script>
+
+<% else %>
+  <div class="alert alert-info text-center">
+    <h6>No SCXRD Datasets</h6>
+    <p>No single crystal X-ray diffraction datasets have been uploaded for this well yet.</p>
+    <a href="<%= new_well_scxrd_dataset_path(@well) %>" class="btn btn-primary">Add First SCXRD Dataset</a>
+  </div>
+<% end %>

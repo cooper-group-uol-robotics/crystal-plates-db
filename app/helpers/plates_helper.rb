@@ -14,7 +14,7 @@ module PlatesHelper
   }.freeze
 
   def well_color_class(well)
-    return WELL_COLORS[:has_data] if well.has_images? || well.has_pxrd_patterns?
+    return WELL_COLORS[:has_data] if well.has_images? || well.has_pxrd_patterns? || well.scxrd_datasets.exists?
     return WELL_COLORS[:has_content] if well.has_content?
 
     WELL_COLORS[:empty]
