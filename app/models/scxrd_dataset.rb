@@ -30,8 +30,6 @@ class ScxrdDataset < ApplicationRecord
     return @parsed_image_data if @parsed_image_data && !force_refresh
     return nil unless has_first_image?
 
-    Rails.logger.info "SCXRD Dataset #{id}: Parsing first image data"
-
     begin
       # Download the image data
       image_data = first_image.blob.download
@@ -40,7 +38,6 @@ class ScxrdDataset < ApplicationRecord
       parser = RodImageParserService.new(image_data)
       @parsed_image_data = parser.parse
 
-      Rails.logger.info "SCXRD Dataset #{id}: Image parsing #{@parsed_image_data[:success] ? 'successful' : 'failed'}"
       @parsed_image_data
     rescue => e
       Rails.logger.error "SCXRD Dataset #{id}: Error parsing image data: #{e.message}"

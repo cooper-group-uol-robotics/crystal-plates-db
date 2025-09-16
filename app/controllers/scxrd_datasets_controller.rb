@@ -42,17 +42,8 @@ class ScxrdDatasetsController < ApplicationController
   end
 
   def create
-    Rails.logger.info "SCXRD: ============ CREATE ACTION STARTED ============"
-    Rails.logger.info "SCXRD: Creating new dataset for well #{@well.id}"
-    Rails.logger.info "SCXRD: Request parameters keys: #{params.keys}"
-
     # Extract compressed archive parameter before processing model params
     compressed_archive = params.dig(:scxrd_dataset, :compressed_archive)
-    Rails.logger.info "SCXRD: Has compressed_archive param: #{compressed_archive.present?}"
-    if compressed_archive.present?
-      Rails.logger.info "SCXRD: Compressed archive filename: #{compressed_archive.original_filename}"
-      Rails.logger.info "SCXRD: Compressed archive size: #{number_to_human_size(compressed_archive.size)}"
-    end
 
     @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
     @scxrd_dataset.date_uploaded = Time.current
@@ -62,16 +53,12 @@ class ScxrdDatasetsController < ApplicationController
 
     # Process uploaded compressed archive - this is required for new datasets
     if compressed_archive.present?
-      Rails.logger.info "SCXRD: Compressed archive upload detected, starting processing..."
       process_compressed_archive(compressed_archive)
     else
-      Rails.logger.warn "SCXRD: No compressed archive provided"
       @scxrd_dataset.errors.add(:base, "Experiment folder is required")
     end
 
-    Rails.logger.info "SCXRD: Attempting to save dataset..."
     if @scxrd_dataset.save
-      Rails.logger.info "SCXRD: Dataset saved successfully with ID #{@scxrd_dataset.id}"
       redirect_to [ @well, @scxrd_dataset ], notice: "SCXRD dataset was successfully created."
     else
       Rails.logger.error "SCXRD: Failed to save dataset. Errors: #{@scxrd_dataset.errors.full_messages.join(', ')}"
@@ -142,15 +129,11 @@ class ScxrdDatasetsController < ApplicationController
         # Set cache headers for parsed image data (cache for 1 hour)
         expires_in 1.hour, public: true
 
-        # Log the data size for debugging
-        Rails.logger.info "SCXRD: Sending image data - dimensions: #{parsed_data[:dimensions]}, data length: #{parsed_data[:image_data]&.length}"
-
         # Option to send just a sample for testing (add ?sample=true to URL)
         image_data = parsed_data[:image_data]
         if params[:sample] == "true" && image_data&.any?
           sample_size = [ 1000, image_data.length ].min
           image_data = image_data.first(sample_size)
-          Rails.logger.info "SCXRD: Sending sample data - original length: #{parsed_data[:image_data].length}, sample length: #{image_data.length}"
         end
 
         render json: {
@@ -178,7 +161,6 @@ class ScxrdDatasetsController < ApplicationController
   private
 
   def log_request
-    Rails.logger.info "SCXRD: #{request.method} #{request.path} - Action: #{action_name}"
   end
 
   def set_well
@@ -192,21 +174,14 @@ class ScxrdDatasetsController < ApplicationController
   def process_compressed_archive(uploaded_archive)
     return unless uploaded_archive.present?
 
-    Rails.logger.info "SCXRD: Starting compressed archive processing"
-    archive_start_time = Time.current
-
     begin
       # Create a temporary directory to extract the archive
       Dir.mktmpdir do |temp_dir|
-        Rails.logger.info "SCXRD: Created temporary directory: #{temp_dir}"
-
         # Save the uploaded archive temporarily
         archive_path = File.join(temp_dir, "uploaded_archive.zip")
         File.open(archive_path, "wb") { |f| f.write(uploaded_archive.read) }
-        Rails.logger.info "SCXRD: Archive saved to temporary location"
 
         # Extract the archive
-        Rails.logger.info "SCXRD: Extracting archive..."
         extract_start_time = Time.current
 
         require "zip"
@@ -220,25 +195,18 @@ class ScxrdDatasetsController < ApplicationController
             entry.extract(file_path)
 
             file_count += 1
-            if file_count % 500 == 0
-              Rails.logger.info "SCXRD: Extracted #{file_count} files..."
-            end
           end
-          Rails.logger.info "SCXRD: Extraction completed - #{file_count} files extracted in #{(Time.current - extract_start_time).round(2)} seconds"
         end
 
         # Set experiment name from archive filename if not already set
         if @scxrd_dataset.experiment_name.blank?
           base_name = File.basename(uploaded_archive.original_filename, ".*")
           @scxrd_dataset.experiment_name = base_name
-          Rails.logger.info "SCXRD: Auto-detected experiment name: #{base_name}"
         end
 
         # Find the experiment folder (should be the first directory in the extracted files)
         experiment_folder = Dir.glob("#{temp_dir}/*").find { |path| File.directory?(path) }
         if experiment_folder
-          Rails.logger.info "SCXRD: Found experiment folder: #{File.basename(experiment_folder)}"
-          Rails.logger.info "SCXRD: Starting file processing with ScxrdFolderProcessorService..."
 
           processor = ScxrdFolderProcessorService.new(experiment_folder)
           result = processor.process

@@ -18,8 +18,6 @@ class RodImageParserService
   def parse
     return @result if @result
 
-    Rails.logger.info "ROD Parser: Starting rodhypix file parsing"
-
     begin
       parse_header
       parse_image_data
@@ -32,11 +30,9 @@ class RodImageParserService
         metadata: extract_metadata
       }
 
-      Rails.logger.info "ROD Parser: Successfully parsed #{@header[:im_npx_x]}x#{@header[:im_npx_y]} image"
       @result
     rescue => e
       Rails.logger.error "ROD Parser: Error parsing rodhypix file: #{e.message}"
-      Rails.logger.error "ROD Parser: Backtrace: #{e.backtrace.first(5).join("\n")}"
 
       {
         success: false,
@@ -59,8 +55,6 @@ class RodImageParserService
 
     # Then parse the binary header
     parse_binary_header
-
-    Rails.logger.info "ROD Parser: Header parsed successfully - #{@header[:im_npx_x]}x#{@header[:im_npx_y]} pixels, compression: #{@header[:compression_type]}"
   end
 
   def parse_text_header
@@ -83,7 +77,7 @@ class RodImageParserService
       compression = lines[1].split("=")
       if compression[0] == "COMPRESSION"
         @text_header["compression"] = compression[1]
-        Rails.logger.info "ROD Parser: Found COMPRESSION=#{@text_header["compression"]} in text header"
+
       end
     end
 
@@ -96,7 +90,6 @@ class RodImageParserService
       matches.each do |match|
         n, v = match[0].split("=")
         @text_header[n] = v.to_i
-        Rails.logger.info "ROD Parser: Found #{n}=#{v} in text header"
       end
     end
 
@@ -107,13 +100,9 @@ class RodImageParserService
         @text_header["time"] = time_line.split("TIME=")[-1].strip.gsub("\x1a", "").rstrip
       end
     end
-
-    Rails.logger.info "ROD Parser: Text header parsed: #{@text_header}"
   end
 
   def parse_binary_header
-    Rails.logger.info "ROD Parser: Parsing binary header for FormatRODArc"
-
     # Header structure constants from FormatRODArc.py
     offset = 256
     general_nbytes = 512
@@ -123,39 +112,37 @@ class RodImageParserService
     history_nbytes = 2048
     nbytes = 5120
 
-    Rails.logger.info "ROD Parser: Reading binary header sections from offset #{offset}"
+
 
     # Read binning info (offset + 24, 8 bytes)
     bin_data = read_bytes(offset + 24, 8)
     @header[:bin_x], @header[:bin_y] = bin_data.unpack("L<L<")
-    Rails.logger.info "ROD Parser: Binning: #{@header[:bin_x]}x#{@header[:bin_y]}"
+
 
     # Read image dimensions (offset + 32, 16 bytes)
     dim_data = read_bytes(offset + 32, 16)
     @header[:chip_npx_x], @header[:chip_npx_y], @header[:im_npx_x], @header[:im_npx_y] = dim_data.unpack("L<L<L<L<")
-    Rails.logger.info "ROD Parser: Binary header dimensions: chip=#{@header[:chip_npx_x]}x#{@header[:chip_npx_y]}, image=#{@header[:im_npx_x]}x#{@header[:im_npx_y]}"
+
 
     # If binary header dimensions look wrong, use text header values
     if @header[:im_npx_x] == 0 || @header[:im_npx_y] == 0 || @header[:im_npx_x] > 10000 || @header[:im_npx_y] > 10000
-      Rails.logger.warn "ROD Parser: Binary header dimensions look incorrect, using text header values"
       @header[:im_npx_x] = @header[:text_nx] if @header[:text_nx]
       @header[:im_npx_y] = @header[:text_ny] if @header[:text_ny]
-      Rails.logger.info "ROD Parser: Using corrected dimensions: #{@header[:im_npx_x]}x#{@header[:im_npx_y]}"
     end
 
     # Read gain and overflow settings (offset + 48, 16 bytes)
     gain_data = read_bytes(offset + 48, 16)
     @header[:gain], @header[:overflow_flag], @header[:overflow_after_remeasure_flag], @header[:overflow_threshold] = gain_data.unpack("L<L<L<L<")
-    Rails.logger.info "ROD Parser: Gain: #{@header[:gain]}, Overflow threshold: #{@header[:overflow_threshold]}"
+
 
     # Read compression type (offset + 88, 4 bytes)
     compression_data = read_bytes(offset + 88, 4)
     @header[:compression_type] = compression_data.unpack("L<")[0]
-    Rails.logger.info "ROD Parser: Binary compression type: #{@header[:compression_type]}"
+
 
     # If compression type from text header suggests TY6, set it to 6
     if @header[:text_compression] == "TY6" && (@header[:compression_type] == 0 || @header[:compression_type] > 10)
-      Rails.logger.info "ROD Parser: Setting compression type to 6 based on text header TY6"
+
       @header[:compression_type] = 6
     end
 
@@ -164,9 +151,9 @@ class RodImageParserService
       pixel_size_offset = offset + general_nbytes + 568
       pixel_size_data = read_bytes(pixel_size_offset, 16)
       @header[:real_px_size_x], @header[:real_px_size_y] = pixel_size_data.unpack("e*") # Use platform native double
-      Rails.logger.info "ROD Parser: Pixel sizes: #{@header[:real_px_size_x]}, #{@header[:real_px_size_y]}"
+
     rescue => e
-      Rails.logger.warn "ROD Parser: Could not read pixel sizes: #{e.message}"
+
       @header[:real_px_size_x], @header[:real_px_size_y] = [ 0.1, 0.1 ] # Default values
     end
 
@@ -175,9 +162,9 @@ class RodImageParserService
       distance_offset = offset + general_nbytes + special_nbytes + 712
       distance_data = read_bytes(distance_offset, 8)
       @header[:distance_mm] = distance_data.unpack("e")[0] # Use platform native double
-      Rails.logger.info "ROD Parser: Detector distance: #{@header[:distance_mm]} mm"
+
     rescue => e
-      Rails.logger.warn "ROD Parser: Could not read detector distance: #{e.message}"
+
       @header[:distance_mm] = 100.0 # Default value
     end
 
