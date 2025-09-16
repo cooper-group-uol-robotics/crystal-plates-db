@@ -86,9 +86,9 @@ class ScxrdDiffractionViewer {
 
     // Create container with heatmap div and controls
     this.plotDiv.innerHTML = `
-      <div style="position: relative; width: 100%; height: 100%;">
-        <div id="${this.containerId}-canvas" style="width: 100%; height: calc(100% - 60px); border: 1px solid #dee2e6; overflow: hidden; background: #000;"></div>
-        <div id="${this.containerId}-controls" style="height: 50px; padding: 5px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
+      <div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column;">
+        <div id="${this.containerId}-canvas" style="width: 100%; flex: 1; border: 1px solid #dee2e6; overflow: hidden; background: #000;"></div>
+        <div id="${this.containerId}-controls" style="height: 50px; padding: 5px; background: #f8f9fa; border-top: 1px solid #dee2e6; flex-shrink: 0;">
           <!-- Controls will be added here -->
         </div>
       </div>
@@ -168,7 +168,7 @@ class ScxrdDiffractionViewer {
       
       // Visual Heatmap expects a container ID/selector, not canvas element
       this.heatmapInstance = HeatmapConstructor(`#${this.containerId}-canvas`, {
-        size: binSize, // Scale point size to match coordinate scaling
+        size: binSize*1.5, // Scale point size to match coordinate scaling
         max: p99,
         min: 0,
         intensity: 1.0, // Keep intensity at 1.0 (valid range is 0-1)
@@ -390,7 +390,7 @@ class ScxrdDiffractionViewer {
     const plotDiv = document.getElementById(this.containerId);
     if (plotDiv) {
       plotDiv.innerHTML = `
-        <div class="d-flex justify-content-center align-items-center" style="height: 400px;">
+        <div class="d-flex justify-content-center align-items-center" style="height: 30vw;">
           <div class="text-center">
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Loading...</span>
@@ -406,7 +406,245 @@ class ScxrdDiffractionViewer {
 // Make available globally
 window.ScxrdDiffractionViewer = ScxrdDiffractionViewer;
 console.log('ScxrdDiffractionViewer (Visual Heatmap) defined inline');
+
+// Card Toggle Functionality
+class ScxrdCardToggler {
+  constructor() {
+    this.maxMaximizedCards = 3;
+    this.maximizedHistory = []; // Track order of maximization
+    this.initializeToggleHandlers();
+  }
+
+  initializeToggleHandlers() {
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', () => {
+      this.setupCardToggles();
+    });
+    
+    // Also setup immediately in case DOM is already ready
+    if (document.readyState === 'loading') {
+      // DOM is still loading
+    } else {
+      this.setupCardToggles();
+    }
+  }
+
+  setupCardToggles() {
+    const cardContainers = document.querySelectorAll('[data-card-id]');
+    cardContainers.forEach(container => {
+      const header = container.querySelector('.card-header');
+      const cardId = container.getAttribute('data-card-id');
+      
+      if (header) {
+        header.style.cursor = 'pointer';
+        header.style.userSelect = 'none';
+        header.addEventListener('click', () => this.toggleCard(cardId));
+        
+        // Add visual indication that it's clickable
+        header.innerHTML += ' <i class="fas fa-chevron-up toggle-icon ms-1" style="font-size: 0.8em; transition: transform 0.3s ease;"></i>';
+      }
+    });
+    
+    // Initialize default states
+    this.initializeDefaultStates();
+  }
+
+  initializeDefaultStates() {
+    // Initialize the first 3 cards as maximized
+    const allCards = document.querySelectorAll('[data-card-id]');
+    allCards.forEach((container, index) => {
+      const cardId = container.getAttribute('data-card-id');
+      if (index < 3 && !container.classList.contains('minimized')) {
+        // Add to maximized history for the first 3 cards
+        this.maximizedHistory.push(cardId);
+      } else if (container.classList.contains('minimized')) {
+        // Ensure minimized cards have the right styling
+        this.applyMinimizedStyling(container);
+      }
+    });
+  }
+
+  applyMinimizedStyling(container) {
+    const headerText = container.querySelector('.card-header small');
+    const toggleIcon = container.querySelector('.toggle-icon');
+    
+    if (headerText) {
+      headerText.classList.add('minimized-text');
+    }
+    if (toggleIcon) {
+      toggleIcon.style.transform = 'rotate(180deg)';
+    }
+  }
+
+  toggleCard(cardId) {
+    const container = document.querySelector(`[data-card-id="${cardId}"]`);
+    if (!container) return;
+
+    const isMinimized = container.classList.contains('minimized');
+    
+    if (isMinimized) {
+      this.maximizeCard(container, cardId);
+    } else {
+      this.minimizeCard(container, cardId);
+    }
+  }
+
+  minimizeCard(container, cardId) {
+    const cardBody = container.querySelector('.card-body');
+    const toggleIcon = container.querySelector('.toggle-icon');
+    
+    // Remove from maximized history
+    this.maximizedHistory = this.maximizedHistory.filter(id => id !== cardId);
+    
+    container.classList.add('minimized');
+    
+    // Animate to vertical strip
+    container.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    container.style.width = '60px';
+    container.style.minWidth = '60px';
+    container.style.zIndex = '10';
+    
+    // Hide card body with fade
+    if (cardBody) {
+      cardBody.style.transition = 'opacity 0.2s ease';
+      cardBody.style.opacity = '0';
+      setTimeout(() => {
+        cardBody.style.display = 'none';
+      }, 200);
+    }
+    
+    // Rotate icon
+    if (toggleIcon) {
+      toggleIcon.style.transform = 'rotate(180deg)';
+    }
+    
+    // Add minimized class for CSS styling
+    const headerText = container.querySelector('.card-header small');
+    if (headerText) {
+      setTimeout(() => {
+        headerText.classList.add('minimized-text');
+      }, 200);
+    }
+  }
+
+  maximizeCard(container, cardId) {
+    // Check if we need to minimize the least recently maximized card
+    if (this.maximizedHistory.length >= this.maxMaximizedCards) {
+      const oldestCardId = this.maximizedHistory[0];
+      const oldestContainer = document.querySelector(`[data-card-id="${oldestCardId}"]`);
+      if (oldestContainer && !oldestContainer.classList.contains('minimized')) {
+        this.minimizeCard(oldestContainer, oldestCardId);
+      }
+    }
+    
+    // Add to maximized history
+    this.maximizedHistory = this.maximizedHistory.filter(id => id !== cardId); // Remove if already exists
+    this.maximizedHistory.push(cardId); // Add to end
+    
+    const cardBody = container.querySelector('.card-body');
+    const toggleIcon = container.querySelector('.toggle-icon');
+    
+    container.classList.remove('minimized');
+    
+    // Restore card size
+    container.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    container.style.width = '';
+    container.style.minWidth = '';
+    container.style.zIndex = '';
+    
+    // Restore header text
+    const headerText = container.querySelector('.card-header small');
+    if (headerText) {
+      headerText.classList.remove('minimized-text');
+    }
+    
+    // Show card body with fade in
+    if (cardBody) {
+      setTimeout(() => {
+        cardBody.style.display = '';
+        cardBody.style.transition = 'opacity 0.3s ease';
+        cardBody.style.opacity = '1';
+      }, 200);
+    }
+    
+    // Rotate icon back
+    if (toggleIcon) {
+      toggleIcon.style.transform = 'rotate(0deg)';
+    }
+  }
+}
+
+// Initialize card toggler
+window.scxrdCardToggler = new ScxrdCardToggler();
 </script>
+
+<style>
+/* Card toggle animations and styles */
+.scxrd-card-container {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  align-self: flex-start;
+}
+
+.scxrd-card-container.minimized {
+  flex: 0 0 60px !important;
+  max-width: 60px !important;
+  height: 30vw !important;
+}
+
+.scxrd-card-container.minimized .card {
+  height: 30vw !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.scxrd-card-container.minimized .card-header {
+  height: 100% !important;
+  flex: 1 1 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 4px !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+.scxrd-card-container.minimized .card-body {
+  display: none !important;
+}
+
+.minimized-text {
+  writing-mode: vertical-rl !important;
+  text-orientation: mixed !important;
+  font-size: 0.75em !important;
+  padding: 8px 0 !important;
+  transition: all 0.3s ease !important;
+}
+
+.scxrd-card-container:not(.minimized) {
+  flex: 0 0 28vw;
+  width: 28vw;
+  height: 100%;
+  float: left;
+}
+
+.card-header:hover {
+  background-color: #e9ecef !important;
+}
+
+.toggle-icon {
+  transition: transform 0.3s ease;
+}
+
+/* Ensure smooth flex transitions */
+.scxrd-main-row {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+</style>
 
 <script>
 // Define function in global scope for SCXRD dataset switching
@@ -580,11 +818,11 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
 <% if @scxrd_datasets.any? %>
   <div class="row h-100">
     <!-- Main Display Area -->
-    <div class="col-12 mb-3" style="height: 400px;">
-      <div class="row h-100">
+    <div class="col-12 mb-3" style="height: 30vw;">
+      <div class="row h-100 scxrd-main-row">
         <!-- First Diffraction Image Panel -->
-        <div class="col-4 h-100">
-          <div class="card h-100">
+        <div class="scxrd-card-container d-flex" data-card-id="diffraction">
+          <div class="card h-100 w-100">
             <div class="card-header text-center bg-light">
               <small class="text-muted">Diffraction Image</small>
             </div>
@@ -600,8 +838,8 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
         </div>
 
         <!-- Peak Table Panel -->
-        <div class="col-4 h-100">
-          <div class="card h-100">
+        <div class="scxrd-card-container d-flex" data-card-id="reciprocal">
+          <div class="card h-100 w-100">
             <div class="card-header text-center bg-light">
               <small class="text-muted">Reciprocal Lattice</small>
             </div>
@@ -615,8 +853,8 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
         </div>
 
         <!-- Structure Panel -->
-        <div class="col-4 h-100">
-          <div class="card h-100">
+        <div class="scxrd-card-container d-flex" data-card-id="structure">
+          <div class="card h-100 w-100">
             <div class="card-header text-center bg-light">
               <small class="text-muted">Crystal Structure</small>
             </div>
@@ -624,6 +862,21 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
               <div class="text-center text-muted">
                 <i class="fas fa-cube fa-3x mb-3"></i>
                 <p>Select a dataset to view</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Crystal Image Panel -->
+        <div class="scxrd-card-container d-flex minimized" data-card-id="crystal-image">
+          <div class="card h-100 w-100">
+            <div class="card-header text-center bg-light">
+              <small class="text-muted">Crystal Image</small>
+            </div>
+            <div id="scxrd-crystal-image-panel" class="card-body d-flex align-items-center justify-content-center">
+              <div class="text-center text-muted">
+                <i class="fas fa-gem fa-3x mb-3"></i>
+                <p>Select a dataset to view crystal image</p>
               </div>
             </div>
           </div>
