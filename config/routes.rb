@@ -46,6 +46,7 @@ Rails.application.routes.draw do
         get :download
         get :download_peak_table
         get :download_first_image
+        get :image_data
       end
     end
     resources :well_contents do

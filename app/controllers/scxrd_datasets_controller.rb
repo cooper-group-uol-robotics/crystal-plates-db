@@ -2,7 +2,7 @@ class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
   before_action :set_well
-  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :download_first_image ]
+  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :download_first_image, :image_data ]
 
   def index
     @scxrd_datasets = @well.scxrd_datasets.includes(:lattice_centring).order(created_at: :desc)
@@ -124,6 +124,54 @@ class ScxrdDatasetsController < ApplicationController
       redirect_to rails_blob_path(@scxrd_dataset.first_image, disposition: "attachment")
     else
       redirect_to [ @well, @scxrd_dataset ], alert: "No first diffraction image available."
+    end
+  end
+
+  def image_data
+    Rails.logger.info "SCXRD: Serving parsed image data for dataset #{@scxrd_dataset.id}"
+
+    unless @scxrd_dataset.has_first_image?
+      render json: { error: "No first diffraction image available" }, status: :not_found
+      return
+    end
+
+    begin
+      parsed_data = @scxrd_dataset.parsed_image_data
+
+      if parsed_data[:success]
+        # Set cache headers for parsed image data (cache for 1 hour)
+        expires_in 1.hour, public: true
+
+        # Log the data size for debugging
+        Rails.logger.info "SCXRD: Sending image data - dimensions: #{parsed_data[:dimensions]}, data length: #{parsed_data[:image_data]&.length}"
+
+        # Option to send just a sample for testing (add ?sample=true to URL)
+        image_data = parsed_data[:image_data]
+        if params[:sample] == "true" && image_data&.any?
+          sample_size = [ 1000, image_data.length ].min
+          image_data = image_data.first(sample_size)
+          Rails.logger.info "SCXRD: Sending sample data - original length: #{parsed_data[:image_data].length}, sample length: #{image_data.length}"
+        end
+
+        render json: {
+          success: true,
+          dimensions: parsed_data[:dimensions],
+          pixel_size: parsed_data[:pixel_size],
+          image_data: image_data,
+          metadata: parsed_data[:metadata]
+        }
+      else
+        render json: {
+          success: false,
+          error: parsed_data[:error] || "Failed to parse image data"
+        }, status: :unprocessable_entity
+      end
+    rescue => e
+      Rails.logger.error "SCXRD: Error serving image data: #{e.message}"
+      render json: {
+        success: false,
+        error: "Internal server error while processing image data"
+      }, status: :internal_server_error
     end
   end
 
