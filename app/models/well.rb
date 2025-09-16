@@ -61,6 +61,15 @@ class Well < ApplicationRecord
     end
   end
 
+  # Check if well has any SCXRD datasets
+  def has_scxrd_datasets?
+    if association(:scxrd_datasets).loaded?
+      scxrd_datasets.any?
+    else
+      scxrd_datasets.exists?
+    end
+  end
+
   # Get the most recent image
   def latest_image
     images.recent.first
