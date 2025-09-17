@@ -18,6 +18,18 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     
+    <!-- Visual-Heatmap for SCXRD diffraction image visualization -->
+    <script src="https://unpkg.com/visual-heatmap@2.2.0/dist/visualHeatmap.min.js"></script>
+    <script>
+      // Debug: Check if Visual Heatmap loaded
+      window.addEventListener('load', function() {
+        console.log('Visual Heatmap library loaded:', !!window.VisualHeatmap);
+        if (window.VisualHeatmap) {
+          console.log('VisualHeatmap constructor:', typeof window.VisualHeatmap);
+        }
+      });
+    </script>
+    
     <!-- Rails JavaScript -->
     <%= javascript_importmap_tags %>
     

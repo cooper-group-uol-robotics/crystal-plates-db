@@ -8,6 +8,22 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 **Format**: JSON
 **Authentication**: Currently none (can be added later)
 
+## Table of Contents
+
+- [Common Response Format](#common-response-format)
+- [Stock Solutions API](#stock-solutions-api)
+- [Chemicals API](#chemicals-api)
+- [Plates API](#plates-api)
+- [Locations API](#locations-api)
+- [Wells API](#wells-api)
+- [Images API](#images-api)
+- [Points of Interest API](#points-of-interest-api)
+- [PXRD Patterns API](#pxrd-patterns-api)
+- [SCXRD Datasets API](#scxrd-datasets-api)
+- [Utility Endpoints](#utility-endpoints)
+- [Example API Usage](#example-api-usage)
+- [Error Codes](#error-codes)
+
 ## Common Response Format
 
 Most API endpoints wrap their responses in a standard format for consistency:
@@ -757,6 +773,536 @@ Points of Interest are markers placed on images to identify features like crysta
   }
   ```
 
+## SCXRD Datasets API
+
+The SCXRD (Single Crystal X-Ray Diffraction) API provides comprehensive endpoints for managing crystallographic datasets, including unit cell parameters, real-world coordinates, and spatial correlations with points of interest.
+
+### List SCXRD Datasets
+
+**GET** `/api/v1/wells/:well_id/scxrd_datasets`
+
+List all SCXRD datasets for a specific well.
+
+#### Parameters
+- `well_id` (path, required) - Well ID
+
+#### Response Example
+```json
+{
+  "well_id": 123,
+  "well_label": "A1",
+  "count": 2,
+  "scxrd_datasets": [
+    {
+      "id": 456,
+      "experiment_name": "crystal_001_scan",
+      "date_measured": "2024-01-15",
+      "date_uploaded": "2024-01-15 14:30:22",
+      "lattice_centring": "P1",
+      "real_world_coordinates": {
+        "x_mm": 1.234,
+        "y_mm": 5.678,
+        "z_mm": 2.100
+      },
+      "unit_cell": {
+        "a": 15.457,
+        "b": 15.638,
+        "c": 18.121,
+        "alpha": 89.9,
+        "beta": 90.0,
+        "gamma": 89.9
+      },
+      "has_archive": true,
+      "has_peak_table": true,
+      "has_first_image": true,
+      "created_at": "2024-01-15T14:30:22.123Z",
+      "updated_at": "2024-01-15T14:30:22.123Z"
+    }
+  ]
+}
+```
+
+### Get SCXRD Dataset Details
+
+**GET** `/api/v1/wells/:well_id/scxrd_datasets/:id`
+
+Get detailed information about a specific SCXRD dataset.
+
+#### Parameters
+- `well_id` (path, required) - Well ID
+- `id` (path, required) - SCXRD dataset ID
+
+#### Response Example
+```json
+{
+  "scxrd_dataset": {
+    "id": 456,
+    "experiment_name": "crystal_001_scan",
+    "date_measured": "2024-01-15",
+    "date_uploaded": "2024-01-15 14:30:22",
+    "lattice_centring": "P1",
+    "real_world_coordinates": {
+      "x_mm": 1.234,
+      "y_mm": 5.678,
+      "z_mm": 2.100
+    },
+    "unit_cell": {
+      "a": 15.457,
+      "b": 15.638,
+      "c": 18.121,
+      "alpha": 89.9,
+      "beta": 90.0,
+      "gamma": 89.9
+    },
+    "has_archive": true,
+    "has_peak_table": true,
+    "has_first_image": true,
+    "peak_table_size": "2.3 MB",
+    "first_image_size": "15.7 MB",
+    "image_metadata": {
+      "detector": "Pilatus 300K",
+      "wavelength": 0.71073,
+      "exposure_time": 1.0
+    },
+    "nearby_point_of_interests": [
+      {
+        "id": 789,
+        "point_type": "crystal",
+        "pixel_coordinates": { "x": 150, "y": 200 },
+        "real_world_coordinates": { "x_mm": 1.189, "y_mm": 5.723, "z_mm": 2.100 },
+        "distance_mm": 0.234,
+        "image_id": 101
+      }
+    ],
+    "created_at": "2024-01-15T14:30:22.123Z",
+    "updated_at": "2024-01-15T14:30:22.123Z"
+  }
+}
+```
+
+### Create SCXRD Dataset
+
+**POST** `/api/v1/wells/:well_id/scxrd_datasets`
+
+Create a new SCXRD dataset.
+
+#### Parameters
+- `well_id` (path, required) - Well ID
+
+#### Request Body
+```json
+{
+  "scxrd_dataset": {
+    "experiment_name": "crystal_001_scan",
+    "date_measured": "2024-01-15",
+    "lattice_centring_id": 1,
+    "real_world_x_mm": 1.234,
+    "real_world_y_mm": 5.678,
+    "real_world_z_mm": 2.100,
+    "a": 15.457,
+    "b": 15.638,
+    "c": 18.121,
+    "alpha": 89.9,
+    "beta": 90.0,
+    "gamma": 89.9
+  }
+}
+```
+
+#### Response Example
+```json
+{
+  "message": "SCXRD dataset created successfully",
+  "scxrd_dataset": {
+    "id": 456,
+    "experiment_name": "crystal_001_scan"
+  }
+}
+```
+
+### Update SCXRD Dataset
+
+**PATCH/PUT** `/api/v1/wells/:well_id/scxrd_datasets/:id`
+
+Update an existing SCXRD dataset.
+
+#### Parameters
+- `well_id` (path, required) - Well ID
+- `id` (path, required) - SCXRD dataset ID
+
+#### Request Body
+```json
+{
+  "scxrd_dataset": {
+    "experiment_name": "updated_crystal_001_scan",
+    "real_world_x_mm": 1.235,
+    "a": 15.458
+  }
+}
+```
+
+#### Response Example
+```json
+{
+  "message": "SCXRD dataset updated successfully",
+  "scxrd_dataset": {
+    "id": 456,
+    "experiment_name": "updated_crystal_001_scan"
+  }
+}
+```
+
+### Delete SCXRD Dataset
+
+**DELETE** `/api/v1/wells/:well_id/scxrd_datasets/:id`
+
+Delete an SCXRD dataset.
+
+#### Parameters
+- `well_id` (path, required) - Well ID
+- `id` (path, required) - SCXRD dataset ID
+
+#### Response Example
+```json
+{
+  "message": "SCXRD dataset deleted successfully"
+}
+```
+
+### Get Diffraction Image Data
+
+**GET** `/api/v1/wells/:well_id/scxrd_datasets/:id/image_data`
+
+Get parsed diffraction image data for visualization.
+
+#### Parameters
+- `well_id` (path, required) - Well ID
+- `id` (path, required) - SCXRD dataset ID
+
+#### Response Example
+```json
+{
+  "success": true,
+  "dimensions": [1024, 1024],
+  "pixel_size": [0.172, 0.172],
+  "metadata": {
+    "detector": "Pilatus 300K",
+    "wavelength": 0.71073,
+    "exposure_time": 1.0,
+    "detector_distance": 50.0
+  },
+  "image_data": [12, 15, 18, 22, 25]
+}
+```
+
+### Spatial Correlations
+
+**GET** `/api/v1/wells/:well_id/scxrd_datasets/spatial_correlations`
+
+Find spatial correlations between SCXRD datasets and points of interest.
+
+#### Parameters
+- `well_id` (path, required) - Well ID
+- `tolerance_mm` (query, optional) - Distance tolerance in millimeters (default: 0.5)
+
+#### Query String Example
+```
+?tolerance_mm=1.0
+```
+
+#### Response Example
+```json
+{
+  "well_id": 123,
+  "well_label": "A1",
+  "tolerance_mm": 1.0,
+  "correlations_count": 2,
+  "correlations": [
+    {
+      "scxrd_dataset": {
+        "id": 456,
+        "experiment_name": "crystal_001_scan",
+        "real_world_coordinates": {
+          "x_mm": 1.234,
+          "y_mm": 5.678,
+          "z_mm": 2.100
+        }
+      },
+      "point_of_interests": [
+        {
+          "id": 789,
+          "point_type": "crystal",
+          "pixel_coordinates": { "x": 150, "y": 200 },
+          "real_world_coordinates": { "x_mm": 1.189, "y_mm": 5.723, "z_mm": 2.100 },
+          "distance_mm": 0.234,
+          "image_id": 101,
+          "marked_at": "2024-01-15T12:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Search SCXRD Datasets
+
+**GET** `/api/v1/wells/:well_id/scxrd_datasets/search`
+
+Search SCXRD datasets with various filters.
+
+#### Parameters
+- `well_id` (path, required) - Well ID
+
+#### Query Parameters
+- `experiment_name` (string, optional) - Partial match on experiment name
+- `date_from` (date, optional) - Start date filter (YYYY-MM-DD)
+- `date_to` (date, optional) - End date filter (YYYY-MM-DD)
+- `lattice_centring` (string, optional) - Lattice centering symbol (e.g., "P1", "P21")
+- `near_x` (float, optional) - X coordinate for proximity search
+- `near_y` (float, optional) - Y coordinate for proximity search
+- `tolerance_mm` (float, optional) - Distance tolerance for proximity search (default: 1.0)
+- `unit_cell[a]` (float, optional) - Unit cell parameter a
+- `unit_cell[b]` (float, optional) - Unit cell parameter b
+- `unit_cell[c]` (float, optional) - Unit cell parameter c
+- `unit_cell[alpha]` (float, optional) - Unit cell parameter alpha
+- `unit_cell[beta]` (float, optional) - Unit cell parameter beta
+- `unit_cell[gamma]` (float, optional) - Unit cell parameter gamma
+- `cell_tolerance_percent` (float, optional) - Tolerance for unit cell parameters (default: 5.0%)
+
+#### Query String Examples
+
+**Search by experiment name:**
+```
+?experiment_name=crystal_001
+```
+
+**Search by date range:**
+```
+?date_from=2024-01-01&date_to=2024-01-31
+```
+
+**Search by proximity to coordinates:**
+```
+?near_x=1.234&near_y=5.678&tolerance_mm=0.5
+```
+
+**Search by unit cell parameters:**
+```
+?unit_cell[a]=15.5&unit_cell[b]=15.6&cell_tolerance_percent=3.0
+```
+
+**Complex search:**
+```
+?experiment_name=crystal&lattice_centring=P1&date_from=2024-01-01&unit_cell[a]=15.5&cell_tolerance_percent=5.0
+```
+
+#### Response Example
+```json
+{
+  "well_id": 123,
+  "search_params": {
+    "experiment_name": "crystal_001",
+    "lattice_centring": "P1",
+    "date_from": "2024-01-01"
+  },
+  "results_count": 3,
+  "scxrd_datasets": [
+    {
+      "id": 456,
+      "experiment_name": "crystal_001_scan"
+    }
+  ]
+}
+```
+
+### SCXRD Data Models
+
+#### SCXRD Dataset Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Unique identifier |
+| `experiment_name` | string | Name of the experiment |
+| `date_measured` | date | Date when measurement was taken |
+| `date_uploaded` | datetime | When dataset was uploaded |
+| `lattice_centring` | string | Lattice centering symbol (P1, P21, etc.) |
+| `real_world_coordinates` | object | Physical coordinates where measured |
+| `real_world_coordinates.x_mm` | float | X coordinate in millimeters |
+| `real_world_coordinates.y_mm` | float | Y coordinate in millimeters |
+| `real_world_coordinates.z_mm` | float | Z coordinate in millimeters |
+| `unit_cell` | object | Unit cell parameters |
+| `unit_cell.a` | float | Unit cell parameter a (Ångström) |
+| `unit_cell.b` | float | Unit cell parameter b (Ångström) |
+| `unit_cell.c` | float | Unit cell parameter c (Ångström) |
+| `unit_cell.alpha` | float | Unit cell parameter alpha (degrees) |
+| `unit_cell.beta` | float | Unit cell parameter beta (degrees) |
+| `unit_cell.gamma` | float | Unit cell parameter gamma (degrees) |
+| `has_archive` | boolean | Whether archive file is attached |
+| `has_peak_table` | boolean | Whether peak table is available |
+| `has_first_image` | boolean | Whether diffraction image is available |
+| `created_at` | datetime | Creation timestamp |
+| `updated_at` | datetime | Last update timestamp |
+
+#### Point of Interest Correlation Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | POI unique identifier |
+| `point_type` | string | Type of point (crystal, particle, droplet, other) |
+| `pixel_coordinates` | object | Pixel coordinates in image |
+| `pixel_coordinates.x` | integer | X pixel coordinate |
+| `pixel_coordinates.y` | integer | Y pixel coordinate |
+| `real_world_coordinates` | object | Converted real-world coordinates |
+| `distance_mm` | float | Distance from SCXRD dataset in millimeters |
+| `image_id` | integer | Associated image ID |
+| `marked_at` | datetime | When POI was marked |
+
+### SCXRD API Usage Examples
+
+#### Python Example
+
+```python
+import requests
+import json
+
+base_url = "http://localhost:3000/api/v1"
+well_id = 123
+
+# List all datasets
+response = requests.get(f"{base_url}/wells/{well_id}/scxrd_datasets")
+datasets = response.json()
+
+# Create a new dataset
+new_dataset = {
+    "scxrd_dataset": {
+        "experiment_name": "my_crystal_experiment",
+        "date_measured": "2024-01-15",
+        "real_world_x_mm": 1.234,
+        "real_world_y_mm": 5.678,
+        "a": 15.5,
+        "b": 15.6,
+        "c": 18.1
+    }
+}
+
+response = requests.post(
+    f"{base_url}/wells/{well_id}/scxrd_datasets",
+    json=new_dataset,
+    headers={"Content-Type": "application/json"}
+)
+
+# Search for datasets near specific coordinates
+response = requests.get(
+    f"{base_url}/wells/{well_id}/scxrd_datasets/search",
+    params={
+        "near_x": 1.0,
+        "near_y": 5.0,
+        "tolerance_mm": 0.5
+    }
+)
+
+# Get spatial correlations
+response = requests.get(
+    f"{base_url}/wells/{well_id}/scxrd_datasets/spatial_correlations",
+    params={"tolerance_mm": 1.0}
+)
+```
+
+#### JavaScript Example
+
+```javascript
+const baseUrl = 'http://localhost:3000/api/v1';
+const wellId = 123;
+
+// List all datasets
+const datasets = await fetch(`${baseUrl}/wells/${wellId}/scxrd_datasets`)
+  .then(response => response.json());
+
+// Create a new dataset
+const newDataset = {
+  scxrd_dataset: {
+    experiment_name: 'my_crystal_experiment',
+    date_measured: '2024-01-15',
+    real_world_x_mm: 1.234,
+    real_world_y_mm: 5.678,
+    a: 15.5,
+    b: 15.6,
+    c: 18.1
+  }
+};
+
+const created = await fetch(`${baseUrl}/wells/${wellId}/scxrd_datasets`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(newDataset)
+}).then(response => response.json());
+
+// Search datasets
+const searchParams = new URLSearchParams({
+  experiment_name: 'crystal',
+  'unit_cell[a]': '15.5',
+  cell_tolerance_percent: '3.0'
+});
+
+const searchResults = await fetch(
+  `${baseUrl}/wells/${wellId}/scxrd_datasets/search?${searchParams}`
+).then(response => response.json());
+```
+
+#### cURL Examples
+
+```bash
+# List SCXRD datasets for a well
+curl http://localhost:3000/api/v1/wells/123/scxrd_datasets
+
+# Create a new SCXRD dataset
+curl -X POST http://localhost:3000/api/v1/wells/123/scxrd_datasets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scxrd_dataset": {
+      "experiment_name": "crystal_formation_day1",
+      "date_measured": "2024-01-15",
+      "real_world_x_mm": 1.234,
+      "real_world_y_mm": 5.678,
+      "real_world_z_mm": 2.100,
+      "a": 15.457,
+      "b": 15.638,
+      "c": 18.121,
+      "alpha": 89.9,
+      "beta": 90.0,
+      "gamma": 89.9
+    }
+  }'
+
+# Search datasets by experiment name
+curl "http://localhost:3000/api/v1/wells/123/scxrd_datasets/search?experiment_name=crystal_001"
+
+# Search datasets by date range
+curl "http://localhost:3000/api/v1/wells/123/scxrd_datasets/search?date_from=2024-01-01&date_to=2024-01-31"
+
+# Search datasets near specific coordinates
+curl "http://localhost:3000/api/v1/wells/123/scxrd_datasets/search?near_x=1.234&near_y=5.678&tolerance_mm=0.5"
+
+# Get spatial correlations with POIs
+curl "http://localhost:3000/api/v1/wells/123/scxrd_datasets/spatial_correlations?tolerance_mm=1.0"
+
+# Get diffraction image data
+curl http://localhost:3000/api/v1/wells/123/scxrd_datasets/456/image_data
+
+# Update dataset coordinates
+curl -X PATCH http://localhost:3000/api/v1/wells/123/scxrd_datasets/456 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scxrd_dataset": {
+      "real_world_x_mm": 1.235,
+      "real_world_y_mm": 5.679
+    }
+  }'
+
+# Delete a dataset
+curl -X DELETE http://localhost:3000/api/v1/wells/123/scxrd_datasets/456
+```
+
 ## Utility Endpoints
 
 ### Health Check
@@ -871,6 +1417,52 @@ curl "http://localhost:3000/api/v1/points_of_interest/recent?limit=20"
 
 # Get all points of interest for a plate
 curl http://localhost:3000/api/v1/plates/PLATE001/points_of_interest
+```
+
+### Work with SCXRD Datasets
+```bash
+# List all SCXRD datasets for a well
+curl http://localhost:3000/api/v1/wells/123/scxrd_datasets
+
+# Create a new SCXRD dataset with real-world coordinates
+curl -X POST http://localhost:3000/api/v1/wells/123/scxrd_datasets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scxrd_dataset": {
+      "experiment_name": "crystal_formation_day1",
+      "date_measured": "2024-01-15",
+      "real_world_x_mm": 1.234,
+      "real_world_y_mm": 5.678,
+      "real_world_z_mm": 2.100,
+      "lattice_centring_id": 1,
+      "a": 15.457,
+      "b": 15.638,
+      "c": 18.121,
+      "alpha": 89.9,
+      "beta": 90.0,
+      "gamma": 89.9
+    }
+  }'
+
+# Search datasets by experiment name and date range
+curl "http://localhost:3000/api/v1/wells/123/scxrd_datasets/search?experiment_name=crystal&date_from=2024-01-01&date_to=2024-01-31"
+
+# Find datasets near specific coordinates
+curl "http://localhost:3000/api/v1/wells/123/scxrd_datasets/search?near_x=1.234&near_y=5.678&tolerance_mm=0.5"
+
+# Search by unit cell parameters with tolerance
+curl "http://localhost:3000/api/v1/wells/123/scxrd_datasets/search?unit_cell[a]=15.5&unit_cell[b]=15.6&cell_tolerance_percent=3.0"
+
+# Get spatial correlations with points of interest
+curl "http://localhost:3000/api/v1/wells/123/scxrd_datasets/spatial_correlations?tolerance_mm=1.0"
+
+# Get diffraction image data for visualization
+curl http://localhost:3000/api/v1/wells/123/scxrd_datasets/456/image_data
+
+# Update dataset coordinates
+curl -X PATCH http://localhost:3000/api/v1/wells/123/scxrd_datasets/456 \
+  -H "Content-Type: application/json" \
+  -d '{"scxrd_dataset": {"real_world_x_mm": 1.235}}'
 ```
 
 ## Error Codes

@@ -555,6 +555,7 @@ class WellModal {
     this.contentContainer = document.getElementById('wellContentForm');
     this.currentWellId = null;
     this.pxrdLoaded = false;
+    this.scxrdLoaded = false;
     this.init();
   }
 
@@ -568,6 +569,7 @@ class WellModal {
     this.modal.addEventListener('hidden.bs.modal', () => {
       console.log('Modal closed, refreshing page to update well colors...');
       this.pxrdLoaded = false; // Reset for next time
+      this.scxrdLoaded = false; // Reset for next time
       window.location.reload();
     });
 
@@ -578,6 +580,16 @@ class WellModal {
         if (this.currentWellId && !this.pxrdLoaded) {
           this.loadPxrdTab(this.currentWellId);
           this.pxrdLoaded = true;
+        }
+      });
+    }
+
+    const scxrdTab = document.getElementById('scxrd-tab');
+    if (scxrdTab) {
+      scxrdTab.addEventListener('click', () => {
+        if (this.currentWellId && !this.scxrdLoaded) {
+          this.loadScxrdTab(this.currentWellId);
+          this.scxrdLoaded = true;
         }
       });
     }
@@ -607,6 +619,7 @@ class WellModal {
     // Store current well ID for lazy loading
     this.currentWellId = wellId;
     this.pxrdLoaded = false;
+    this.scxrdLoaded = false;
 
     // Update modal title immediately
     document.getElementById('wellImagesModalLabel').textContent = `Well ${wellLabel} Details`;
@@ -642,6 +655,15 @@ class WellModal {
         <i class="fas fa-chart-line fa-2x mb-2"></i>
         <div>Click to load PXRD patterns</div>
         <small>PXRD data will be loaded when you view this tab</small>
+      </div>
+    `;
+
+    // Show placeholder in SCXRD tab for lazy loading
+    document.getElementById('wellScxrdContent').innerHTML = `
+      <div class="text-center py-4 text-muted">
+        <i class="fas fa-cube fa-2x mb-2"></i>
+        <div>Click to load SCXRD datasets</div>
+        <small>SCXRD data will be loaded when you view this tab</small>
       </div>
     `;
   }
@@ -745,6 +767,56 @@ class WellModal {
             <i class="fas fa-exclamation-triangle me-2"></i>
             Unable to load PXRD patterns. 
             <button class="btn btn-link p-0 ms-2" onclick="window.wellModal.loadPxrdTab('${wellId}')">
+              Try again
+            </button>
+          </div>
+        `;
+      });
+  }
+
+  loadScxrdTab(wellId) {
+    const container = document.getElementById('wellScxrdContent');
+    
+    // Show loading indicator
+    container.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-secondary mb-2" role="status">
+          <span class="visually-hidden">Loading SCXRD data...</span>
+        </div>
+        <div class="text-muted small">Loading SCXRD datasets...</div>
+      </div>
+    `;
+
+    fetch(`/wells/${wellId}/scxrd_datasets`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.text();
+      })
+      .then(html => {
+        container.innerHTML = html;
+        
+        // Execute any scripts that were injected
+        const scripts = container.querySelectorAll('script');
+        scripts.forEach(script => {
+          try {
+            // Use Function constructor instead of eval for better security
+            new Function(script.innerHTML)();
+          } catch(e) {
+            console.error('Error executing SCXRD script:', e);
+          }
+        });
+        
+        console.log('SCXRD data loaded successfully for well', wellId);
+      })
+      .catch((error) => {
+        console.error('Error loading SCXRD datasets:', error);
+        container.innerHTML = `
+          <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Unable to load SCXRD datasets. 
+            <button class="btn btn-link p-0 ms-2" onclick="window.wellModal.loadScxrdTab('${wellId}')">
               Try again
             </button>
           </div>

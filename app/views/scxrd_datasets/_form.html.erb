@@ -1,0 +1,361 @@
+<%# app/views/scxrd_datasets/_form.html.erb %>
+<%= form_with(model: [@well, @scxrd_dataset], local: true, html: { multipart: true }) do |form| %>
+  <% if @scxrd_dataset.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@scxrd_dataset.errors.count, "error") %> prohibited this SCXRD dataset from being saved:</h2>
+      <ul>
+        <% @scxrd_dataset.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <!-- Hidden field for experiment name - will be auto-filled from folder name -->
+  <%= form.hidden_field :experiment_name, id: 'scxrd_dataset_experiment_name' %>
+
+  <!-- Hidden field to store the compressed ZIP file -->
+  <input type="file" name="scxrd_dataset[compressed_archive]" id="scxrd_dataset_compressed_archive" style="display: none;">
+
+  <!-- Upload type selection -->
+  <div class="mb-3">
+    <%= form.label :upload_type, "Upload Type", class: 'form-label' %>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="upload_type" id="upload_folder" value="folder" checked>
+      <label class="form-check-label" for="upload_folder">
+        <i class="fas fa-folder me-1"></i>Upload Folder
+      </label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="upload_type" id="upload_zip" value="zip">
+      <label class="form-check-label" for="upload_zip">
+        <i class="fas fa-file-zipper me-1"></i>Upload ZIP File
+      </label>
+    </div>
+  </div>
+
+  <!-- Folder upload section -->
+  <div class="mb-3" id="folder-upload-section">
+    <%= form.label :experiment_folder, "Experiment Folder", class: 'form-label' %>
+    <input type="file" id="scxrd_dataset_experiment_folder" 
+           class="form-control" webkitdirectory directory multiple <%= 'required' unless @scxrd_dataset.persisted? %>>
+    <div class="form-text">
+      <% if @scxrd_dataset.persisted? %>
+        Select a new experiment folder to replace the current dataset, or leave empty to keep existing data.
+      <% else %>
+        Select the experiment folder from your local machine. Files will be compressed automatically before upload.
+      <% end %>
+    </div>
+    <div id="folder-info" class="mt-2 text-muted small" style="display: none;">
+      <i class="fas fa-info-circle me-1"></i>Selected: <span id="folder-name"></span> (<span id="file-count"></span> files)
+    </div>
+    <div id="compression-progress" class="mt-2" style="display: none;">
+      <div class="d-flex align-items-center">
+        <div class="spinner-border spinner-border-sm me-2" role="status">
+          <span class="visually-hidden">Compressing...</span>
+        </div>
+        <div>
+          <div class="fw-bold">Compressing files...</div>
+          <div class="small text-muted">
+            <span id="compression-status">Preparing files</span>
+            <span id="compression-percent" class="ms-2"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZIP file upload section -->
+  <div class="mb-3" id="zip-upload-section" style="display: none;">
+    <%= form.label :zip_file, "ZIP File", class: 'form-label' %>
+    <input type="file" id="scxrd_dataset_zip_file" 
+           class="form-control" accept=".zip" <%= 'required' unless @scxrd_dataset.persisted? %>>
+    <div class="form-text">
+      <% if @scxrd_dataset.persisted? %>
+        Select a new ZIP file to replace the current dataset, or leave empty to keep existing data.
+      <% else %>
+        Select a ZIP file containing your SCXRD experiment data.
+      <% end %>
+    </div>
+    <div id="zip-info" class="mt-2 text-muted small" style="display: none;">
+      <i class="fas fa-info-circle me-1"></i>Selected: <span id="zip-name"></span> (<span id="zip-size"></span>)
+    </div>
+  </div>
+
+  <!-- Real-World Coordinates -->
+  <div class="mb-3">
+    <label class="form-label">Real-World Coordinates (mm)</label>
+    <div class="row">
+      <div class="col-md-4">
+        <%= form.label :real_world_x_mm, "X (mm)", class: 'form-label' %>
+        <%= form.number_field :real_world_x_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
+      </div>
+      <div class="col-md-4">
+        <%= form.label :real_world_y_mm, "Y (mm)", class: 'form-label' %>
+        <%= form.number_field :real_world_y_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
+      </div>
+      <div class="col-md-4">
+        <%= form.label :real_world_z_mm, "Z (mm)", class: 'form-label' %>
+        <%= form.number_field :real_world_z_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
+      </div>
+    </div>
+    <div class="form-text">
+      <small class="text-muted">
+        Optional: Physical coordinates where this crystal was measured (in millimeters). These can be correlated with points of interest later.
+      </small>
+    </div>
+  </div>
+
+  <div class="actions">
+    <%= form.submit (@scxrd_dataset.persisted? ? "Update SCXRD Dataset" : "Upload SCXRD Dataset"), 
+                    class: 'btn btn-primary', 
+                    id: 'submit-btn',
+                    disabled: true %>
+    <div class="form-text mt-1">
+      <small class="text-muted">Select files first to enable upload</small>
+    </div>
+  </div>
+
+  <!-- Include JSZip from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.querySelector('form');
+      const submitBtn = document.getElementById('submit-btn');
+      const folderInput = document.getElementById('scxrd_dataset_experiment_folder');
+      const zipFileInput = document.getElementById('scxrd_dataset_zip_file');
+      const compressedInput = document.getElementById('scxrd_dataset_compressed_archive');
+      const experimentNameField = document.getElementById('scxrd_dataset_experiment_name');
+      
+      // Upload type elements
+      const uploadFolderRadio = document.getElementById('upload_folder');
+      const uploadZipRadio = document.getElementById('upload_zip');
+      const folderUploadSection = document.getElementById('folder-upload-section');
+      const zipUploadSection = document.getElementById('zip-upload-section');
+      
+      // Folder upload elements
+      const folderInfo = document.getElementById('folder-info');
+      const folderName = document.getElementById('folder-name');
+      const fileCount = document.getElementById('file-count');
+      const compressionProgress = document.getElementById('compression-progress');
+      const compressionStatus = document.getElementById('compression-status');
+      const compressionPercent = document.getElementById('compression-percent');
+      
+      // ZIP upload elements
+      const zipInfo = document.getElementById('zip-info');
+      const zipName = document.getElementById('zip-name');
+      const zipSize = document.getElementById('zip-size');
+      
+      const statusText = document.querySelector('.form-text small');
+      
+      let selectedFiles = null;
+      let uploadType = 'folder';
+      
+      // Handle upload type selection
+      function toggleUploadType() {
+        if (uploadFolderRadio.checked) {
+          uploadType = 'folder';
+          folderUploadSection.style.display = 'block';
+          zipUploadSection.style.display = 'none';
+          folderInput.required = <%= @scxrd_dataset.persisted? ? 'false' : 'true' %>;
+          zipFileInput.required = false;
+          statusText.textContent = 'Select a folder first to enable upload';
+        } else {
+          uploadType = 'zip';
+          folderUploadSection.style.display = 'none';
+          zipUploadSection.style.display = 'block';
+          folderInput.required = false;
+          zipFileInput.required = <%= @scxrd_dataset.persisted? ? 'false' : 'true' %>;
+          statusText.textContent = 'Select a ZIP file first to enable upload';
+        }
+        
+        // Reset form state
+        resetFormState();
+      }
+      
+      uploadFolderRadio.addEventListener('change', toggleUploadType);
+      uploadZipRadio.addEventListener('change', toggleUploadType);
+      
+      function resetFormState() {
+        selectedFiles = null;
+        folderInfo.style.display = 'none';
+        zipInfo.style.display = 'none';
+        compressionProgress.style.display = 'none';
+        submitBtn.disabled = true;
+        
+        // Clear file inputs
+        folderInput.value = '';
+        zipFileInput.value = '';
+        
+        // Clear experiment name if not persisted
+        <% unless @scxrd_dataset.persisted? %>
+          if (experimentNameField) experimentNameField.value = '';
+        <% end %>
+      }
+      
+      function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      }
+      
+      // Handle folder selection
+      folderInput.addEventListener('change', function(e) {
+        selectedFiles = Array.from(e.target.files);
+        
+        if (selectedFiles.length > 0) {
+          // Get folder name from the first file's path
+          const fullPath = selectedFiles[0].webkitRelativePath;
+          const folderNameStr = fullPath.split('/')[0];
+          
+          // Auto-fill experiment name with folder name
+          if (experimentNameField && !experimentNameField.value) {
+            experimentNameField.value = folderNameStr;
+          }
+          
+          folderName.textContent = folderNameStr;
+          fileCount.textContent = selectedFiles.length;
+          folderInfo.style.display = 'block';
+          
+          // Enable submit button
+          submitBtn.disabled = false;
+          if (statusText) statusText.textContent = 'Ready to upload';
+        } else {
+          folderInfo.style.display = 'none';
+          submitBtn.disabled = true;
+          if (statusText) statusText.textContent = 'Select a folder first to enable upload';
+        }
+      });
+      
+      // Handle ZIP file selection
+      zipFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        
+        if (file) {
+          // Auto-fill experiment name with ZIP filename (without extension)
+          if (experimentNameField && !experimentNameField.value) {
+            const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+            experimentNameField.value = nameWithoutExt;
+          }
+          
+          zipName.textContent = file.name;
+          zipSize.textContent = formatFileSize(file.size);
+          zipInfo.style.display = 'block';
+          
+          // Set the ZIP file directly to the compressed input
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          compressedInput.files = dt.files;
+          
+          // Enable submit button
+          submitBtn.disabled = false;
+          if (statusText) statusText.textContent = 'Ready to upload';
+        } else {
+          zipInfo.style.display = 'none';
+          submitBtn.disabled = true;
+          if (statusText) statusText.textContent = 'Select a ZIP file first to enable upload';
+        }
+      });
+      
+      // Handle form submission
+      form.addEventListener('submit', async function(e) {
+        if (uploadType === 'folder') {
+          // Handle folder upload with compression
+          if (!selectedFiles || selectedFiles.length === 0) return;
+          
+          e.preventDefault();
+          
+          // Check if JSZip is available
+          if (typeof JSZip === 'undefined') {
+            alert('JSZip library failed to load. Please refresh the page and try again.');
+            return;
+          }
+          
+          // Show compression progress
+          compressionProgress.style.display = 'block';
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Compressing...';
+          
+          try {
+            console.log(`SCXRD: Starting compression of ${selectedFiles.length} files...`);
+            
+            const zip = new JSZip();
+            const totalFiles = selectedFiles.length;
+            let processedFiles = 0;
+            
+            // Add files to ZIP
+            for (const file of selectedFiles) {
+              compressionStatus.textContent = `Adding ${file.name}`;
+              compressionPercent.textContent = `${Math.round((processedFiles / totalFiles) * 100)}%`;
+              
+              // Maintain folder structure
+              zip.file(file.webkitRelativePath, file);
+              processedFiles++;
+              
+              // Allow UI updates every 50 files
+              if (processedFiles % 50 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 1));
+              }
+            }
+            
+            compressionStatus.textContent = 'Generating ZIP file...';
+            compressionPercent.textContent = '100%';
+            
+            // Generate the ZIP blob
+            const zipBlob = await zip.generateAsync({
+              type: 'blob',
+              compression: 'DEFLATE',
+              compressionOptions: { level: 6 }
+            });
+            
+            console.log(`SCXRD: Compression complete. Original: ${selectedFiles.length} files, Compressed: ${(zipBlob.size / 1024 / 1024).toFixed(2)} MB`);
+            
+            // Create a File object from the blob
+            const zipFile = new File([zipBlob], `${experimentNameField.value || 'scxrd_dataset'}.zip`, {
+              type: 'application/zip'
+            });
+            
+            // Create a new FileList-like object for the compressed file
+            const dt = new DataTransfer();
+            dt.items.add(zipFile);
+            compressedInput.files = dt.files;
+            
+            // Update UI for upload
+            compressionProgress.style.display = 'none';
+            submitBtn.textContent = 'Uploading...';
+            submitBtn.setAttribute('data-disable-with', 'Uploading compressed archive...');
+            
+            // Submit the form with the compressed file
+            form.submit();
+            
+          } catch (error) {
+            console.error('SCXRD: Compression failed:', error);
+            alert(`Compression failed: ${error.message}`);
+            
+            // Reset UI
+            compressionProgress.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.textContent = '<%= @scxrd_dataset.persisted? ? "Update SCXRD Dataset" : "Upload SCXRD Dataset" %>';
+          }
+        } else {
+          // Handle ZIP file upload - just submit normally as file is already set
+          if (!compressedInput.files || compressedInput.files.length === 0) {
+            e.preventDefault();
+            alert('Please select a ZIP file first.');
+            return;
+          }
+          
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Uploading...';
+          submitBtn.setAttribute('data-disable-with', 'Uploading ZIP file...');
+        }
+      });
+      
+      // Initialize upload type
+      toggleUploadType();
+    });
+  </script>
+<% end %>

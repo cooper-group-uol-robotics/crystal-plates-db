@@ -1,5 +1,14 @@
+<style>
+  .modal-xxl {
+    max-width: 95vw !important;
+  }
+  .modal-xxl .modal-body {
+    max-height: 85vh;
+  }
+</style>
+
 <div class="modal fade" id="wellImagesModal" tabindex="-1" aria-labelledby="wellImagesModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
+  <div class="modal-dialog modal-xxl modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="wellImagesModalLabel">Well Details</h5>
@@ -18,6 +27,9 @@
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="pxrd-tab" data-bs-toggle="tab" data-bs-target="#pxrd" type="button" role="tab" aria-controls="pxrd" aria-selected="false">PXRD</button>
           </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="scxrd-tab" data-bs-toggle="tab" data-bs-target="#scxrd" type="button" role="tab" aria-controls="scxrd" aria-selected="false">SCXRD</button>
+          </li>
         </ul>
 
         <!-- Tab content -->
@@ -35,6 +47,11 @@
           <div class="tab-pane fade" id="pxrd" role="tabpanel" aria-labelledby="pxrd-tab">
             <div id="wellPxrdContent">
               <!-- PXRD patterns will be injected here -->
+            </div>
+          </div>
+          <div class="tab-pane fade" id="scxrd" role="tabpanel" aria-labelledby="scxrd-tab">
+            <div id="wellScxrdContent">
+              <!-- SCXRD datasets will be injected here -->
             </div>
           </div>
         </div>

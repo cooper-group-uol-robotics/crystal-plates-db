@@ -6,3 +6,5 @@
 //= link plates_show.js
 //= link controllers/application.js
 //= link controllers/index.js
+//= link scxrd_diffraction_viewer.js
+//= link reciprocal_lattice_viewer.js

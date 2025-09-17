@@ -140,6 +140,48 @@ class WellsController < ApplicationController
     render plain: "Error loading images", status: 500
   end
 
+  def spatial_correlations
+    @well = Well.find(params[:id])
+    tolerance_mm = params[:tolerance_mm]&.to_f || 0.5
+
+    @correlations = ScxrdDataset.spatial_correlations_for_well(@well, tolerance_mm)
+
+    respond_to do |format|
+      format.json {
+        render json: {
+          well_id: @well.id,
+          well_label: @well.well_label,
+          tolerance_mm: tolerance_mm,
+          correlations: @correlations.map do |corr|
+            {
+              scxrd_dataset: {
+                id: corr[:scxrd_dataset].id,
+                experiment_name: corr[:scxrd_dataset].experiment_name,
+                coordinates: {
+                  x_mm: corr[:scxrd_dataset].real_world_x_mm,
+                  y_mm: corr[:scxrd_dataset].real_world_y_mm,
+                  z_mm: corr[:scxrd_dataset].real_world_z_mm
+                }
+              },
+              point_of_interests: corr[:distances].map do |dist_info|
+                poi = dist_info[:poi]
+                coords = poi.real_world_coordinates
+                {
+                  id: poi.id,
+                  point_type: poi.point_type,
+                  pixel_coordinates: { x: poi.pixel_x, y: poi.pixel_y },
+                  real_world_coordinates: coords,
+                  distance_mm: dist_info[:distance_mm].round(3),
+                  image_id: poi.image_id
+                }
+              end
+            }
+          end
+        }
+      }
+    end
+  end
+
   def content_form
     @well = Well.find(params[:id])
     @stock_solutions = StockSolution.all.order(:name)

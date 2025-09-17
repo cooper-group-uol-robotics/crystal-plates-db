@@ -52,6 +52,21 @@ class PointOfInterest < ApplicationRecord
     }
   end
 
+  # Get nearby SCXRD datasets within tolerance
+  def nearby_scxrd_datasets(tolerance_mm = 0.5)
+    coords = real_world_coordinates
+    return ScxrdDataset.none unless coords[:x_mm].present? && coords[:y_mm].present?
+
+    # Get all SCXRD datasets from the same well with coordinates
+    scxrd_candidates = image.well.scxrd_datasets.where.not(real_world_x_mm: nil, real_world_y_mm: nil)
+
+    # Filter by distance
+    scxrd_candidates.select do |dataset|
+      distance = dataset.distance_to_coordinates(coords[:x_mm], coords[:y_mm], coords[:z_mm])
+      distance.present? && distance <= tolerance_mm
+    end
+  end
+
   # Human readable description of the point
   def display_name
     if description.present?

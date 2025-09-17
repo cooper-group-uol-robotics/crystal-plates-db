@@ -7,6 +7,8 @@ class Well < ApplicationRecord
 
   has_many :pxrd_patterns, dependent: :destroy
 
+  has_many :scxrd_datasets, dependent: :destroy
+
   validates :well_row, :well_column, presence: true
   validates :subwell, presence: true, numericality: { greater_than: 0 }
   validates :subwell, uniqueness: { scope: [ :plate_id, :well_row, :well_column ] }
@@ -56,6 +58,15 @@ class Well < ApplicationRecord
       pxrd_patterns.any?
     else
       pxrd_patterns.exists?
+    end
+  end
+
+  # Check if well has any SCXRD datasets
+  def has_scxrd_datasets?
+    if association(:scxrd_datasets).loaded?
+      scxrd_datasets.any?
+    else
+      scxrd_datasets.exists?
     end
   end
 

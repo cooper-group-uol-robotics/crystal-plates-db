@@ -34,7 +34,7 @@ class PlatesController < ApplicationController
 
   # GET /plates/1 or /plates/1.json
   def show
-    @wells = @plate.wells.includes(:images, :well_contents, :pxrd_patterns)
+    @wells = @plate.wells.includes(:images, :well_contents, :pxrd_patterns, :scxrd_datasets)
     @rows = @wells.maximum(:well_row) || 0
     @columns = @wells.maximum(:well_column) || 0
 

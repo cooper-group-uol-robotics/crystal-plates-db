@@ -43,7 +43,6 @@ gem "turbo-rails"
 gem "stimulus-rails"
 # gem "sass-rails", "~> 6"
 gem "dartsass-rails"
-gem "sassc-rails"
 gem "jbuilder"
 gem "sprockets-rails"
 group :development, :test do
