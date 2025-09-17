@@ -1611,7 +1611,6 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
               <span class="fw-bold">${experimentName}</span>
               <small class="text-muted ms-2">
                 | Measured: ${data.date_measured || 'Unknown'}
-                ${data.lattice_centring ? `| Lattice: ${data.lattice_centring}` : ''}
                 ${data.real_world_coordinates ? `| Position: (${data.real_world_coordinates.x_mm || 'N/A'}, ${data.real_world_coordinates.y_mm || 'N/A'}, ${data.real_world_coordinates.z_mm || 'N/A'})mm` : ''}
                 ${unitCellInfo}
               </small>
@@ -1772,9 +1771,7 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
                       <% if dataset.has_first_image? %>
                         <span class="badge bg-primary" style="font-size: 0.6rem;">Image</span>
                       <% end %>
-                      <% if dataset.lattice_centring %>
-                        <span class="badge bg-info" style="font-size: 0.6rem;"><%= dataset.lattice_centring.symbol %></span>
-                      <% end %>
+                      <span class="badge bg-info" style="font-size: 0.6rem;">Primitive</span>
                     </div>
                   </div>
                 </div>
@@ -1973,8 +1970,8 @@ window.drawCrystalLocationCircle = function(pixelX, pixelY) {
   const pixelSizeY = parseFloat(img.getAttribute('data-pixel-size-y')) || 0.01; // fallback to 0.01mm/pixel
   
   // Calculate circle radius for 0.3mm using actual pixel size
-  const radiusInPixelsX = 0.3 / pixelSizeX; // 0.3mm converted to pixels using X scale
-  const radiusInPixelsY = 0.3 / pixelSizeY; // 0.3mm converted to pixels using Y scale
+  const radiusInPixelsX = 0.15 / pixelSizeX; // 0.3mm converted to pixels using X scale
+  const radiusInPixelsY = 0.15 / pixelSizeY; // 0.3mm converted to pixels using Y scale
   
   // Use average radius and scale to display size
   const averageRadiusPixels = (radiusInPixelsX + radiusInPixelsY) / 2;

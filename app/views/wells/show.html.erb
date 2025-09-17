@@ -31,7 +31,7 @@
   
   <% if @well.scxrd_datasets.any? %>
     <div class="row">
-      <% @well.scxrd_datasets.includes(:lattice_centring).each do |dataset| %>
+      <% @well.scxrd_datasets.each do |dataset| %>
         <div class="col-md-6 col-lg-4 mb-3">
           <div class="card">
             <div class="card-body">
@@ -39,9 +39,7 @@
               <p class="card-text">
                 <small class="text-muted">
                   Measured: <%= dataset.date_measured.strftime("%Y-%m-%d") if dataset.date_measured %><br>
-                  <% if dataset.lattice_centring %>
-                    Lattice: <%= dataset.lattice_centring.symbol %>
-                  <% end %>
+                  Lattice: Primitive
                 </small>
               </p>
               <div class="btn-group btn-group-sm" role="group">

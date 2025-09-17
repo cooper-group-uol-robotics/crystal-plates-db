@@ -5,7 +5,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
 
   # GET /api/v1/wells/:well_id/scxrd_datasets
   def index
-    @scxrd_datasets = @well.scxrd_datasets.includes(:lattice_centring).order(created_at: :desc)
+    @scxrd_datasets = @well.scxrd_datasets.order(created_at: :desc)
 
     render json: {
       well_id: @well.id,
@@ -121,7 +121,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
 
   # GET /api/v1/wells/:well_id/scxrd_datasets/search
   def search
-    datasets = @well.scxrd_datasets.includes(:lattice_centring)
+    datasets = @well.scxrd_datasets
 
     # Filter by experiment name
     if params[:experiment_name].present?
@@ -137,11 +137,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
       datasets = datasets.where("date_measured <= ?", Date.parse(params[:date_to]))
     end
 
-    # Filter by lattice centering
-    if params[:lattice_centring].present?
-      datasets = datasets.joins(:lattice_centring)
-                        .where(lattice_centrings: { symbol: params[:lattice_centring] })
-    end
+    # Note: Lattice centering filtering removed as Niggli reduced cells are always primitive
 
     # Filter by coordinate proximity
     if params[:near_x].present? && params[:near_y].present?
@@ -158,9 +154,10 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
       cell_params = params[:unit_cell]
       tolerance_percent = params[:cell_tolerance_percent]&.to_f || 5.0
 
-      %w[a b c alpha beta gamma].each do |param|
-        if cell_params[param].present?
-          value = cell_params[param].to_f
+      %w[niggli_a niggli_b niggli_c niggli_alpha niggli_beta niggli_gamma].each do |param|
+        old_param = param.sub('niggli_', '')
+        if cell_params[old_param].present?
+          value = cell_params[old_param].to_f
           tolerance_abs = value * (tolerance_percent / 100.0)
           datasets = datasets.where(
             "#{param} BETWEEN ? AND ?",
@@ -197,9 +194,9 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
 
   def scxrd_dataset_params
     params.require(:scxrd_dataset).permit(
-      :experiment_name, :date_measured, :lattice_centring_id,
+      :experiment_name, :date_measured,
       :real_world_x_mm, :real_world_y_mm, :real_world_z_mm,
-      :a, :b, :c, :alpha, :beta, :gamma
+      :niggli_a, :niggli_b, :niggli_c, :niggli_alpha, :niggli_beta, :niggli_gamma
     )
   end
 
@@ -209,19 +206,19 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
       experiment_name: dataset.experiment_name,
       date_measured: dataset.date_measured&.strftime("%Y-%m-%d"),
       date_uploaded: dataset.date_uploaded&.strftime("%Y-%m-%d %H:%M:%S"),
-      lattice_centring: dataset.lattice_centring&.symbol,
+      lattice_centring: "primitive",  # Niggli reduced cells are always primitive
       real_world_coordinates: (dataset.real_world_x_mm || dataset.real_world_y_mm || dataset.real_world_z_mm) ? {
         x_mm: dataset.real_world_x_mm,
         y_mm: dataset.real_world_y_mm,
         z_mm: dataset.real_world_z_mm
       } : nil,
-      unit_cell: dataset.a.present? ? {
-        a: number_with_precision(dataset.a, precision: 3),
-        b: number_with_precision(dataset.b, precision: 3),
-        c: number_with_precision(dataset.c, precision: 3),
-        alpha: number_with_precision(dataset.alpha, precision: 1),
-        beta: number_with_precision(dataset.beta, precision: 1),
-        gamma: number_with_precision(dataset.gamma, precision: 1)
+      unit_cell: dataset.niggli_a.present? ? {
+        a: number_with_precision(dataset.niggli_a, precision: 3),
+        b: number_with_precision(dataset.niggli_b, precision: 3),
+        c: number_with_precision(dataset.niggli_c, precision: 3),
+        alpha: number_with_precision(dataset.niggli_alpha, precision: 1),
+        beta: number_with_precision(dataset.niggli_beta, precision: 1),
+        gamma: number_with_precision(dataset.niggli_gamma, precision: 1)
       } : nil,
       has_archive: dataset.archive.attached?,
       has_peak_table: dataset.has_peak_table?,

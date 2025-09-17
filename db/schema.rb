@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_16_234625) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_17_000001) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -163,14 +163,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_16_234625) do
 
   create_table "scxrd_datasets", force: :cascade do |t|
     t.integer "well_id", null: false
-    t.integer "lattice_centring_id"
     t.string "experiment_name", null: false
-    t.float "a"
-    t.float "b"
-    t.float "c"
-    t.float "alpha"
-    t.float "beta"
-    t.float "gamma"
+    t.float "niggli_a"
+    t.float "niggli_b"
+    t.float "niggli_c"
+    t.float "niggli_alpha"
+    t.float "niggli_beta"
+    t.float "niggli_gamma"
     t.date "date_measured", null: false
     t.datetime "date_uploaded", precision: nil, default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "created_at", null: false
@@ -178,7 +177,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_16_234625) do
     t.decimal "real_world_x_mm", precision: 8, scale: 3
     t.decimal "real_world_y_mm", precision: 8, scale: 3
     t.decimal "real_world_z_mm", precision: 8, scale: 3
-    t.index ["lattice_centring_id"], name: "index_scxrd_datasets_on_lattice_centring_id"
     t.index ["well_id"], name: "index_scxrd_datasets_on_well_id"
   end
 
@@ -251,7 +249,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_16_234625) do
   add_foreign_key "point_of_interests", "images"
   add_foreign_key "prototype_wells", "plate_prototypes"
   add_foreign_key "pxrd_patterns", "wells"
-  add_foreign_key "scxrd_datasets", "lattice_centrings"
   add_foreign_key "scxrd_datasets", "wells"
   add_foreign_key "stock_solution_components", "chemicals"
   add_foreign_key "stock_solution_components", "stock_solutions"

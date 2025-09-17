@@ -58,22 +58,52 @@ class ScxrdFolderProcessorService
 
     end
 
-    # Find and parse .par file for unit cell information - exclude files starting with 'pre_'
-    Rails.logger.info "SCXRD: Searching for .par files in folder: #{@folder_path}"
-    par_pattern = File.join(@folder_path, "**", "*.par")
-    all_par_files = Dir.glob(par_pattern, File::FNM_CASEFOLD)
-    Rails.logger.info "SCXRD: Found #{all_par_files.count} .par files total: #{all_par_files.map { |f| File.basename(f) }.inspect}"
+    # Find and parse crystal.ini file for reduced cell parameters - exclude files starting with 'pre_'
+    Rails.logger.info "SCXRD: Searching for crystal.ini files in folder: #{@folder_path}"
+    crystal_ini_pattern = File.join(@folder_path, "expinfo", "*_crystal.ini")
+    all_crystal_ini_files = Dir.glob(crystal_ini_pattern, File::FNM_CASEFOLD)
+    Rails.logger.info "SCXRD: Found #{all_crystal_ini_files.count} crystal.ini files total: #{all_crystal_ini_files.map { |f| File.basename(f) }.inspect}"
 
-    par_files = all_par_files.reject { |file| File.basename(file).start_with?("pre_") }
-    Rails.logger.info "SCXRD: Found #{par_files.count} .par files (excluding pre_*): #{par_files.map { |f| File.basename(f) }.inspect}"
+    crystal_ini_files = all_crystal_ini_files.reject { |file| File.basename(file).start_with?("pre_") }
+    Rails.logger.info "SCXRD: Found #{crystal_ini_files.count} crystal.ini files (excluding pre_*): #{crystal_ini_files.map { |f| File.basename(f) }.inspect}"
 
-    if par_files.any?
-      par_file = par_files.first
-      Rails.logger.info "SCXRD: Using .par file: #{par_file}"
-      @par_data = parse_par_file(par_file) if File.exist?(par_file)
-      Rails.logger.info "SCXRD: .par parsing result: #{@par_data ? 'SUCCESS' : 'FAILED'}"
+    if crystal_ini_files.any?
+      crystal_ini_file = crystal_ini_files.first
+      Rails.logger.info "SCXRD: Using crystal.ini file: #{crystal_ini_file}"
+      @par_data = parse_crystal_ini_file(crystal_ini_file) if File.exist?(crystal_ini_file)
+      Rails.logger.info "SCXRD: crystal.ini parsing result: #{@par_data ? 'SUCCESS' : 'FAILED'}"
+      
+      # Parse coordinates from cmdscript.mac if parsing succeeded
+      if @par_data
+        coordinates = parse_cmdscript_coordinates
+        @par_data.merge!(coordinates) if coordinates
+      end
     else
-      Rails.logger.warn "SCXRD: No .par files found in folder"
+      Rails.logger.warn "SCXRD: No crystal.ini files found in expinfo folder"
+      
+      # Fallback to .par file parsing for backwards compatibility
+      Rails.logger.info "SCXRD: Falling back to .par file parsing"
+      par_pattern = File.join(@folder_path, "**", "*.par")
+      all_par_files = Dir.glob(par_pattern, File::FNM_CASEFOLD)
+      Rails.logger.info "SCXRD: Found #{all_par_files.count} .par files total: #{all_par_files.map { |f| File.basename(f) }.inspect}"
+
+      par_files = all_par_files.reject { |file| File.basename(file).start_with?("pre_") }
+      Rails.logger.info "SCXRD: Found #{par_files.count} .par files (excluding pre_*): #{par_files.map { |f| File.basename(f) }.inspect}"
+
+      if par_files.any?
+        par_file = par_files.first
+        Rails.logger.info "SCXRD: Using .par file: #{par_file}"
+        @par_data = parse_par_file(par_file) if File.exist?(par_file)
+        Rails.logger.info "SCXRD: .par parsing result: #{@par_data ? 'SUCCESS' : 'FAILED'}"
+        
+        # Parse coordinates from cmdscript.mac if parsing succeeded
+        if @par_data
+          coordinates = parse_cmdscript_coordinates
+          @par_data.merge!(coordinates) if coordinates
+        end
+      else
+        Rails.logger.warn "SCXRD: No .par files found either"
+      end
     end
   end
 
@@ -131,6 +161,87 @@ class ScxrdFolderProcessorService
       count += 1 unless File.directory?(path)
     end
     count
+  end
+
+  def parse_crystal_ini_file(crystal_ini_file_path)
+    Rails.logger.info "SCXRD: Starting to parse crystal.ini file: #{crystal_ini_file_path}"
+
+    begin
+      # Check if file exists and is readable
+      unless File.exist?(crystal_ini_file_path)
+        Rails.logger.error "SCXRD: crystal.ini file does not exist: #{crystal_ini_file_path}"
+        return nil
+      end
+
+      file_size = File.size(crystal_ini_file_path)
+      Rails.logger.info "SCXRD: crystal.ini file size: #{file_size} bytes"
+
+      # Read the file content - crystal.ini files are typically text files
+      content = File.read(crystal_ini_file_path, encoding: "UTF-8")
+      Rails.logger.info "SCXRD: Successfully read crystal.ini file content (#{content.length} characters)"
+
+      # Look for the reduced cell line
+      # Format: reduced cell plus vol=7.2218583  8.5410638 8.5902173 107.6582105 91.8679754 90.9411566 504.4382028
+      cell_info = {}
+      lines_processed = 0
+
+      content.each_line.with_index do |line, index|
+        lines_processed += 1
+        # Clean the line
+        clean_line = line.strip
+
+        Rails.logger.debug "SCXRD: Processing line #{index + 1}: '#{clean_line}'"
+
+        # Look for the reduced cell line
+        if clean_line.start_with?("reduced cell plus vol=")
+          Rails.logger.info "SCXRD: Found reduced cell line at line #{index + 1}"
+          
+          # Extract the numbers after the equals sign
+          # Format: reduced cell plus vol=a b c alpha beta gamma volume
+          parts = clean_line.split("=")
+          if parts.length == 2
+            numbers = parts[1].strip.split(/\s+/).map(&:to_f)
+            Rails.logger.info "SCXRD: Found #{numbers.length} numbers: #{numbers.inspect}"
+            
+            if numbers.length >= 6
+              # First six numbers are the reduced cell parameters
+              cell_info[:a] = numbers[0]
+              cell_info[:b] = numbers[1]
+              cell_info[:c] = numbers[2]
+              cell_info[:alpha] = numbers[3]
+              cell_info[:beta] = numbers[4]
+              cell_info[:gamma] = numbers[5]
+              
+              Rails.logger.info "SCXRD: Parsed reduced cell parameters:"
+              Rails.logger.info "SCXRD: a=#{cell_info[:a]}, b=#{cell_info[:b]}, c=#{cell_info[:c]}"
+              Rails.logger.info "SCXRD: α=#{cell_info[:alpha]}, β=#{cell_info[:beta]}, γ=#{cell_info[:gamma]}"
+              
+              break # We found what we need
+            else
+              Rails.logger.warn "SCXRD: Reduced cell line found but insufficient numbers (#{numbers.length})"
+            end
+          else
+            Rails.logger.warn "SCXRD: Reduced cell line found but couldn't parse format"
+          end
+        end
+      end
+
+      Rails.logger.info "SCXRD: Processed #{lines_processed} lines total"
+      Rails.logger.info "SCXRD: Final parsed cell_info: #{cell_info.inspect}"
+
+      if cell_info.empty?
+        Rails.logger.warn "SCXRD: No reduced cell parameters found in crystal.ini file"
+        nil
+      else
+        Rails.logger.info "SCXRD: Successfully parsed reduced cell parameters from crystal.ini file"
+        cell_info
+      end
+
+    rescue => e
+      Rails.logger.error "SCXRD: Error parsing crystal.ini file #{crystal_ini_file_path}: #{e.message}"
+      Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(10).join("\n")}"
+      nil
+    end
   end
 
   def parse_par_file(par_file_path)
@@ -220,6 +331,51 @@ class ScxrdFolderProcessorService
       Rails.logger.error "SCXRD: Error parsing .par file #{par_file_path}: #{e.message}"
       Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(10).join("\n")}"
       nil
+    end
+  end
+
+  def parse_cmdscript_coordinates
+    Rails.logger.info "SCXRD: Searching for cmdscript.mac file"
+    
+    # Look for cmdscript.mac in the folder
+    cmdscript_pattern = File.join(@folder_path, "**", "cmdscript.mac")
+    cmdscript_files = Dir.glob(cmdscript_pattern, File::FNM_CASEFOLD)
+    
+    Rails.logger.info "SCXRD: Found #{cmdscript_files.count} cmdscript.mac files: #{cmdscript_files.map { |f| File.basename(f) }.inspect}"
+    
+    return nil unless cmdscript_files.any?
+    
+    cmdscript_file = cmdscript_files.first
+    Rails.logger.info "SCXRD: Using cmdscript.mac file: #{cmdscript_file}"
+    
+    begin
+      # Read the first line of the file
+      first_line = File.open(cmdscript_file, 'r') { |f| f.readline.strip }
+      Rails.logger.info "SCXRD: First line: '#{first_line}'"
+      
+      # Parse the coordinates from the line format:
+      # xx xtalcheck move x 48.25 y 1.33 z 0.08
+      if first_line =~ /x\s+([\d.-]+)\s+y\s+([\d.-]+)\s+z\s+([\d.-]+)/
+        x_coord = $1.to_f
+        y_coord = $2.to_f  
+        z_coord = $3.to_f
+        
+        coordinates = {
+          real_world_x_mm: x_coord,
+          real_world_y_mm: y_coord,
+          real_world_z_mm: z_coord
+        }
+        
+        Rails.logger.info "SCXRD: Parsed coordinates: x=#{x_coord}, y=#{y_coord}, z=#{z_coord}"
+        return coordinates
+      else
+        Rails.logger.warn "SCXRD: Could not parse coordinates from line: '#{first_line}'"
+        return nil
+      end
+      
+    rescue => e
+      Rails.logger.error "SCXRD: Error parsing cmdscript.mac file #{cmdscript_file}: #{e.message}"
+      return nil
     end
   end
 end

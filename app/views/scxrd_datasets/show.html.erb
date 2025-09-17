@@ -33,36 +33,6 @@
             <dt class="col-sm-3">Date Uploaded</dt>
             <dd class="col-sm-9"><%= @scxrd_dataset.date_uploaded.strftime('%Y-%m-%d %H:%M') if @scxrd_dataset.date_uploaded %></dd>
 
-            <dt class="col-sm-3">Lattice Centring</dt>
-            <dd class="col-sm-9">
-              <% if @scxrd_dataset.lattice_centring %>
-                <%= @scxrd_dataset.lattice_centring.symbol %> 
-                <small class="text-muted">(<%= @scxrd_dataset.lattice_centring.description %>)</small>
-              <% else %>
-                <span class="text-muted">Not specified</span>
-              <% end %>
-            </dd>
-
-            <dt class="col-sm-3">Unit Cell</dt>
-            <dd class="col-sm-9">
-              <% if @scxrd_dataset.a.present? %>
-                <div class="row">
-                  <div class="col-md-6">
-                    <strong>a:</strong> <%= number_with_precision(@scxrd_dataset.a, precision: 3) %> Å<br>
-                    <strong>b:</strong> <%= number_with_precision(@scxrd_dataset.b, precision: 3) %> Å<br>
-                    <strong>c:</strong> <%= number_with_precision(@scxrd_dataset.c, precision: 3) %> Å
-                  </div>
-                  <div class="col-md-6">
-                    <strong>α:</strong> <%= number_with_precision(@scxrd_dataset.alpha, precision: 1) %>°<br>
-                    <strong>β:</strong> <%= number_with_precision(@scxrd_dataset.beta, precision: 1) %>°<br>
-                    <strong>γ:</strong> <%= number_with_precision(@scxrd_dataset.gamma, precision: 1) %>°
-                  </div>
-                </div>
-              <% else %>
-                <span class="text-muted">Unit cell parameters not specified</span>
-              <% end %>
-            </dd>
-
             <dt class="col-sm-3">Peak Table</dt>
             <dd class="col-sm-9">
               <% if @scxrd_dataset.has_peak_table? %>
