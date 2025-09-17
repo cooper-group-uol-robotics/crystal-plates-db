@@ -26,6 +26,7 @@ Rails.application.routes.draw do
     member do
       get :images
       get :content_form
+      get :spatial_correlations
       patch :update_content
       delete "content/:content_id", to: "wells#remove_content", as: "remove_content"
     end
@@ -111,6 +112,15 @@ Rails.application.routes.draw do
             resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
           end
           resources :pxrd_patterns, only: [ :index, :create ]
+          resources :scxrd_datasets, only: [ :index, :show, :create, :update, :destroy ] do
+            member do
+              get :image_data
+            end
+            collection do
+              get :spatial_correlations
+              get :search
+            end
+          end
         end
       end
 
@@ -131,6 +141,15 @@ Rails.application.routes.draw do
           resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
         end
         resources :pxrd_patterns, only: [ :index, :create ]
+        resources :scxrd_datasets, only: [ :index, :show, :create, :update, :destroy ] do
+          member do
+            get :image_data
+          end
+          collection do
+            get :spatial_correlations
+            get :search
+          end
+        end
       end
 
       # Standalone PXRD pattern routes

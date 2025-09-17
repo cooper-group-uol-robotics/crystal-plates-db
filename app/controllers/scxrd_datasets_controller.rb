@@ -30,6 +30,11 @@ class ScxrdDatasetsController < ApplicationController
             alpha: number_with_precision(@scxrd_dataset.alpha, precision: 1),
             beta: number_with_precision(@scxrd_dataset.beta, precision: 1),
             gamma: number_with_precision(@scxrd_dataset.gamma, precision: 1)
+          } : nil,
+          real_world_coordinates: (@scxrd_dataset.real_world_x_mm || @scxrd_dataset.real_world_y_mm || @scxrd_dataset.real_world_z_mm) ? {
+            x_mm: @scxrd_dataset.real_world_x_mm,
+            y_mm: @scxrd_dataset.real_world_y_mm,
+            z_mm: @scxrd_dataset.real_world_z_mm
           } : nil
         }
       end
@@ -232,6 +237,24 @@ class ScxrdDatasetsController < ApplicationController
             Rails.logger.info "SCXRD: First image stored (#{number_to_human_size(result[:first_image].bytesize)})"
           end
 
+          # Store unit cell parameters from .par file if available
+          Rails.logger.info "SCXRD: Checking for parsed .par data..."
+          if result[:par_data]
+            par_data = result[:par_data]
+            Rails.logger.info "SCXRD: Found .par data: #{par_data.inspect}"
+
+            @scxrd_dataset.a = par_data[:a] if par_data[:a]
+            @scxrd_dataset.b = par_data[:b] if par_data[:b]
+            @scxrd_dataset.c = par_data[:c] if par_data[:c]
+            @scxrd_dataset.alpha = par_data[:alpha] if par_data[:alpha]
+            @scxrd_dataset.beta = par_data[:beta] if par_data[:beta]
+            @scxrd_dataset.gamma = par_data[:gamma] if par_data[:gamma]
+
+            Rails.logger.info "SCXRD: Unit cell parameters stored from .par file: a=#{@scxrd_dataset.a}, b=#{@scxrd_dataset.b}, c=#{@scxrd_dataset.c}, α=#{@scxrd_dataset.alpha}, β=#{@scxrd_dataset.beta}, γ=#{@scxrd_dataset.gamma}"
+          else
+            Rails.logger.warn "SCXRD: No .par data found in processing result"
+          end
+
           # Store the original archive as the zip attachment
           Rails.logger.info "SCXRD: Attaching original compressed archive (#{number_to_human_size(uploaded_archive.size)})"
           uploaded_archive.rewind  # Reset the file pointer
@@ -257,6 +280,7 @@ class ScxrdDatasetsController < ApplicationController
     filtered_params[:scxrd_dataset] = params[:scxrd_dataset].except(:compressed_archive) if params[:scxrd_dataset]
 
     filtered_params.require(:scxrd_dataset).permit(:experiment_name, :date_measured, :lattice_centring_id,
+                                                   :real_world_x_mm, :real_world_y_mm, :real_world_z_mm,
                                                    :a, :b, :c, :alpha, :beta, :gamma)
   end
 end

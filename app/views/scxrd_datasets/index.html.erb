@@ -86,8 +86,11 @@
                 <% if dataset.archive.attached? %>
                   <%= link_to "Download", download_well_scxrd_dataset_path(@well, dataset), class: "text-green-600 hover:text-green-900 mr-2" %>
                 <% end %>
-                <%= link_to "Delete", [@well, dataset], method: :delete, 
-                    confirm: "Are you sure?", class: "text-red-600 hover:text-red-900" %>
+                <%= button_to "Delete", [@well, dataset], 
+                    method: :delete, 
+                    confirm: "Are you sure?", 
+                    class: "text-red-600 hover:text-red-900 border-0 bg-transparent p-0",
+                    style: "display: inline;" %>
               </td>
             </tr>
           <% end %>

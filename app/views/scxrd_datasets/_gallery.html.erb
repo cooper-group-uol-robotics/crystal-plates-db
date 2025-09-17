@@ -758,26 +758,22 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
       const infoCard = document.getElementById('scxrd-info-card');
       let unitCellInfo = '';
       if (data.unit_cell && data.unit_cell.a) {
-        unitCellInfo = `
-          <div class="mt-2">
-            <small class="text-muted">Unit Cell:</small><br>
-            <small>a=${data.unit_cell.a}Å, b=${data.unit_cell.b}Å, c=${data.unit_cell.c}Å</small><br>
-            <small>α=${data.unit_cell.alpha}°, β=${data.unit_cell.beta}°, γ=${data.unit_cell.gamma}°</small>
-          </div>
-        `;
+        unitCellInfo = `| Cell: a=${data.unit_cell.a}Å b=${data.unit_cell.b}Å c=${data.unit_cell.c}Å α=${data.unit_cell.alpha}° β=${data.unit_cell.beta}° γ=${data.unit_cell.gamma}°`;
       }
       
       infoCard.innerHTML = `
-        <div class="card-body">
-          <h6 class="card-title">${experimentName}</h6>
-          <p class="card-text">
-            <small class="text-muted">
-              Measured: ${data.date_measured || 'Unknown'}
-              ${data.lattice_centring ? `| Lattice: ${data.lattice_centring}` : ''}
-            </small>
-            ${unitCellInfo}
-          </p>
-          <div class="btn-group btn-group-sm">
+        <div class="card-body py-1">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="flex-grow-1 me-3">
+              <span class="fw-bold">${experimentName}</span>
+              <small class="text-muted ms-2">
+                | Measured: ${data.date_measured || 'Unknown'}
+                ${data.lattice_centring ? `| Lattice: ${data.lattice_centring}` : ''}
+                ${data.real_world_coordinates ? `| Position: (${data.real_world_coordinates.x_mm || 'N/A'}, ${data.real_world_coordinates.y_mm || 'N/A'}, ${data.real_world_coordinates.z_mm || 'N/A'})mm` : ''}
+                ${unitCellInfo}
+              </small>
+            </div>
+            <div class="btn-group btn-group-sm flex-shrink-0">
             <a href="${datasetUrl}" class="btn btn-outline-primary">
               <i class="fas fa-eye me-1"></i>View Details
             </a>
@@ -789,6 +785,7 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
                 <i class="fas fa-download me-1"></i>Archive
               </a>
             ` : ''}
+            </div>
           </div>
         </div>
       `;
@@ -887,7 +884,7 @@ window.showScxrdDatasetInMain = function(datasetId, experimentName, datasetUrl) 
     <!-- Experiment Info Card -->
     <div class="col-12 mb-3">
       <div class="card">
-        <div id="scxrd-info-card" class="text-center text-muted p-3">
+        <div id="scxrd-info-card" class="text-center text-muted p-1">
           <i class="fas fa-info-circle me-2"></i>
           Select an SCXRD dataset to view experiment details
         </div>

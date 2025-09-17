@@ -82,6 +82,30 @@
     </div>
   </div>
 
+  <!-- Real-World Coordinates -->
+  <div class="mb-3">
+    <label class="form-label">Real-World Coordinates (mm)</label>
+    <div class="row">
+      <div class="col-md-4">
+        <%= form.label :real_world_x_mm, "X (mm)", class: 'form-label' %>
+        <%= form.number_field :real_world_x_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
+      </div>
+      <div class="col-md-4">
+        <%= form.label :real_world_y_mm, "Y (mm)", class: 'form-label' %>
+        <%= form.number_field :real_world_y_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
+      </div>
+      <div class="col-md-4">
+        <%= form.label :real_world_z_mm, "Z (mm)", class: 'form-label' %>
+        <%= form.number_field :real_world_z_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
+      </div>
+    </div>
+    <div class="form-text">
+      <small class="text-muted">
+        Optional: Physical coordinates where this crystal was measured (in millimeters). These can be correlated with points of interest later.
+      </small>
+    </div>
+  </div>
+
   <div class="actions">
     <%= form.submit (@scxrd_dataset.persisted? ? "Update SCXRD Dataset" : "Upload SCXRD Dataset"), 
                     class: 'btn btn-primary', 
