@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  well: one
+  experiment_name: "test_experiment"
+  date_measured: 2025-01-01
+  date_uploaded: 2025-01-01 10:00:00
+  niggli_a: 7.2218583
+  niggli_b: 8.5410638
+  niggli_c: 8.5902173
+  niggli_alpha: 107.6582105
+  niggli_beta: 91.8679754
+  niggli_gamma: 90.9411566
+
+two:
+  well: two
+  experiment_name: "test_experiment_2"
+  date_measured: 2025-01-02
+  date_uploaded: 2025-01-02 10:00:00
