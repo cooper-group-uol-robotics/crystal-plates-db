@@ -143,11 +143,11 @@ class WellsController < ApplicationController
   def spatial_correlations
     @well = Well.find(params[:id])
     tolerance_mm = params[:tolerance_mm]&.to_f || 0.5
-    
+
     @correlations = ScxrdDataset.spatial_correlations_for_well(@well, tolerance_mm)
-    
+
     respond_to do |format|
-      format.json { 
+      format.json {
         render json: {
           well_id: @well.id,
           well_label: @well.well_label,

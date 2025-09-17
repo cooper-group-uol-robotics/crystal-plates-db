@@ -26,10 +26,10 @@ class ScxrdDataset < ApplicationRecord
   def distance_to_coordinates(x_mm, y_mm, z_mm = nil)
     return nil unless has_real_world_coordinates?
     return nil unless x_mm.present? && y_mm.present?
-    
+
     dx = real_world_x_mm - x_mm
     dy = real_world_y_mm - y_mm
-    
+
     if z_mm.present? && real_world_z_mm.present?
       dz = real_world_z_mm - z_mm
       Math.sqrt(dx**2 + dy**2 + dz**2)
@@ -40,16 +40,16 @@ class ScxrdDataset < ApplicationRecord
 
   def nearby_point_of_interests(tolerance_mm = 0.5)
     return PointOfInterest.none unless has_real_world_coordinates?
-    
+
     # Get all points of interest from images in the same well
     poi_candidates = well.images.joins(:point_of_interests).includes(:point_of_interests)
                         .flat_map(&:point_of_interests)
-    
+
     # Filter by distance using existing real-world coordinate conversion
     poi_candidates.select do |poi|
       coords = poi.real_world_coordinates
       next false unless coords[:x_mm].present? && coords[:y_mm].present?
-      
+
       distance_to_coordinates(coords[:x_mm], coords[:y_mm], coords[:z_mm]) <= tolerance_mm
     end
   end
@@ -57,14 +57,14 @@ class ScxrdDataset < ApplicationRecord
   # Class method to find spatial correlations for a well
   def self.spatial_correlations_for_well(well, tolerance_mm = 0.5)
     correlations = []
-    
+
     well.scxrd_datasets.with_coordinates.each do |dataset|
       nearby_pois = dataset.nearby_point_of_interests(tolerance_mm)
       if nearby_pois.any?
         correlations << {
           scxrd_dataset: dataset,
           point_of_interests: nearby_pois,
-          distances: nearby_pois.map { |poi| 
+          distances: nearby_pois.map { |poi|
             coords = poi.real_world_coordinates
             {
               poi: poi,
@@ -74,7 +74,7 @@ class ScxrdDataset < ApplicationRecord
         }
       end
     end
-    
+
     correlations
   end
 

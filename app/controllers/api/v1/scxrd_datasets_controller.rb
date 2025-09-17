@@ -1,12 +1,12 @@
 class Api::V1::ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :set_well
-  before_action :set_scxrd_dataset, only: [:show, :update, :destroy]
-  
+  before_action :set_scxrd_dataset, only: [ :show, :update, :destroy ]
+
   # GET /api/v1/wells/:well_id/scxrd_datasets
   def index
     @scxrd_datasets = @well.scxrd_datasets.includes(:lattice_centring).order(created_at: :desc)
-    
+
     render json: {
       well_id: @well.id,
       well_label: @well.well_label,
@@ -71,7 +71,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
     end
 
     parsed_data = @scxrd_dataset.parsed_image_data
-    
+
     if parsed_data[:success]
       render json: {
         success: true,
@@ -92,7 +92,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
   def spatial_correlations
     tolerance_mm = params[:tolerance_mm]&.to_f || 0.5
     correlations = ScxrdDataset.spatial_correlations_for_well(@well, tolerance_mm)
-    
+
     render json: {
       well_id: @well.id,
       well_label: @well.well_label,
@@ -122,57 +122,57 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
   # GET /api/v1/wells/:well_id/scxrd_datasets/search
   def search
     datasets = @well.scxrd_datasets.includes(:lattice_centring)
-    
+
     # Filter by experiment name
     if params[:experiment_name].present?
       datasets = datasets.where("experiment_name ILIKE ?", "%#{params[:experiment_name]}%")
     end
-    
+
     # Filter by date range
     if params[:date_from].present?
       datasets = datasets.where("date_measured >= ?", Date.parse(params[:date_from]))
     end
-    
+
     if params[:date_to].present?
       datasets = datasets.where("date_measured <= ?", Date.parse(params[:date_to]))
     end
-    
+
     # Filter by lattice centering
     if params[:lattice_centring].present?
       datasets = datasets.joins(:lattice_centring)
                         .where(lattice_centrings: { symbol: params[:lattice_centring] })
     end
-    
+
     # Filter by coordinate proximity
     if params[:near_x].present? && params[:near_y].present?
       tolerance = params[:tolerance_mm]&.to_f || 1.0
       datasets = datasets.near_coordinates(
-        params[:near_x].to_f, 
-        params[:near_y].to_f, 
+        params[:near_x].to_f,
+        params[:near_y].to_f,
         tolerance
       )
     end
-    
+
     # Filter by unit cell parameters (with tolerance)
     if params[:unit_cell].present?
       cell_params = params[:unit_cell]
       tolerance_percent = params[:cell_tolerance_percent]&.to_f || 5.0
-      
+
       %w[a b c alpha beta gamma].each do |param|
         if cell_params[param].present?
           value = cell_params[param].to_f
           tolerance_abs = value * (tolerance_percent / 100.0)
           datasets = datasets.where(
-            "#{param} BETWEEN ? AND ?", 
-            value - tolerance_abs, 
+            "#{param} BETWEEN ? AND ?",
+            value - tolerance_abs,
             value + tolerance_abs
           )
         end
       end
     end
-    
+
     datasets = datasets.order(created_at: :desc).limit(100)
-    
+
     render json: {
       well_id: @well.id,
       search_params: params.except(:controller, :action, :well_id),
@@ -237,7 +237,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
       peak_table_size: dataset.has_peak_table? ? number_to_human_size(dataset.peak_table_size) : nil,
       first_image_size: dataset.has_first_image? ? number_to_human_size(dataset.first_image_size) : nil,
       image_metadata: dataset.has_first_image? ? dataset.image_metadata : nil,
-      nearby_point_of_interests: dataset.has_real_world_coordinates? ? 
+      nearby_point_of_interests: dataset.has_real_world_coordinates? ?
         dataset.nearby_point_of_interests.map do |poi|
           coords = poi.real_world_coordinates
           {
