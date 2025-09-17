@@ -2,7 +2,7 @@ class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
   before_action :set_well
-  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :download_first_image, :image_data ]
+  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :download_first_image, :image_data, :peak_table_data ]
 
   def index
     @scxrd_datasets = @well.scxrd_datasets.includes(:lattice_centring).order(created_at: :desc)
@@ -159,6 +159,49 @@ class ScxrdDatasetsController < ApplicationController
       render json: {
         success: false,
         error: "Internal server error while processing image data"
+      }, status: :internal_server_error
+    end
+  end
+
+  def peak_table_data
+    Rails.logger.info "SCXRD: Serving parsed peak table data for dataset #{@scxrd_dataset.id}"
+
+    unless @scxrd_dataset.has_peak_table?
+      render json: { error: "No peak table available" }, status: :not_found
+      return
+    end
+
+    begin
+      parsed_data = @scxrd_dataset.parsed_peak_table_data
+
+      if parsed_data[:success]
+        # Set cache headers for parsed peak table data (cache for 1 hour)
+        expires_in 1.hour, public: true
+
+        # Option to send just a sample for testing (add ?sample=true to URL)
+        data_points = parsed_data[:data_points]
+        if params[:sample] == "true" && data_points&.any?
+          sample_size = [ 1000, data_points.length ].min
+          data_points = data_points.first(sample_size)
+        end
+
+        render json: {
+          success: true,
+          data_points: data_points,
+          statistics: parsed_data[:statistics],
+          metadata: parsed_data[:metadata]
+        }
+      else
+        render json: {
+          success: false,
+          error: parsed_data[:error] || "Failed to parse peak table data"
+        }, status: :unprocessable_entity
+      end
+    rescue => e
+      Rails.logger.error "SCXRD: Error serving peak table data: #{e.message}"
+      render json: {
+        success: false,
+        error: "Internal server error while processing peak table data"
       }, status: :internal_server_error
     end
   end

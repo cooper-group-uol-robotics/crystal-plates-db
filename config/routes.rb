@@ -48,6 +48,7 @@ Rails.application.routes.draw do
         get :download_peak_table
         get :download_first_image
         get :image_data
+        get :peak_table_data
       end
     end
     resources :well_contents do
@@ -115,6 +116,7 @@ Rails.application.routes.draw do
           resources :scxrd_datasets, only: [ :index, :show, :create, :update, :destroy ] do
             member do
               get :image_data
+              get :peak_table_data
             end
             collection do
               get :spatial_correlations
@@ -144,6 +146,7 @@ Rails.application.routes.draw do
         resources :scxrd_datasets, only: [ :index, :show, :create, :update, :destroy ] do
           member do
             get :image_data
+            get :peak_table_data
           end
           collection do
             get :spatial_correlations

@@ -142,4 +142,34 @@ class ScxrdDataset < ApplicationRecord
     parsed_data = parsed_image_data
     parsed_data[:success] && !parsed_data[:image_data].empty?
   end
+
+  def parsed_peak_table_data(force_refresh: false)
+    return @parsed_peak_table_data if @parsed_peak_table_data && !force_refresh
+    return nil unless has_peak_table?
+
+    begin
+      # Download the peak table data
+      peak_data = peak_table.blob.download
+
+      # Parse using the peak table parser service
+      parser = PeakTableParserService.new(peak_data)
+      @parsed_peak_table_data = parser.parse
+
+      @parsed_peak_table_data
+    rescue => e
+      Rails.logger.error "SCXRD Dataset #{id}: Error parsing peak table data: #{e.message}"
+      {
+        success: false,
+        error: e.message,
+        data_points: [],
+        statistics: {}
+      }
+    end
+  end
+
+  def has_valid_peak_table_data?
+    return false unless has_peak_table?
+    parsed_data = parsed_peak_table_data
+    parsed_data[:success] && !parsed_data[:data_points].empty?
+  end
 end
