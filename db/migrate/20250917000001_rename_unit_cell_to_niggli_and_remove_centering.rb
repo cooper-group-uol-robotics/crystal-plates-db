@@ -7,7 +7,7 @@ class RenameUnitCellToNiggliAndRemoveCentering < ActiveRecord::Migration[7.1]
     rename_column :scxrd_datasets, :alpha, :niggli_alpha
     rename_column :scxrd_datasets, :beta, :niggli_beta
     rename_column :scxrd_datasets, :gamma, :niggli_gamma
-    
+
     # Remove lattice centering since Niggli cells are always primitive
     remove_foreign_key :scxrd_datasets, :lattice_centrings
     remove_index :scxrd_datasets, :lattice_centring_id

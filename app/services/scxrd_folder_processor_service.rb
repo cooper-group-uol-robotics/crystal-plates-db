@@ -72,7 +72,7 @@ class ScxrdFolderProcessorService
       Rails.logger.info "SCXRD: Using crystal.ini file: #{crystal_ini_file}"
       @par_data = parse_crystal_ini_file(crystal_ini_file) if File.exist?(crystal_ini_file)
       Rails.logger.info "SCXRD: crystal.ini parsing result: #{@par_data ? 'SUCCESS' : 'FAILED'}"
-      
+
       # Parse coordinates from cmdscript.mac if parsing succeeded
       if @par_data
         coordinates = parse_cmdscript_coordinates
@@ -80,7 +80,7 @@ class ScxrdFolderProcessorService
       end
     else
       Rails.logger.warn "SCXRD: No crystal.ini files found in expinfo folder"
-      
+
       # Fallback to .par file parsing for backwards compatibility
       Rails.logger.info "SCXRD: Falling back to .par file parsing"
       par_pattern = File.join(@folder_path, "**", "*.par")
@@ -95,7 +95,7 @@ class ScxrdFolderProcessorService
         Rails.logger.info "SCXRD: Using .par file: #{par_file}"
         @par_data = parse_par_file(par_file) if File.exist?(par_file)
         Rails.logger.info "SCXRD: .par parsing result: #{@par_data ? 'SUCCESS' : 'FAILED'}"
-        
+
         # Parse coordinates from cmdscript.mac if parsing succeeded
         if @par_data
           coordinates = parse_cmdscript_coordinates
@@ -195,14 +195,14 @@ class ScxrdFolderProcessorService
         # Look for the reduced cell line
         if clean_line.start_with?("reduced cell plus vol=")
           Rails.logger.info "SCXRD: Found reduced cell line at line #{index + 1}"
-          
+
           # Extract the numbers after the equals sign
           # Format: reduced cell plus vol=a b c alpha beta gamma volume
           parts = clean_line.split("=")
           if parts.length == 2
             numbers = parts[1].strip.split(/\s+/).map(&:to_f)
             Rails.logger.info "SCXRD: Found #{numbers.length} numbers: #{numbers.inspect}"
-            
+
             if numbers.length >= 6
               # First six numbers are the reduced cell parameters
               cell_info[:a] = numbers[0]
@@ -211,11 +211,11 @@ class ScxrdFolderProcessorService
               cell_info[:alpha] = numbers[3]
               cell_info[:beta] = numbers[4]
               cell_info[:gamma] = numbers[5]
-              
+
               Rails.logger.info "SCXRD: Parsed reduced cell parameters:"
               Rails.logger.info "SCXRD: a=#{cell_info[:a]}, b=#{cell_info[:b]}, c=#{cell_info[:c]}"
               Rails.logger.info "SCXRD: α=#{cell_info[:alpha]}, β=#{cell_info[:beta]}, γ=#{cell_info[:gamma]}"
-              
+
               break # We found what we need
             else
               Rails.logger.warn "SCXRD: Reduced cell line found but insufficient numbers (#{numbers.length})"
@@ -336,46 +336,46 @@ class ScxrdFolderProcessorService
 
   def parse_cmdscript_coordinates
     Rails.logger.info "SCXRD: Searching for cmdscript.mac file"
-    
+
     # Look for cmdscript.mac in the folder
     cmdscript_pattern = File.join(@folder_path, "**", "cmdscript.mac")
     cmdscript_files = Dir.glob(cmdscript_pattern, File::FNM_CASEFOLD)
-    
+
     Rails.logger.info "SCXRD: Found #{cmdscript_files.count} cmdscript.mac files: #{cmdscript_files.map { |f| File.basename(f) }.inspect}"
-    
+
     return nil unless cmdscript_files.any?
-    
+
     cmdscript_file = cmdscript_files.first
     Rails.logger.info "SCXRD: Using cmdscript.mac file: #{cmdscript_file}"
-    
+
     begin
       # Read the first line of the file
-      first_line = File.open(cmdscript_file, 'r') { |f| f.readline.strip }
+      first_line = File.open(cmdscript_file, "r") { |f| f.readline.strip }
       Rails.logger.info "SCXRD: First line: '#{first_line}'"
-      
+
       # Parse the coordinates from the line format:
       # xx xtalcheck move x 48.25 y 1.33 z 0.08
       if first_line =~ /x\s+([\d.-]+)\s+y\s+([\d.-]+)\s+z\s+([\d.-]+)/
         x_coord = $1.to_f
-        y_coord = $2.to_f  
+        y_coord = $2.to_f
         z_coord = $3.to_f
-        
+
         coordinates = {
           real_world_x_mm: x_coord,
           real_world_y_mm: y_coord,
           real_world_z_mm: z_coord
         }
-        
+
         Rails.logger.info "SCXRD: Parsed coordinates: x=#{x_coord}, y=#{y_coord}, z=#{z_coord}"
-        return coordinates
+        coordinates
       else
         Rails.logger.warn "SCXRD: Could not parse coordinates from line: '#{first_line}'"
-        return nil
+        nil
       end
-      
+
     rescue => e
       Rails.logger.error "SCXRD: Error parsing cmdscript.mac file #{cmdscript_file}: #{e.message}"
-      return nil
+      nil
     end
   end
 end

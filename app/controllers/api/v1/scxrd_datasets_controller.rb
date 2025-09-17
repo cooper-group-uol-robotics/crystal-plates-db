@@ -155,7 +155,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
       tolerance_percent = params[:cell_tolerance_percent]&.to_f || 5.0
 
       %w[niggli_a niggli_b niggli_c niggli_alpha niggli_beta niggli_gamma].each do |param|
-        old_param = param.sub('niggli_', '')
+        old_param = param.sub("niggli_", "")
         if cell_params[old_param].present?
           value = cell_params[old_param].to_f
           tolerance_abs = value * (tolerance_percent / 100.0)

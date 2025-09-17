@@ -18,10 +18,10 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     crystal_ini_content = <<~INI
       [General]
       version=1.0
-      
+
       [Crystal]
       reduced cell plus vol=7.2218583  8.5410638 8.5902173 107.6582105 91.8679754 90.9411566 504.4382028
-      
+
       [Other]
       some_other_data=value
     INI
@@ -30,7 +30,7 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     File.write(crystal_ini_path, crystal_ini_content)
 
     service = ScxrdFolderProcessorService.new(@temp_dir)
-    
+
     # Call the private method directly for testing
     result = service.send(:parse_crystal_ini_file, crystal_ini_path)
 
@@ -48,10 +48,10 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     crystal_ini_content = <<~INI
       [General]
       version=1.0
-      
+
       [Crystal]
       some_other_line=value
-      
+
       [Other]
       some_other_data=value
     INI
@@ -70,10 +70,10 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     crystal_ini_content = <<~INI
       [General]
       version=1.0
-      
+
       [Crystal]
       reduced cell plus vol=invalid data here
-      
+
       [Other]
       some_other_data=value
     INI
@@ -92,10 +92,10 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     crystal_ini_content = <<~INI
       [General]
       version=1.0
-      
+
       [Crystal]
       reduced cell plus vol=7.2218583  8.5410638 8.5902173
-      
+
       [Other]
       some_other_data=value
     INI
@@ -131,7 +131,7 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
 
     crystal_ini_path = File.join(@expinfo_dir, "test_crystal.ini")
     par_path = File.join(@temp_dir, "test.par")
-    
+
     File.write(crystal_ini_path, crystal_ini_content)
     File.write(par_path, par_content)
 
@@ -150,10 +150,10 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     Dir.mktmpdir do |temp_dir|
       cmdscript_file = File.join(temp_dir, "cmdscript.mac")
       File.write(cmdscript_file, "xx xtalcheck move x 48.25 y 1.33 z 0.08\n")
-      
+
       service = ScxrdFolderProcessorService.new(temp_dir)
       coordinates = service.send(:parse_cmdscript_coordinates)
-      
+
       assert_not_nil coordinates
       assert_equal 48.25, coordinates[:real_world_x_mm]
       assert_equal 1.33, coordinates[:real_world_y_mm]
@@ -165,7 +165,7 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     Dir.mktmpdir do |temp_dir|
       service = ScxrdFolderProcessorService.new(temp_dir)
       coordinates = service.send(:parse_cmdscript_coordinates)
-      
+
       assert_nil coordinates
     end
   end
@@ -174,10 +174,10 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     Dir.mktmpdir do |temp_dir|
       cmdscript_file = File.join(temp_dir, "cmdscript.mac")
       File.write(cmdscript_file, "invalid format line\n")
-      
+
       service = ScxrdFolderProcessorService.new(temp_dir)
       coordinates = service.send(:parse_cmdscript_coordinates)
-      
+
       assert_nil coordinates
     end
   end
@@ -187,7 +187,7 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
       # Create expinfo directory and crystal.ini file
       expinfo_dir = File.join(temp_dir, "expinfo")
       Dir.mkdir(expinfo_dir)
-      
+
       crystal_ini_file = File.join(expinfo_dir, "test_crystal.ini")
       File.write(crystal_ini_file, <<~CONTENT)
         [Some Section]
@@ -195,16 +195,16 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
         reduced cell plus vol=7.2218583  8.5410638 8.5902173 107.6582105 91.8679754 90.9411566 504.4382028
         more_content=here
       CONTENT
-      
+
       # Create cmdscript.mac file
       cmdscript_file = File.join(temp_dir, "cmdscript.mac")
       File.write(cmdscript_file, "xx xtalcheck move x 48.25 y 1.33 z 0.08\n")
-      
+
       service = ScxrdFolderProcessorService.new(temp_dir)
       result = service.process
-      
+
       assert_not_nil result[:par_data]
-      
+
       # Check unit cell parameters
       assert_equal 7.2218583, result[:par_data][:a]
       assert_equal 8.5410638, result[:par_data][:b]
@@ -212,7 +212,7 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
       assert_equal 107.6582105, result[:par_data][:alpha]
       assert_equal 91.8679754, result[:par_data][:beta]
       assert_equal 90.9411566, result[:par_data][:gamma]
-      
+
       # Check real world coordinates
       assert_equal 48.25, result[:par_data][:real_world_x_mm]
       assert_equal 1.33, result[:par_data][:real_world_y_mm]
@@ -224,10 +224,10 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     Dir.mktmpdir do |temp_dir|
       cmdscript_file = File.join(temp_dir, "cmdscript.mac")
       File.write(cmdscript_file, "xx xtalcheck move x -12.75 y 45.2 z -3.14\n")
-      
+
       service = ScxrdFolderProcessorService.new(temp_dir)
       coordinates = service.send(:parse_cmdscript_coordinates)
-      
+
       assert_not_nil coordinates
       assert_equal(-12.75, coordinates[:real_world_x_mm])
       assert_equal 45.2, coordinates[:real_world_y_mm]

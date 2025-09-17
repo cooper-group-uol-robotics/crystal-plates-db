@@ -294,25 +294,25 @@ class ScxrdDatasetsController < ApplicationController
             @scxrd_dataset.niggli_gamma = par_data[:gamma] if par_data[:gamma]
 
             Rails.logger.info "SCXRD: Niggli unit cell parameters stored from .par file: a=#{@scxrd_dataset.niggli_a}, b=#{@scxrd_dataset.niggli_b}, c=#{@scxrd_dataset.niggli_c}, α=#{@scxrd_dataset.niggli_alpha}, β=#{@scxrd_dataset.niggli_beta}, γ=#{@scxrd_dataset.niggli_gamma}"
-            
+
             # Store real world coordinates if parsed from cmdscript.mac, but only if not already provided by user
             parsed_coords_used = false
-            
+
             if @scxrd_dataset.real_world_x_mm.blank? && par_data[:real_world_x_mm]
               @scxrd_dataset.real_world_x_mm = par_data[:real_world_x_mm]
               parsed_coords_used = true
             end
-            
+
             if @scxrd_dataset.real_world_y_mm.blank? && par_data[:real_world_y_mm]
               @scxrd_dataset.real_world_y_mm = par_data[:real_world_y_mm]
               parsed_coords_used = true
             end
-            
+
             if @scxrd_dataset.real_world_z_mm.blank? && par_data[:real_world_z_mm]
               @scxrd_dataset.real_world_z_mm = par_data[:real_world_z_mm]
               parsed_coords_used = true
             end
-            
+
             if parsed_coords_used
               Rails.logger.info "SCXRD: Real world coordinates from cmdscript.mac used where not provided by user: x=#{@scxrd_dataset.real_world_x_mm}, y=#{@scxrd_dataset.real_world_y_mm}, z=#{@scxrd_dataset.real_world_z_mm}"
             elsif par_data[:real_world_x_mm] || par_data[:real_world_y_mm] || par_data[:real_world_z_mm]
