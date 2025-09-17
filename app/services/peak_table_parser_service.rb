@@ -10,7 +10,7 @@ class PeakTableParserService
 
   def parse
     begin
-      return parse_binary_data
+      parse_binary_data
     rescue => e
       Rails.logger.error "PeakTableParser: Error parsing binary data: #{e.message}"
       {
@@ -35,7 +35,7 @@ class PeakTableParserService
     return empty_result("File too short to contain chunk count") if num_chunks_bytes.nil? || num_chunks_bytes.length < 8
 
     # Unpack as little-endian unsigned long long (Q<)
-    num_chunks = num_chunks_bytes.unpack1('Q<')
+    num_chunks = num_chunks_bytes.unpack1("Q<")
     Rails.logger.info "PeakTableParser: Number of chunks specified in file header: #{num_chunks}"
 
     # Skip the remaining 304 padding bytes (312 total - 8 already read)
@@ -55,7 +55,7 @@ class PeakTableParserService
 
       # Extract the 5 doubles from the beginning of the chunk
       # Format: 4 doubles (x, y, z, r) + 1 long long (i)
-      doubles = chunk[0, doubles_per_chunk * double_size].unpack('ddddq')
+      doubles = chunk[0, doubles_per_chunk * double_size].unpack("ddddq")
       x, y, z, r, i = doubles
 
       @data_points << {
