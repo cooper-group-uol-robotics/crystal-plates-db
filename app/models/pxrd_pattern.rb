@@ -1,5 +1,5 @@
 class PxrdPattern < ApplicationRecord
-  belongs_to :well
+  belongs_to :well, optional: true
   has_one_attached :pxrd_data_file
 
   # Parse measured_at timestamp from XRDML file after file is attached

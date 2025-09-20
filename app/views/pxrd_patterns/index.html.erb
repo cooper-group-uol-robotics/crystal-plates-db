@@ -1,0 +1,198 @@
+<% content_for :title, "All PXRD Patterns" %>
+<% content_for :head do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<% end %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>All PXRD Patterns</h2>
+  <div class="d-flex align-items-center gap-3">
+    <div class="text-muted">
+      <i class="bi bi-graph-up"></i> <%= @pxrd_patterns.total_count %> patterns total
+    </div>
+    <%= link_to new_pxrd_pattern_path, class: "btn btn-primary" do %>
+      <i class="bi bi-upload"></i> Upload Pattern
+    <% end %>
+  </div>
+</div>
+
+<% if @pxrd_patterns.any? %>
+  <div class="row">
+    <% @pxrd_patterns.each do |pattern| %>
+      <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <!-- Pattern visualization placeholder -->
+            <div style="height: 120px; position: relative;" class="mb-3 bg-light border rounded d-flex align-items-center justify-content-center">
+              <% if pattern.pxrd_data_file.attached? %>
+                <canvas id="pattern-<%= pattern.id %>" style="width: 100%; height: 100%; max-width: 200px; max-height: 120px;"></canvas>
+              <% else %>
+                <div class="text-muted">
+                  <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
+                  <div class="small">No data file</div>
+                </div>
+              <% end %>
+            </div>
+            
+            <!-- Pattern info -->
+            <h6 class="card-title">
+              <% if pattern.well.present? %>
+                <%= link_to(pattern.title.presence || "PXRD Pattern ##{pattern.id}", 
+                           well_pxrd_pattern_path(pattern.well, pattern), 
+                           class: "text-decoration-none") %>
+              <% else %>
+                <%= link_to(pattern.title.presence || "PXRD Pattern ##{pattern.id}", 
+                           pxrd_pattern_path(pattern), 
+                           class: "text-decoration-none") %>
+              <% end %>
+            </h6>
+            
+            <div class="small text-muted mb-2">
+              <% if pattern.well.present? %>
+                <div><strong>Well:</strong> <%= pattern.well.plate.barcode %>-<%= pattern.well.well_label %></div>
+              <% else %>
+                <div><strong>Type:</strong> <span class="badge bg-secondary">Standalone</span></div>
+              <% end %>
+              <div><strong>Measured:</strong> <%= (pattern.measured_at || pattern.created_at).strftime('%b %d, %Y at %H:%M') %></div>
+              <% if pattern.pxrd_data_file.attached? %>
+                <div><strong>File:</strong> <%= pattern.pxrd_data_file.filename %></div>
+              <% end %>
+            </div>
+          </div>
+          
+          <div class="card-footer">
+            <div class="btn-group w-100" role="group">
+              <% if pattern.well.present? %>
+                <%= link_to well_pxrd_pattern_path(pattern.well, pattern), 
+                           class: "btn btn-outline-primary btn-sm" do %>
+                  <i class="bi bi-eye"></i> View
+                <% end %>
+                <%= link_to edit_well_pxrd_pattern_path(pattern.well, pattern), 
+                           class: "btn btn-outline-secondary btn-sm" do %>
+                  <i class="bi bi-pencil"></i> Edit
+                <% end %>
+              <% else %>
+                <%= link_to pxrd_pattern_path(pattern), 
+                           class: "btn btn-outline-primary btn-sm" do %>
+                  <i class="bi bi-eye"></i> View
+                <% end %>
+                <%= link_to edit_pxrd_pattern_path(pattern), 
+                           class: "btn btn-outline-secondary btn-sm" do %>
+                  <i class="bi bi-pencil"></i> Edit
+                <% end %>
+              <% end %>
+              <% if pattern.pxrd_data_file.attached? %>
+                <%= link_to url_for(pattern.pxrd_data_file), 
+                           download: pattern.pxrd_data_file.filename,
+                           class: "btn btn-outline-success btn-sm" do %>
+                  <i class="bi bi-download"></i>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-center mt-4">
+    <%= paginate @pxrd_patterns %>
+  </div>
+
+<% else %>
+  <div class="alert alert-info text-center">
+    <i class="bi bi-graph-up" style="font-size: 3rem;" class="text-muted"></i>
+    <h4>No PXRD Patterns</h4>
+    <p>No PXRD patterns have been uploaded to the system yet.</p>
+    <p class="mb-0">
+      <small class="text-muted">
+        PXRD patterns are uploaded from individual well pages.
+      </small>
+    </p>
+  </div>
+<% end %>
+
+<script>
+  // Initialize pattern visualizations with Chart.js
+  document.addEventListener('DOMContentLoaded', function() {
+    // Small delay to ensure Chart.js is fully loaded
+    setTimeout(function() {
+      console.log('Chart.js available:', !!window.Chart);
+      
+      <% @pxrd_patterns.each do |pattern| %>
+      <% if pattern.pxrd_data_file.attached? %>
+        <% 
+          begin
+            data = pattern.parse_diffraction_data
+            two_theta = data[:two_theta]
+            intensities = data[:intensities]
+        %>
+          <% if two_theta.any? && intensities.any? %>
+            (function() {
+              const canvas = document.getElementById('pattern-<%= pattern.id %>');
+              console.log('Canvas found for pattern <%= pattern.id %>:', !!canvas);
+              
+              if (canvas && window.Chart) {
+                try {
+                  // Set canvas dimensions explicitly
+                  canvas.width = 200;
+                  canvas.height = 120;
+                  
+                  const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
+                  console.log('Creating chart for pattern <%= pattern.id %> with', scatterData.length, 'data points');
+                  
+                  new Chart(canvas.getContext('2d'), {
+                  type: 'scatter',
+                  data: {
+                    datasets: [{
+                      data: scatterData,
+                      backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                      borderColor: 'rgba(13, 110, 253, 0.8)',
+                      borderWidth: 1,
+                      pointRadius: 0,
+                      showLine: true,
+                      tension: 0
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: { enabled: false }
+                    },
+                    scales: {
+                      x: {
+                        display: false,
+                        type: 'linear'
+                      },
+                      y: {
+                        display: false,
+                        type: 'linear'
+                      }
+                    },
+                    elements: {
+                      line: {
+                        tension: 0
+                      }
+                    },
+                    animation: false
+                  }
+                  });
+                  console.log('Chart created successfully for pattern <%= pattern.id %>');
+                } catch (error) {
+                  console.error('Error creating chart for pattern <%= pattern.id %>:', error);
+                }
+              } else {
+                console.warn('Canvas or Chart.js not available for pattern <%= pattern.id %>');
+              }
+            })();
+          <% end %>
+        <% rescue => e %>
+          <!-- Error parsing data for pattern <%= pattern.id %> -->
+        <% end %>
+      <% end %>
+    <% end %>
+    }, 100); // 100ms delay to ensure Chart.js is loaded
+  });
+</script>

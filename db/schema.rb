@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_17_000001) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_20_101121) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -153,7 +153,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_000001) do
   end
 
   create_table "pxrd_patterns", force: :cascade do |t|
-    t.integer "well_id", null: false
+    t.bigint "well_id"
     t.string "title"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -248,7 +248,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_000001) do
   add_foreign_key "plates", "plate_prototypes"
   add_foreign_key "point_of_interests", "images"
   add_foreign_key "prototype_wells", "plate_prototypes"
-  add_foreign_key "pxrd_patterns", "wells"
+  add_foreign_key "pxrd_patterns", "wells", on_delete: :nullify
   add_foreign_key "scxrd_datasets", "wells"
   add_foreign_key "stock_solution_components", "chemicals"
   add_foreign_key "stock_solution_components", "stock_solutions"

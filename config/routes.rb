@@ -58,8 +58,8 @@ Rails.application.routes.draw do
     end
   end
 
-  # Standalone PXRD pattern routes for AJAX calls
-  resources :pxrd_patterns, only: [] do
+  # Standalone PXRD pattern routes for AJAX calls and global index
+  resources :pxrd_patterns, only: [ :index, :show, :new, :create, :edit, :update, :destroy ] do
     member do
       get :plot
     end
@@ -156,7 +156,7 @@ Rails.application.routes.draw do
       end
 
       # Standalone PXRD pattern routes
-      resources :pxrd_patterns, only: [ :index, :show, :update, :destroy ] do
+      resources :pxrd_patterns, only: [ :index, :show, :create, :update, :destroy ] do
         member do
           get :data
         end
