@@ -66,7 +66,7 @@ Rails.application.routes.draw do
   end
 
   # Standalone SCXRD dataset routes for global index
-  resources :scxrd_datasets, only: [ :index, :show ] do
+  resources :scxrd_datasets, only: [ :index, :show, :new, :create, :edit, :update, :destroy ] do
     member do
       get :download
       get :download_peak_table

@@ -62,7 +62,7 @@
   align-items: flex-start;
   justify-content: flex-start;
   min-height: 410px;
-  gap: 10px;
+  gap: 6px;
 }
 
 /* Make cards stack vertically on small screens */

@@ -2,10 +2,17 @@
 
 // Define function in global scope for SCXRD dataset switching
 window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl, wellId, uniqueId = 'scxrd') {
-  console.log('showScxrdDatasetInMain called with:', datasetId, experimentName, datasetUrl, uniqueId);
+  console.log('showScxrdDatasetInMain called with:', datasetId, experimentName, datasetUrl, wellId, uniqueId);
+
+  // Use different API endpoints for well-associated vs standalone datasets
+  const apiUrl = (wellId && wellId !== 'null' && wellId !== null)
+    ? `/wells/${wellId}/scxrd_datasets/${datasetId}`
+    : `/scxrd_datasets/${datasetId}`;
+
+  console.log('Fetching from API URL:', apiUrl);
 
   // Update the main display panels
-  fetch(`/wells/${wellId}/scxrd_datasets/${datasetId}`, {
+  fetch(apiUrl, {
     headers: { 'Accept': 'application/json' }
   })
     .then(response => response.json())
@@ -162,7 +169,8 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
 
         // Load well image with point of interest circle
         setTimeout(() => {
-          window.loadWellImageWithCrystalLocation(datasetId, data.real_world_coordinates.x_mm, data.real_world_coordinates.y_mm, data.real_world_coordinates.z_mm, wellId);
+          const containerId = `${uniqueId}-crystal-image-panel`;
+          window.loadWellImageWithCrystalLocation(datasetId, data.real_world_coordinates.x_mm, data.real_world_coordinates.y_mm, data.real_world_coordinates.z_mm, wellId, containerId);
         }, 100);
       } else {
         crystalImagePanel.innerHTML = `
@@ -177,8 +185,10 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
       // Update experiment info card
       const infoCard = document.getElementById(`${uniqueId}-info-card`);
       let unitCellInfo = '';
-      if (data.unit_cell && data.unit_cell.a) {
-        unitCellInfo = `| Cell: a=${data.unit_cell.a}Å b=${data.unit_cell.b}Å c=${data.unit_cell.c}Å α=${data.unit_cell.alpha}° β=${data.unit_cell.beta}° γ=${data.unit_cell.gamma}°`;
+      // Handle both unit_cell (from well endpoint) and niggli_unit_cell (from standalone endpoint)
+      const unitCell = data.unit_cell || data.niggli_unit_cell;
+      if (unitCell && unitCell.a) {
+        unitCellInfo = `| Cell: a=${unitCell.a}Å b=${unitCell.b}Å c=${unitCell.c}Å α=${unitCell.alpha}° β=${unitCell.beta}° γ=${unitCell.gamma}°`;
       }
 
       infoCard.innerHTML = `
@@ -200,7 +210,7 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
               <i class="fas fa-edit me-1"></i>Edit
             </a>
             ${data.has_archive ? `
-              <a href="/wells/${wellId}/scxrd_datasets/${datasetId}/download" class="btn btn-outline-success">
+              <a href="${(wellId && wellId !== 'null' && wellId !== null) ? `/wells/${wellId}/scxrd_datasets/${datasetId}/download` : `/scxrd_datasets/${datasetId}/download`}" class="btn btn-outline-success">
                 <i class="fas fa-download me-1"></i>Archive
               </a>
             ` : ''}
@@ -224,12 +234,26 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
 };
 
 // Function to load well image with crystal location circle
-window.loadWellImageWithCrystalLocation = function (datasetId, crystalX, crystalY, crystalZ, wellId) {
+window.loadWellImageWithCrystalLocation = function (datasetId, crystalX, crystalY, crystalZ, wellId, containerId = 'crystal-well-image-container') {
   console.log(`Loading well image with crystal location: (${crystalX}, ${crystalY}, ${crystalZ})mm for dataset ${datasetId}`);
 
-  const container = document.getElementById('crystal-well-image-container');
+  const container = document.getElementById(containerId);
   if (!container) {
-    console.error('Crystal well image container not found');
+    console.error(`Crystal well image container not found: ${containerId}`);
+    return;
+  }
+
+  // Handle standalone datasets (no well association)
+  if (!wellId || wellId === 'null' || wellId === null) {
+    console.log('Standalone dataset - no well image available');
+    container.innerHTML = `
+      <div class="text-center p-3 text-muted">
+        <i class="fas fa-info-circle fa-2x mb-3"></i>
+        <div><strong>Standalone Dataset</strong></div>
+        <div class="small">No well image available</div>
+        <div class="small mt-2">Crystal coordinates: (${crystalX != null && !isNaN(parseFloat(crystalX)) ? parseFloat(crystalX).toFixed(3) : 'N/A'}, ${crystalY != null && !isNaN(parseFloat(crystalY)) ? parseFloat(crystalY).toFixed(3) : 'N/A'}, ${crystalZ != null && !isNaN(parseFloat(crystalZ)) ? parseFloat(crystalZ).toFixed(3) : 'N/A'}) mm</div>
+      </div>
+    `;
     return;
   }
 

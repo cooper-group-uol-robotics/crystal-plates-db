@@ -47,10 +47,12 @@
         <div class="card-header text-center bg-light">
           <small class="text-muted">Crystal Image</small>
         </div>
-        <div id="<%= unique_id %>-crystal-image-panel" class="card-body d-flex align-items-center justify-content-center">
-          <div class="text-center text-muted">
-            <i class="fas fa-gem fa-3x mb-3"></i>
-            <p>Loading crystal image...</p>
+        <div class="card-body p-0">
+          <div id="<%= unique_id %>-crystal-image-panel" class="w-100 h-100 d-flex align-items-center justify-content-center">
+            <div class="text-center text-muted">
+              <i class="fas fa-gem fa-3x mb-3"></i>
+              <p>Loading crystal image...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -94,7 +96,7 @@
             '<%= dataset.id %>', 
             '<%= j(dataset.experiment_name) %>', 
             '<%= well ? (params[:well_id] ? well_scxrd_dataset_path(well, dataset) : scxrd_dataset_path(dataset)) : scxrd_dataset_path(dataset) %>',
-            '<%= well.id %>',
+            <%= well ? well.id : 'null' %>,
             '<%= unique_id %>'  // Pass unique ID for this instance
           );
           

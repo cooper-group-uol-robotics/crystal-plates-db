@@ -1,5 +1,5 @@
 class ScxrdDataset < ApplicationRecord
-  belongs_to :well
+  belongs_to :well, optional: true
   has_one_attached :archive
   has_one_attached :peak_table
   has_one_attached :first_image
@@ -39,6 +39,7 @@ class ScxrdDataset < ApplicationRecord
 
   def nearby_point_of_interests(tolerance_mm = 0.5)
     return PointOfInterest.none unless has_real_world_coordinates?
+    return PointOfInterest.none unless well.present?
 
     # Get all points of interest from images in the same well
     poi_candidates = well.images.joins(:point_of_interests).includes(:point_of_interests)

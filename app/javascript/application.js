@@ -10,5 +10,4 @@ import "@hotwired/turbo-rails"
 // Import SCXRD Diffraction Viewer
 import "./scxrd_diffraction_viewer"
 
-// Import Reciprocal Lattice Viewer
-import "./reciprocal_lattice_viewer"
+// Note: Reciprocal Lattice Viewer is loaded via assets pipeline to avoid conflicts

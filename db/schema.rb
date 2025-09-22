@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_20_101121) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_22_124910) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -162,7 +162,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_20_101121) do
   end
 
   create_table "scxrd_datasets", force: :cascade do |t|
-    t.integer "well_id", null: false
+    t.integer "well_id"
     t.string "experiment_name", null: false
     t.float "niggli_a"
     t.float "niggli_b"

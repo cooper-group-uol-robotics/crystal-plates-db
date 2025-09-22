@@ -1,6 +1,6 @@
 class Api::V1::ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
-  before_action :set_well
+  before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
   before_action :set_scxrd_dataset, only: [ :show, :update, :destroy ]
 
   # GET /api/v1/wells/:well_id/scxrd_datasets
@@ -90,6 +90,19 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
 
   # GET /api/v1/wells/:well_id/scxrd_datasets/correlations
   def spatial_correlations
+    # Return empty correlations for standalone datasets (no well)
+    unless @well
+      render json: {
+        well_id: nil,
+        well_label: nil,
+        tolerance_mm: params[:tolerance_mm]&.to_f || 0.5,
+        correlations_count: 0,
+        correlations: [],
+        message: "Spatial correlations not available for standalone datasets"
+      }
+      return
+    end
+
     tolerance_mm = params[:tolerance_mm]&.to_f || 0.5
     correlations = ScxrdDataset.spatial_correlations_for_well(@well, tolerance_mm)
 
@@ -181,6 +194,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
   private
 
   def set_well
+    return if params[:well_id].blank? || params[:well_id] == "null"
     @well = Well.find(params[:well_id])
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Well not found" }, status: :not_found

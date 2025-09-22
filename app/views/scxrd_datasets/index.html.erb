@@ -11,8 +11,11 @@
   <h2>All SCXRD Datasets</h2>
   <div class="d-flex align-items-center gap-3">
     <div class="text-muted">
-      <i class="fas fa-cube"></i> <%= @scxrd_datasets.total_count %> datasets total
+      <i class="bi bi-box"></i> <%= @scxrd_datasets.total_count %> datasets total
     </div>
+    <%= link_to new_scxrd_dataset_path, class: "btn btn-primary" do %>
+      <i class="bi bi-upload"></i> Upload Dataset
+    <% end %>
   </div>
 </div>
 
@@ -30,11 +33,15 @@
                              class: "text-decoration-none") %>
                 </h5>
                 <div class="text-muted small">
-                  <strong>Well:</strong> 
-                  <%= link_to "#{dataset.well.plate.barcode}-#{dataset.well.well_label}", 
-                             dataset.well.plate, 
-                             class: "text-decoration-none" %>
-                  | 
+                  <% if dataset.well.present? %>
+                    <strong>Well:</strong> 
+                    <%= link_to "#{dataset.well.plate.barcode}-#{dataset.well.well_label}", 
+                               dataset.well.plate, 
+                               class: "text-decoration-none" %>
+                    | 
+                  <% else %>
+                    <strong>Type:</strong> <span class="badge bg-secondary">Standalone</span> | 
+                  <% end %>
                   <strong>Measured:</strong> <%= (dataset.date_measured || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
                   <% if dataset.niggli_a.present? %>
                     | <strong>Unit Cell:</strong> 
@@ -57,12 +64,12 @@
                 <div class="btn-group btn-group-sm">
                   <%= link_to scxrd_dataset_path(dataset), 
                              class: "btn btn-outline-primary btn-sm" do %>
-                    <i class="fas fa-eye"></i> Details
+                    <i class="bi bi-eye"></i> Details
                   <% end %>
                   <% if dataset.archive.attached? %>
                     <%= link_to download_scxrd_dataset_path(dataset), 
                                class: "btn btn-outline-success btn-sm" do %>
-                      <i class="fas fa-download"></i> Archive
+                      <i class="bi bi-download"></i> Archive
                     <% end %>
                   <% end %>
                 </div>
@@ -84,12 +91,17 @@
 
 <% else %>
   <div class="alert alert-info text-center">
-    <i class="fas fa-cube" style="font-size: 3rem;" class="text-muted"></i>
+    <i class="bi bi-box" style="font-size: 3rem;" class="text-muted"></i>
     <h4>No SCXRD Datasets</h4>
     <p>No single crystal X-ray diffraction datasets have been uploaded to the system yet.</p>
-    <p class="mb-0">
+    <div class="mt-3">
+      <%= link_to new_scxrd_dataset_path, class: "btn btn-primary" do %>
+        <i class="bi bi-upload"></i> Upload Your First Dataset
+      <% end %>
+    </div>
+    <p class="mt-2 mb-0">
       <small class="text-muted">
-        SCXRD datasets are uploaded from individual well pages.
+        You can also upload SCXRD datasets from individual well pages if associating with a specific well.
       </small>
     </p>
   </div>

@@ -1,7 +1,7 @@
 class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
-  before_action :set_well, if: -> { params[:well_id].present? }
+  before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
   before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :download_first_image, :image_data, :peak_table_data ]
 
   def index
@@ -52,7 +52,11 @@ class ScxrdDatasetsController < ApplicationController
   end
 
   def new
-    @scxrd_dataset = @well.scxrd_datasets.build
+    if @well
+      @scxrd_dataset = @well.scxrd_datasets.build
+    else
+      @scxrd_dataset = ScxrdDataset.new
+    end
     # Note: Lattice centrings removed - Niggli reduced cells are always primitive
   end
 
@@ -60,7 +64,14 @@ class ScxrdDatasetsController < ApplicationController
     # Extract compressed archive parameter before processing model params
     compressed_archive = params.dig(:scxrd_dataset, :compressed_archive)
 
-    @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
+    if @well
+      @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
+      success_redirect = [@well, @scxrd_dataset]
+    else
+      @scxrd_dataset = ScxrdDataset.new(scxrd_dataset_params)
+      success_redirect = @scxrd_dataset
+    end
+    
     @scxrd_dataset.date_uploaded = Time.current
 
     # Set measurement date to current date if not provided
@@ -74,7 +85,7 @@ class ScxrdDatasetsController < ApplicationController
     end
 
     if @scxrd_dataset.save
-      redirect_to [ @well, @scxrd_dataset ], notice: "SCXRD dataset was successfully created."
+      redirect_to success_redirect, notice: "SCXRD dataset was successfully created."
     else
       Rails.logger.error "SCXRD: Failed to save dataset. Errors: #{@scxrd_dataset.errors.full_messages.join(', ')}"
       # Note: Lattice centrings removed - Niggli reduced cells are always primitive
@@ -93,7 +104,8 @@ class ScxrdDatasetsController < ApplicationController
     end
 
     if @scxrd_dataset.update(scxrd_dataset_params)
-      redirect_to [ @well, @scxrd_dataset ], notice: "SCXRD dataset was successfully updated."
+      redirect_path = @well ? [@well, @scxrd_dataset] : @scxrd_dataset
+      redirect_to redirect_path, notice: "SCXRD dataset was successfully updated."
     else
       # Note: Lattice centrings removed - Niggli reduced cells are always primitive
       render :edit
@@ -102,7 +114,8 @@ class ScxrdDatasetsController < ApplicationController
 
   def destroy
     @scxrd_dataset.destroy
-    redirect_to well_scxrd_datasets_path(@well), notice: "SCXRD dataset was successfully deleted."
+    redirect_path = @well ? well_scxrd_datasets_path(@well) : scxrd_datasets_path
+    redirect_to redirect_path, notice: "SCXRD dataset was successfully deleted."
   end
 
   def download
@@ -222,6 +235,7 @@ class ScxrdDatasetsController < ApplicationController
   end
 
   def set_well
+    return if params[:well_id].blank? || params[:well_id] == "null"
     @well = Well.find(params[:well_id])
   end
 
@@ -238,6 +252,7 @@ class ScxrdDatasetsController < ApplicationController
     return unless uploaded_archive.present?
 
     begin
+      archive_start_time = Time.current
       # Create a temporary directory to extract the archive
       Dir.mktmpdir do |temp_dir|
         # Save the uploaded archive temporarily
@@ -363,8 +378,12 @@ class ScxrdDatasetsController < ApplicationController
     filtered_params = params.dup
     filtered_params[:scxrd_dataset] = params[:scxrd_dataset].except(:compressed_archive) if params[:scxrd_dataset]
 
-    filtered_params.require(:scxrd_dataset).permit(:experiment_name, :date_measured,
-                                                   :real_world_x_mm, :real_world_y_mm, :real_world_z_mm,
-                                                   :niggli_a, :niggli_b, :niggli_c, :niggli_alpha, :niggli_beta, :niggli_gamma)
+    # Determine permitted parameters based on context
+    permitted_params = [:experiment_name, :date_measured]
+    
+    # Only allow well_id when we're in well context (not standalone)
+    permitted_params << :well_id if @well.present?
+
+    filtered_params.require(:scxrd_dataset).permit(*permitted_params)
   end
 end

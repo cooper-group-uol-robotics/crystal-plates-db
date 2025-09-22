@@ -7,12 +7,21 @@
         <div class="card-header d-flex justify-content-between align-items-center">
           <div>
             <h4 class="mb-0">SCXRD Dataset: <%= @scxrd_dataset.experiment_name %></h4>
-            <small class="text-muted">Well: <%= @well.well_label %> | Plate: <%= @well.plate.barcode %></small>
+            <% if @scxrd_dataset.well.present? %>
+              <small class="text-muted">Well: <%= @scxrd_dataset.well.well_label %> | Plate: <%= @scxrd_dataset.well.plate.barcode %></small>
+            <% else %>
+              <small class="text-muted"><span class="badge bg-secondary">Standalone Dataset</span></small>
+            <% end %>
           </div>
           <div class="btn-group">
             <% if @scxrd_dataset.archive.attached? %>
-              <%= link_to "Download Archive", download_well_scxrd_dataset_path(@well, @scxrd_dataset), 
-                  class: "btn btn-success btn-sm" %>
+              <% if @scxrd_dataset.well.present? %>
+                <%= link_to "Download Archive", download_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
+                    class: "btn btn-success btn-sm" %>
+              <% else %>
+                <%= link_to "Download Archive", download_scxrd_dataset_path(@scxrd_dataset), 
+                    class: "btn btn-success btn-sm" %>
+              <% end %>
             <% end %>
           </div>
         </div>
@@ -38,8 +47,13 @@
               <% if @scxrd_dataset.has_peak_table? %>
                 <span class="badge bg-success me-2">Available</span>
                 Size: <%= number_to_human_size(@scxrd_dataset.peak_table_size) %> (.tabbin)
-                <%= link_to "Download", download_peak_table_well_scxrd_dataset_path(@well, @scxrd_dataset), 
-                    class: "btn btn-primary btn-sm ms-2" %>
+                <% if @scxrd_dataset.well.present? %>
+                  <%= link_to "Download", download_peak_table_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
+                      class: "btn btn-primary btn-sm ms-2" %>
+                <% else %>
+                  <%= link_to "Download", download_peak_table_scxrd_dataset_path(@scxrd_dataset), 
+                      class: "btn btn-primary btn-sm ms-2" %>
+                <% end %>
               <% else %>
                 <span class="text-muted">Not available</span>
               <% end %>
@@ -50,8 +64,13 @@
               <% if @scxrd_dataset.has_first_image? %>
                 <span class="badge bg-success me-2">Available</span>
                 Size: <%= number_to_human_size(@scxrd_dataset.first_image_size) %> (.rodhypix)
-                <%= link_to "Download", download_first_image_well_scxrd_dataset_path(@well, @scxrd_dataset), 
-                    class: "btn btn-secondary btn-sm ms-2" %>
+                <% if @scxrd_dataset.well.present? %>
+                  <%= link_to "Download", download_first_image_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
+                      class: "btn btn-secondary btn-sm ms-2" %>
+                <% else %>
+                  <%= link_to "Download", download_first_image_scxrd_dataset_path(@scxrd_dataset), 
+                      class: "btn btn-secondary btn-sm ms-2" %>
+                <% end %>
               <% else %>
                 <span class="text-muted">Not available</span>
               <% end %>
@@ -66,8 +85,13 @@
                   Size: <%= number_to_human_size(@scxrd_dataset.archive.byte_size) %>
                   • <%= @scxrd_dataset.archive.content_type %>
                 </small>
-                <%= link_to "Download Complete Archive", download_well_scxrd_dataset_path(@well, @scxrd_dataset), 
-                    class: "btn btn-success btn-sm ms-2" %>
+                <% if @scxrd_dataset.well.present? %>
+                  <%= link_to "Download Complete Archive", download_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
+                      class: "btn btn-success btn-sm ms-2" %>
+                <% else %>
+                  <%= link_to "Download Complete Archive", download_scxrd_dataset_path(@scxrd_dataset), 
+                      class: "btn btn-success btn-sm ms-2" %>
+                <% end %>
                 <br><small class="text-muted mt-1 d-block">
                   Contains all experiment files to recreate the original folder structure
                 </small>
@@ -83,13 +107,23 @@
         <div class="card-footer">
           <div class="d-flex justify-content-between">
             <div class="d-flex align-items-center gap-2">
-              <%= link_to "Edit", edit_well_scxrd_dataset_path(@well, @scxrd_dataset), 
-                  class: "btn btn-primary" %>
-              <%= button_to "Delete", [@well, @scxrd_dataset], 
-                  method: :delete, 
-                  confirm: "Are you sure you want to delete this SCXRD dataset? This action cannot be undone.", 
-                  class: "btn btn-danger" %>
-              <%= link_to 'Back to Plate', @well.plate, class: 'btn btn-secondary' %>
+              <% if @scxrd_dataset.well.present? %>
+                <%= link_to "Edit", edit_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
+                    class: "btn btn-primary" %>
+                <%= button_to "Delete", [@scxrd_dataset.well, @scxrd_dataset], 
+                    method: :delete, 
+                    confirm: "Are you sure you want to delete this SCXRD dataset? This action cannot be undone.", 
+                    class: "btn btn-danger" %>
+                <%= link_to 'Back to Plate', @scxrd_dataset.well.plate, class: 'btn btn-secondary' %>
+              <% else %>
+                <%= link_to "Edit", edit_scxrd_dataset_path(@scxrd_dataset), 
+                    class: "btn btn-primary" %>
+                <%= button_to "Delete", @scxrd_dataset, 
+                    method: :delete, 
+                    confirm: "Are you sure you want to delete this SCXRD dataset? This action cannot be undone.", 
+                    class: "btn btn-danger" %>
+                <%= link_to 'Back to All Datasets', scxrd_datasets_path, class: 'btn btn-secondary' %>
+              <% end %>
             </div>
           </div>
         </div>

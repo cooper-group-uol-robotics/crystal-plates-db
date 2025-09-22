@@ -1,5 +1,5 @@
 <%# app/views/scxrd_datasets/_form.html.erb %>
-<%= form_with(model: [@well, @scxrd_dataset], local: true, html: { multipart: true }) do |form| %>
+<%= form_with(model: @well ? [@well, @scxrd_dataset] : @scxrd_dataset, local: true, html: { multipart: true }) do |form| %>
   <% if @scxrd_dataset.errors.any? %>
     <div id="error_explanation">
       <h2><%= pluralize(@scxrd_dataset.errors.count, "error") %> prohibited this SCXRD dataset from being saved:</h2>
@@ -13,6 +13,8 @@
 
   <!-- Hidden field for experiment name - will be auto-filled from folder name -->
   <%= form.hidden_field :experiment_name, id: 'scxrd_dataset_experiment_name' %>
+
+
 
   <!-- Hidden field to store the compressed ZIP file -->
   <input type="file" name="scxrd_dataset[compressed_archive]" id="scxrd_dataset_compressed_archive" style="display: none;">
@@ -82,29 +84,7 @@
     </div>
   </div>
 
-  <!-- Real-World Coordinates -->
-  <div class="mb-3">
-    <label class="form-label">Real-World Coordinates (mm)</label>
-    <div class="row">
-      <div class="col-md-4">
-        <%= form.label :real_world_x_mm, "X (mm)", class: 'form-label' %>
-        <%= form.number_field :real_world_x_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
-      </div>
-      <div class="col-md-4">
-        <%= form.label :real_world_y_mm, "Y (mm)", class: 'form-label' %>
-        <%= form.number_field :real_world_y_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
-      </div>
-      <div class="col-md-4">
-        <%= form.label :real_world_z_mm, "Z (mm)", class: 'form-label' %>
-        <%= form.number_field :real_world_z_mm, class: 'form-control', step: 0.001, placeholder: "0.000" %>
-      </div>
-    </div>
-    <div class="form-text">
-      <small class="text-muted">
-        Optional: Physical coordinates where this crystal was measured (in millimeters). These can be correlated with points of interest later.
-      </small>
-    </div>
-  </div>
+
 
   <div class="actions">
     <%= form.submit (@scxrd_dataset.persisted? ? "Update SCXRD Dataset" : "Upload SCXRD Dataset"), 
