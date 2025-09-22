@@ -1,6 +1,6 @@
 class DiffractionImagesController < ApplicationController
   before_action :set_scxrd_dataset
-  before_action :set_diffraction_image, only: [:show, :image_data, :download]
+  before_action :set_diffraction_image, only: [:show, :image_data, :parsed_image_data, :download]
 
   def index
     @diffraction_images = @scxrd_dataset.diffraction_images.ordered
@@ -54,6 +54,39 @@ class DiffractionImagesController < ApplicationController
   end
 
   def image_data
+    return render_error("No rodhypix file attached") unless @diffraction_image.rodhypix_file.attached?
+
+    begin
+      # Get metadata without full parsing
+      metadata = @scxrd_dataset.image_metadata_only(diffraction_image: @diffraction_image)
+      
+      if metadata[:success]
+        # Serve the raw file data as base64 for client-side processing
+        raw_data = @diffraction_image.rodhypix_file.blob.download
+        
+        render json: {
+          success: true,
+          raw_data: Base64.strict_encode64(raw_data),
+          dimensions: metadata[:dimensions],
+          pixel_size: metadata[:pixel_size],
+          metadata: metadata[:metadata].merge({
+            run_number: @diffraction_image.run_number,
+            image_number: @diffraction_image.image_number,
+            filename: @diffraction_image.filename,
+            file_size: raw_data.bytesize
+          })
+        }
+      else
+        render_error(metadata[:error])
+      end
+    rescue => e
+      Rails.logger.error "Error serving diffraction image #{@diffraction_image.id}: #{e.message}"
+      render_error("Failed to serve diffraction image: #{e.message}")
+    end
+  end
+
+  # New endpoint for backward compatibility - full server-side parsing if needed
+  def parsed_image_data
     return render_error("No rodhypix file attached") unless @diffraction_image.rodhypix_file.attached?
 
     begin

@@ -15,7 +15,32 @@ class ScxrdDatasetsController < ApplicationController
                                    .order(created_at: :desc)
                                    .page(params[:page])
                                    .per(10)
-      render "index"
+      
+      respond_to do |format|
+        format.html { render "index" }
+        format.json do
+          render json: {
+            success: true,
+            scxrd_datasets: @scxrd_datasets.map do |dataset|
+              {
+                id: dataset.id,
+                experiment_name: dataset.experiment_name,
+                date_measured: dataset.date_measured&.strftime("%Y-%m-%d"),
+                lattice_centring: "primitive",
+                has_peak_table: dataset.has_peak_table?,
+                total_diffraction_images: dataset.diffraction_images.count,
+                well_id: dataset.well&.id,
+                well_location: dataset.well&.location_code,
+                plate_id: dataset.well&.plate&.id,
+                plate_name: dataset.well&.plate&.plate_id
+              }
+            end,
+            total_count: @scxrd_datasets.total_count,
+            current_page: @scxrd_datasets.current_page,
+            total_pages: @scxrd_datasets.total_pages
+          }
+        end
+      end
     end
   end
 

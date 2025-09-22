@@ -44,13 +44,48 @@ class ScxrdDiffractionViewer {
       }
 
       const data = await response.json();
-      console.log('Received data:', { success: data.success, dimensions: data.dimensions, dataLength: data.image_data?.length });
+      console.log('Received data:', { success: data.success, dimensions: data.dimensions, dataLength: data.image_data?.length, hasRawData: !!data.raw_data });
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to load image data');
       }
 
-      this.imageData = data.image_data;
+      // Handle both old format (image_data array) and new format (raw_data base64)
+      if (data.raw_data && !data.image_data) {
+        console.log('Processing raw ROD data client-side...');
+        console.log('Available window objects:', Object.keys(window).filter(k => k.toLowerCase().includes('rod')));
+        console.log('RodImageParser available:', !!window.RodImageParser);
+
+        // Parse raw data using client-side ROD parser
+        if (window.RodImageParser) {
+          try {
+            console.log('Creating RodImageParser instance...');
+            const parser = new window.RodImageParser(data.raw_data);
+            console.log('Parsing data...');
+            const parsedData = await parser.parse();
+            if (parsedData.success) {
+              console.log(`Client-side ROD parsing successful: ${parsedData.image_data.length} pixels`);
+
+              // Use client-side results
+              this.imageData = parsedData.image_data;
+              this.dimensions = parsedData.dimensions;
+
+            } else {
+              throw new Error(`ROD parsing failed: ${parsedData.error}`);
+            }
+          } catch (error) {
+            console.error('Client-side ROD parsing failed:', error);
+            throw error;
+          }
+        } else {
+          console.error('RodImageParser not available');
+          throw new Error('RodImageParser not available for client-side parsing');
+        }
+      } else {
+        // Use pre-parsed image data
+        this.imageData = data.image_data;
+      }
+
       this.dimensions = data.dimensions;
       this.metadata = data.metadata;
       this.currentDiffractionImageId = diffractionImageId;
@@ -63,6 +98,8 @@ class ScxrdDiffractionViewer {
       return false;
     }
   }
+
+
 
   async loadDiffractionImagesList(wellId, datasetId) {
     console.log(`Loading diffraction images list for well ${wellId}, dataset ${datasetId}`);

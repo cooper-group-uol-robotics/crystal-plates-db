@@ -9,5 +9,8 @@ pin "@hotwired/turbo-rails", to: "turbo.min.js"
 # SCXRD Diffraction Viewer using Visual Heatmap
 pin "scxrd_diffraction_viewer", to: "scxrd_diffraction_viewer.js"
 
+# ROD Image Parser for client-side decompression
+pin "rod_image_parser", to: "rod_image_parser.js"
+
 # SCXRD Reciprocal Lattice Viewer using Three.js
 pin "reciprocal_lattice_viewer", to: "reciprocal_lattice_viewer.js"

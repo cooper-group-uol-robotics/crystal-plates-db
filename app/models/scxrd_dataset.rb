@@ -118,6 +118,32 @@ class ScxrdDataset < ApplicationRecord
     diffraction_images.sum(&:file_size) || 0
   end
 
+  def image_metadata_only(diffraction_image: nil)
+    # Fast metadata extraction without full decompression
+    image_source = diffraction_image&.rodhypix_file || first_image
+    return { success: false, error: "No image file attached" } unless image_source&.attached?
+
+    begin
+      # Download the image data
+      image_data = image_source.blob.download
+
+      # Parse just the header using the ROD parser service
+      parser = RodImageParserService.new(image_data)
+      metadata = parser.parse_header_only
+      
+      metadata
+    rescue => e
+      Rails.logger.error "SCXRD Dataset #{id}: Error parsing image metadata: #{e.message}"
+      {
+        success: false,
+        error: e.message,
+        dimensions: [ 0, 0 ],
+        pixel_size: [ 0.0, 0.0 ],
+        metadata: {}
+      }
+    end
+  end
+
   def parsed_image_data(force_refresh: false, diffraction_image: nil)
     return @parsed_image_data if @parsed_image_data && !force_refresh && diffraction_image.nil?
     

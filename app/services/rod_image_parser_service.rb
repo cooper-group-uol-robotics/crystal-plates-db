@@ -15,6 +15,30 @@ class RodImageParserService
     @image_array = nil
   end
 
+  def parse_header_only
+    # Fast header-only parsing for client-side decompression
+    begin
+      parse_header
+
+      {
+        success: true,
+        dimensions: [ @header[:im_npx_x], @header[:im_npx_y] ],
+        pixel_size: [ @header[:real_px_size_x], @header[:real_px_size_y] ],
+        metadata: extract_metadata
+      }
+    rescue => e
+      Rails.logger.error "ROD Parser: Error parsing rodhypix header: #{e.message}"
+
+      {
+        success: false,
+        error: e.message,
+        dimensions: [ 0, 0 ],
+        pixel_size: [ 0.0, 0.0 ],
+        metadata: {}
+      }
+    end
+  end
+
   def parse
     return @result if @result
 
@@ -299,7 +323,7 @@ class RodImageParserService
       image[iy] = decode_ty6_line_python(line_data, nx)
 
       if iy < 3 || iy % (ny / 10) == 0  # Log progress
-        Rails.logger.debug "ROD Parser: Decoded line #{iy}: #{image[iy].first(5)}... (showing first 5 pixels)"
+
       end
     end
 
@@ -362,6 +386,7 @@ class RodImageParserService
         mask = (1 << nbit) - 1
         (0...BLOCKSIZE).each do |j|
           break if opos >= width
+          
           ret[opos] = ((v >> (nbit * j)) & mask) - zero_at
           opos += 1
         end
@@ -369,10 +394,12 @@ class RodImageParserService
 
       # Apply differential encoding to the block just processed
       start_idx = opos - BLOCKSIZE * 2
+      
       (start_idx...opos).each do |i|
         break if i <= 0 || i >= width
 
         offset = ret[i]
+        
         if offset >= SHORT_OVERFLOW_SIGNED
           if offset >= LONG_OVERFLOW_SIGNED
             if ipos + 3 < linedata.length

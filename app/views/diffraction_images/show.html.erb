@@ -1,7 +1,6 @@
 <% content_for :title, "#{@diffraction_image.display_name} - #{@scxrd_dataset.experiment_name}" %>
 <% content_for :head do %>
   <%= stylesheet_link_tag 'scxrd/gallery' %>
-  <%= javascript_include_tag 'scxrd/diffraction_viewer' %>
 <% end %>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -49,22 +48,43 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+  import 'rod_image_parser';
+  import 'scxrd_diffraction_viewer';
+
   document.addEventListener('DOMContentLoaded', function() {
-    // Create diffraction viewer for this specific image
+    // Construct URL for image data endpoint
+    const baseUrl = '<% if @scxrd_dataset.well %>
+      <%= image_data_well_scxrd_dataset_diffraction_image_path(@scxrd_dataset.well, @scxrd_dataset, @diffraction_image) %>
+    <% else %>
+      <%= image_data_scxrd_dataset_diffraction_image_path(@scxrd_dataset, @diffraction_image) %>
+    <% end %>';
+    
+    const metadata = {
+      run_number: <%= @diffraction_image.run_number %>,
+      image_number: <%= @diffraction_image.image_number %>,
+      filename: '<%= @diffraction_image.filename %>',
+      dataset_name: '<%= @scxrd_dataset.experiment_name %>'
+    };
+
+    // Create diffraction viewer for this specific image using new API
     if (window.ScxrdDiffractionViewer) {
-      const viewer = new window.ScxrdDiffractionViewer('diffraction-image-viewer');
-      viewer.wellId = <%= @scxrd_dataset.well&.id || 'null' %>;
-      viewer.datasetId = <%= @scxrd_dataset.id %>;
-      
-      viewer.showLoading();
-      
-      // Load this specific diffraction image
-      viewer.loadImageData(viewer.wellId, viewer.datasetId, <%= @diffraction_image.id %>).then(success => {
-        if (success) {
-          viewer.plotImage();
-        }
-      });
+      try {
+        const viewer = new window.ScxrdDiffractionViewer(
+          'diffraction-image-viewer',
+          baseUrl,
+          metadata
+        );
+        console.log('SCXRD Diffraction Viewer initialized for image:', metadata);
+      } catch (error) {
+        console.error('Failed to initialize ScxrdDiffractionViewer:', error);
+        document.getElementById('diffraction-image-viewer').innerHTML = `
+          <div class="alert alert-danger m-3">
+            <h6>Error Loading Viewer</h6>
+            <p>Failed to initialize diffraction image viewer: ${error.message}</p>
+          </div>
+        `;
+      }
     } else {
       console.error('ScxrdDiffractionViewer not available');
       document.getElementById('diffraction-image-viewer').innerHTML = `

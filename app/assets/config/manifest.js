@@ -8,6 +8,7 @@
 //= link controllers/index.js
 //= link scxrd_diffraction_viewer.js
 //= link reciprocal_lattice_viewer.js
+//= link rod_image_parser.js
 //= link scxrd/diffraction_viewer.js
 //= link scxrd/card_toggler.js
 //= link scxrd/reciprocal_lattice_viewer.js

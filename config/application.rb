@@ -28,5 +28,10 @@ module CrystalPlatesDb
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = false
+
+    # Configure WebAssembly MIME type for proper serving
+    config.before_initialize do
+      Rack::Mime::MIME_TYPES['.wasm'] = 'application/wasm'
+    end
   end
 end
