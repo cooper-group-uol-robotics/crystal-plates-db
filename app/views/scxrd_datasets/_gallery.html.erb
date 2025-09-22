@@ -9,86 +9,9 @@
   </a>
 </div>
 
-<% if @scxrd_datasets.any? %>
-  <div class="row h-100">
-    <!-- Main Display Area -->
-    <div class="col-12 mb-3" style="height: 30vw;">
-      <div class="row h-100 scxrd-main-row">
-        <!-- First Diffraction Image Panel -->
-        <div class="scxrd-card-container d-flex" data-card-id="diffraction">
-          <div class="card h-100 w-100">
-            <div class="card-header text-center bg-light">
-              <small class="text-muted">Diffraction Image</small>
-            </div>
-            <div id="scxrd-first-image-panel" class="card-body p-0" style="position: relative;">
-              <div class="d-flex align-items-center justify-content-center h-100 text-center text-muted">
-                <div>
-                  <i class="fas fa-camera fa-3x mb-3"></i>
-                  <p>Select a dataset to view diffraction image</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Peak Table Panel -->
-        <div class="scxrd-card-container d-flex" data-card-id="reciprocal">
-          <div class="card h-100 w-100">
-            <div class="card-header text-center bg-light">
-              <small class="text-muted">Reciprocal Lattice</small>
-            </div>
-            <div id="scxrd-peak-table-panel" class="card-body p-0 d-flex align-items-center justify-content-center" style="height: 100%; overflow: hidden;">
-              <div class="text-center text-muted">
-                <i class="fas fa-table fa-3x mb-3"></i>
-                <p>Select a dataset to view</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Crystal Image Panel -->
-        <div class="scxrd-card-container d-flex" data-card-id="crystal-image">
-          <div class="card h-100 w-100">
-            <div class="card-header text-center bg-light">
-              <small class="text-muted">Crystal Image</small>
-            </div>
-            <div id="scxrd-crystal-image-panel" class="card-body d-flex align-items-center justify-content-center">
-              <div class="text-center text-muted">
-                <i class="fas fa-gem fa-3x mb-3"></i>
-                <p>Select a dataset to view crystal image</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Structure Panel -->
-        <div class="scxrd-card-container d-flex minimized" data-card-id="structure">
-          <div class="card h-100 w-100">
-            <div class="card-header text-center bg-light">
-              <small class="text-muted">Crystal Structure</small>
-            </div>
-            <div id="scxrd-structure-panel" class="card-body d-flex align-items-center justify-content-center">
-              <div class="text-center text-muted">
-                <i class="fas fa-cube fa-3x mb-3"></i>
-                <p>Select a dataset to view</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Experiment Info Card -->
-    <div class="col-12 mb-3">
-      <div class="card">
-        <div id="scxrd-info-card" class="text-center text-muted p-1">
-          <i class="fas fa-info-circle me-2"></i>
-          Select an SCXRD dataset to view experiment details
-        </div>
-      </div>
-    </div>
-
-    <!-- Dataset Navigator -->
+  <% if @scxrd_datasets.any? %>
+    <!-- Use the reusable dataset viewer for the first dataset -->
+    <%= render 'scxrd_datasets/dataset_viewer', dataset: @scxrd_datasets.first, well: @well, index: 0 %>    <!-- Dataset Navigator -->
     <div class="col-12">
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -104,7 +27,7 @@
                 <div class="card scxrd-thumbnail <%= 'border-primary' if index == 0 %>" 
                      data-dataset-id="<%= dataset.id %>"
                      style="cursor: pointer; transition: all 0.2s;"
-                     onclick="showScxrdDatasetInMain('<%= dataset.id %>', '<%= j(dataset.experiment_name) %>', '<%= well_scxrd_dataset_path(@well, dataset) %>', '<%= @well.id %>')">
+                     onclick="showScxrdDatasetInMain('<%= dataset.id %>', '<%= j(dataset.experiment_name) %>', '<%= well_scxrd_dataset_path(@well, dataset) %>', '<%= @well.id %>', 'scxrd-<%= @scxrd_datasets.first.id %>-0')">
                   <div class="card-body p-2 text-center">
                     <div class="mb-2">
                       <% if dataset.has_first_image? %>
@@ -138,35 +61,7 @@
     </div>
   </div>
 
-  <script>
-    // Reinitialize card toggler for this new gallery content
-    if (window.scxrdCardToggler && typeof window.scxrdCardToggler.reinitialize === 'function') {
-      window.scxrdCardToggler.reinitialize();
-    }
-    
-    // Initialize the first dataset when the gallery loads
-    <% if @scxrd_datasets.first %>
-      function initializeScxrdGallery() {
-        if (typeof window.showScxrdDatasetInMain === 'function') {
-          console.log('Initializing SCXRD gallery with first dataset');
-          showScxrdDatasetInMain(
-            '<%= @scxrd_datasets.first.id %>', 
-            '<%= j(@scxrd_datasets.first.experiment_name) %>', 
-            '<%= well_scxrd_dataset_path(@well, @scxrd_datasets.first) %>',
-            '<%= @well.id %>'
-          );
-        } else {
-          console.log('SCXRD showScxrdDatasetInMain function not available, retrying in 200ms...');
-          setTimeout(initializeScxrdGallery, 200);
-        }
-      }
-      
-      // Start initialization after a short delay to ensure modules are loaded
-      setTimeout(initializeScxrdGallery, 500);
-    <% else %>
-      console.log('No SCXRD datasets to initialize');
-    <% end %>
-  </script>
+
 
 <% else %>
   <div class="alert alert-info text-center">

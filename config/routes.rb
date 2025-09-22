@@ -64,6 +64,17 @@ Rails.application.routes.draw do
       get :plot
     end
   end
+
+  # Standalone SCXRD dataset routes for global index
+  resources :scxrd_datasets, only: [ :index, :show ] do
+    member do
+      get :download
+      get :download_peak_table
+      get :download_first_image
+      get :image_data
+      get :peak_table_data
+    end
+  end
   resources :plates do
     collection do
       get :deleted

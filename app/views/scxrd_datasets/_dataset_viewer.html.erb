@@ -1,0 +1,116 @@
+<%# Reusable SCXRD dataset viewer with collapsible cards %>
+<%# Params: dataset, well, index (optional for unique IDs when multiple on page) %>
+
+<% 
+  dataset_index = local_assigns[:index] || 0
+  unique_id = "scxrd-#{dataset.id}-#{dataset_index}"
+%>
+
+<div class="scxrd-dataset-viewer" data-dataset-id="<%= dataset.id %>" data-index="<%= dataset_index %>">
+  <!-- Main Display Area -->
+  <div class="row scxrd-main-row">
+    <!-- First Diffraction Image Panel -->
+    <div class="scxrd-card-container d-flex" data-card-id="diffraction-<%= unique_id %>">
+      <div class="card h-100 w-100">
+        <div class="card-header text-center bg-light">
+          <small class="text-muted">Diffraction Image</small>
+        </div>
+        <div id="<%= unique_id %>-first-image-panel" class="card-body p-0" style="position: relative;">
+          <div class="d-flex align-items-center justify-content-center h-100 text-center text-muted">
+            <div>
+              <i class="fas fa-camera fa-3x mb-3"></i>
+              <p>Loading diffraction image...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Peak Table Panel -->
+    <div class="scxrd-card-container d-flex" data-card-id="reciprocal-<%= unique_id %>">
+      <div class="card h-100 w-100">
+        <div class="card-header text-center bg-light">
+          <small class="text-muted">Reciprocal Lattice</small>
+        </div>
+        <div id="<%= unique_id %>-peak-table-panel" class="card-body p-0 d-flex align-items-center justify-content-center" style="height: 100%; overflow: hidden;">
+          <div class="text-center text-muted">
+            <i class="fas fa-table fa-3x mb-3"></i>
+            <p>Loading reciprocal lattice...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Crystal Image Panel -->
+    <div class="scxrd-card-container d-flex" data-card-id="crystal-image-<%= unique_id %>">
+      <div class="card h-100 w-100">
+        <div class="card-header text-center bg-light">
+          <small class="text-muted">Crystal Image</small>
+        </div>
+        <div id="<%= unique_id %>-crystal-image-panel" class="card-body d-flex align-items-center justify-content-center">
+          <div class="text-center text-muted">
+            <i class="fas fa-gem fa-3x mb-3"></i>
+            <p>Loading crystal image...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Structure Panel -->
+    <div class="scxrd-card-container d-flex minimized" data-card-id="structure-<%= unique_id %>">
+      <div class="card h-100 w-100">
+        <div class="card-header text-center bg-light">
+          <small class="text-muted">Crystal Structure</small>
+        </div>
+        <div id="<%= unique_id %>-structure-panel" class="card-body d-flex align-items-center justify-content-center">
+          <div class="text-center text-muted">
+            <i class="fas fa-cube fa-3x mb-3"></i>
+            <p>Loading crystal structure...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Experiment Info Card -->
+  <div class="row">
+    <div class="col-12 mb-3">
+      <div class="card">
+        <div id="<%= unique_id %>-info-card" class="text-center text-muted p-1">
+          <i class="fas fa-info-circle me-2"></i>
+          Loading experiment details...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize this dataset viewer
+    (function() {
+      function initializeDatasetViewer() {
+        if (typeof window.showScxrdDatasetInMain === 'function') {
+          console.log('Initializing SCXRD dataset viewer for dataset <%= dataset.id %>');
+          showScxrdDatasetInMain(
+            '<%= dataset.id %>', 
+            '<%= j(dataset.experiment_name) %>', 
+            '<%= well ? (params[:well_id] ? well_scxrd_dataset_path(well, dataset) : scxrd_dataset_path(dataset)) : scxrd_dataset_path(dataset) %>',
+            '<%= well.id %>',
+            '<%= unique_id %>'  // Pass unique ID for this instance
+          );
+          
+          // Reinitialize card toggler for this instance
+          if (window.scxrdCardToggler && typeof window.scxrdCardToggler.reinitializeForContainer === 'function') {
+            const container = document.querySelector('[data-dataset-id="<%= dataset.id %>"][data-index="<%= dataset_index %>"]');
+            window.scxrdCardToggler.reinitializeForContainer(container);
+          }
+        } else {
+          console.log('SCXRD functions not available yet, retrying in 200ms...');
+          setTimeout(initializeDatasetViewer, 200);
+        }
+      }
+      
+      // Start initialization after a short delay
+      setTimeout(initializeDatasetViewer, 100);
+    })();
+  </script>
+</div>

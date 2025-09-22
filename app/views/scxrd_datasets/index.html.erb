@@ -1,107 +1,107 @@
-<% content_for :title, "SCXRD Datasets for Well #{@well.well_label}" %>
+<% content_for :title, "All SCXRD Datasets" %>
+<% content_for :head do %>
+  <%= stylesheet_link_tag 'scxrd/gallery' %>
+  <%= javascript_include_tag 'scxrd/diffraction_viewer' %>
+  <%= javascript_include_tag 'scxrd/card_toggler' %>
+  <%= javascript_include_tag 'scxrd/reciprocal_lattice_viewer' %>
+  <%= javascript_include_tag 'scxrd/gallery' %>
+<% end %>
 
-<div class="container mx-auto px-4 py-8">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-gray-900">
-      SCXRD Datasets for Well <%= @well.well_label %>
-    </h1>
-    <%= link_to "Add New Dataset", new_well_scxrd_dataset_path(@well), 
-        class: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>All SCXRD Datasets</h2>
+  <div class="d-flex align-items-center gap-3">
+    <div class="text-muted">
+      <i class="fas fa-cube"></i> <%= @scxrd_datasets.total_count %> datasets total
+    </div>
   </div>
+</div>
 
-  <div class="mb-4">
-    <%= link_to "← Back to Well", @well, class: "text-blue-600 hover:text-blue-800" %>
-  </div>
-
-  <% if @scxrd_datasets.any? %>
-    <div class="bg-white shadow-md rounded-lg overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Experiment Name
-            </th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Date Measured
-            </th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Lattice Centring
-            </th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Unit Cell
-            </th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Extracted Data
-            </th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <% @scxrd_datasets.each do |dataset| %>
-            <tr>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <%= link_to dataset.experiment_name, [@well, dataset], 
-                    class: "text-blue-600 hover:text-blue-900" %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <%= dataset.date_measured.strftime("%Y-%m-%d") if dataset.date_measured %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                Primitive
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <% if dataset.a.present? %>
-                  a=<%= number_with_precision(dataset.a, precision: 3) %>Å<br>
-                  b=<%= number_with_precision(dataset.b, precision: 3) %>Å<br>
-                  c=<%= number_with_precision(dataset.c, precision: 3) %>Å<br>
-                  α=<%= number_with_precision(dataset.alpha, precision: 1) %>°<br>
-                  β=<%= number_with_precision(dataset.beta, precision: 1) %>°<br>
-                  γ=<%= number_with_precision(dataset.gamma, precision: 1) %>°
-                <% else %>
-                  <span class="text-gray-500">Not specified</span>
-                <% end %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div class="flex space-x-2">
-                  <% if dataset.has_peak_table? %>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Peak Table
-                    </span>
-                  <% end %>
-                  <% if dataset.has_first_image? %>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      First Image
-                    </span>
-                  <% end %>
-                  <% unless dataset.has_peak_table? || dataset.has_first_image? %>
-                    <span class="text-gray-400 text-xs">None</span>
+<% if @scxrd_datasets.any? %>
+  <div class="row">
+    <% @scxrd_datasets.each_with_index do |dataset, index| %>
+      <div class="col-12 mb-4">
+        <div class="card">
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-1">
+                  <%= link_to(dataset.experiment_name.presence || "SCXRD Dataset ##{dataset.id}", 
+                             scxrd_dataset_path(dataset), 
+                             class: "text-decoration-none") %>
+                </h5>
+                <div class="text-muted small">
+                  <strong>Well:</strong> 
+                  <%= link_to "#{dataset.well.plate.barcode}-#{dataset.well.well_label}", 
+                             dataset.well.plate, 
+                             class: "text-decoration-none" %>
+                  | 
+                  <strong>Measured:</strong> <%= (dataset.date_measured || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
+                  <% if dataset.niggli_a.present? %>
+                    | <strong>Unit Cell:</strong> 
+                    a=<%= number_with_precision(dataset.niggli_a, precision: 3) %>Å 
+                    b=<%= number_with_precision(dataset.niggli_b, precision: 3) %>Å 
+                    c=<%= number_with_precision(dataset.niggli_c, precision: 3) %>Å
                   <% end %>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <%= link_to "View", [@well, dataset], class: "text-indigo-600 hover:text-indigo-900 mr-2" %>
-                <%= link_to "Edit", edit_well_scxrd_dataset_path(@well, dataset), class: "text-yellow-600 hover:text-yellow-900 mr-2" %>
-                <% if dataset.archive.attached? %>
-                  <%= link_to "Download", download_well_scxrd_dataset_path(@well, dataset), class: "text-green-600 hover:text-green-900 mr-2" %>
-                <% end %>
-                <%= button_to "Delete", [@well, dataset], 
-                    method: :delete, 
-                    confirm: "Are you sure?", 
-                    class: "text-red-600 hover:text-red-900 border-0 bg-transparent p-0",
-                    style: "display: inline;" %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  <% else %>
-    <div class="bg-gray-50 rounded-lg p-8 text-center">
-      <p class="text-gray-600 text-lg mb-4">No SCXRD datasets found for this well.</p>
-      <%= link_to "Add First Dataset", new_well_scxrd_dataset_path(@well), 
-          class: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
-    </div>
-  <% end %>
-</div>
+              </div>
+              <div class="text-end">
+                <div class="mb-1">
+                  <% if dataset.has_first_image? %>
+                    <span class="badge bg-primary">Image</span>
+                  <% end %>
+                  <% if dataset.has_peak_table? %>
+                    <span class="badge bg-success">Peak Table</span>
+                  <% end %>
+                  <span class="badge bg-info">Primitive</span>
+                </div>
+                <div class="btn-group btn-group-sm">
+                  <%= link_to scxrd_dataset_path(dataset), 
+                             class: "btn btn-outline-primary btn-sm" do %>
+                    <i class="fas fa-eye"></i> Details
+                  <% end %>
+                  <% if dataset.archive.attached? %>
+                    <%= link_to download_scxrd_dataset_path(dataset), 
+                               class: "btn btn-outline-success btn-sm" do %>
+                      <i class="fas fa-download"></i> Archive
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <%= render 'scxrd_datasets/dataset_viewer', dataset: dataset, well: dataset.well, index: index %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-center mt-4">
+    <%= paginate @scxrd_datasets %>
+  </div>
+
+<% else %>
+  <div class="alert alert-info text-center">
+    <i class="fas fa-cube" style="font-size: 3rem;" class="text-muted"></i>
+    <h4>No SCXRD Datasets</h4>
+    <p>No single crystal X-ray diffraction datasets have been uploaded to the system yet.</p>
+    <p class="mb-0">
+      <small class="text-muted">
+        SCXRD datasets are uploaded from individual well pages.
+      </small>
+    </p>
+  </div>
+<% end %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize card toggler for the page
+    if (window.scxrdCardToggler && typeof window.scxrdCardToggler.reinitialize === 'function') {
+      setTimeout(() => {
+        window.scxrdCardToggler.reinitialize();
+      }, 500);
+    }
+  });
+</script>

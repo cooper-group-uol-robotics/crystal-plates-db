@@ -64,6 +64,9 @@
             <li class="nav-item">
               <%= link_to "PXRD Patterns", pxrd_patterns_path, class: "nav-link #{'active' if controller_name == 'pxrd_patterns'}" %>
             </li>
+            <li class="nav-item">
+              <%= link_to "SCXRD Datasets", scxrd_datasets_path, class: "nav-link #{'active' if controller_name == 'scxrd_datasets' && params[:well_id].blank?}" %>
+            </li>
           </ul>
           <ul class="navbar-nav">
             <li class="nav-item">

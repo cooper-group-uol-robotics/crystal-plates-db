@@ -25,6 +25,49 @@ class ScxrdCardToggler {
     this.setupCardToggles();
   }
 
+  // Public method to reinitialize for a specific container
+  reinitializeForContainer(container) {
+    if (!container) return;
+    console.log('Reinitializing SCXRD card toggler for container:', container);
+
+    const cardContainers = container.querySelectorAll('[data-card-id]');
+    cardContainers.forEach(cardContainer => {
+      const header = cardContainer.querySelector('.card-header');
+      const cardId = cardContainer.getAttribute('data-card-id');
+
+      if (header && !header.classList.contains('toggle-initialized')) {
+        header.style.cursor = 'pointer';
+        header.style.userSelect = 'none';
+        header.addEventListener('click', () => this.toggleCard(cardId));
+
+        // Add visual indication that it's clickable
+        header.innerHTML += ' <i class="fas fa-chevron-up toggle-icon ms-1" style="font-size: 0.8em; transition: transform 0.3s ease;"></i>';
+
+        // Mark as initialized to avoid duplicate handlers
+        header.classList.add('toggle-initialized');
+      }
+    });
+
+    // Initialize default states for this container
+    this.initializeDefaultStatesForContainer(container);
+  }
+
+  initializeDefaultStatesForContainer(container) {
+    const allCards = container.querySelectorAll('[data-card-id]');
+    allCards.forEach((cardElement, index) => {
+      const cardId = cardElement.getAttribute('data-card-id');
+      if (index < 3 && !cardElement.classList.contains('minimized')) {
+        // Add to maximized history for the first 3 cards
+        if (!this.maximizedHistory.includes(cardId)) {
+          this.maximizedHistory.push(cardId);
+        }
+      } else if (cardElement.classList.contains('minimized')) {
+        // Ensure minimized cards have the right styling
+        this.applyMinimizedStyling(cardElement);
+      }
+    });
+  }
+
   setupCardToggles() {
     const cardContainers = document.querySelectorAll('[data-card-id]');
     cardContainers.forEach(container => {

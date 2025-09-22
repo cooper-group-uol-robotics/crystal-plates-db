@@ -1,14 +1,22 @@
 class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
-  before_action :set_well
+  before_action :set_well, if: -> { params[:well_id].present? }
   before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :download_first_image, :image_data, :peak_table_data ]
 
   def index
-    @scxrd_datasets = @well.scxrd_datasets.order(created_at: :desc)
-    Rails.logger.info "SCXRD: Loading gallery for well #{@well.id}, found #{@scxrd_datasets.count} datasets"
-    @scxrd_datasets.each { |ds| Rails.logger.info "SCXRD: Dataset #{ds.id} - #{ds.experiment_name}" }
-    render partial: "scxrd_datasets/gallery", locals: { well: @well }
+    if params[:well_id].present?
+      # Well-specific index (existing functionality)
+      @scxrd_datasets = @well.scxrd_datasets.order(created_at: :desc)
+      render partial: "scxrd_datasets/gallery", locals: { well: @well }
+    else
+      # Global index for all SCXRD datasets
+      @scxrd_datasets = ScxrdDataset.includes(well: :plate)
+                                   .order(created_at: :desc)
+                                   .page(params[:page])
+                                   .per(10)
+      render "index"
+    end
   end
 
   def show
@@ -218,7 +226,12 @@ class ScxrdDatasetsController < ApplicationController
   end
 
   def set_scxrd_dataset
-    @scxrd_dataset = @well.scxrd_datasets.find(params[:id])
+    if @well
+      @scxrd_dataset = @well.scxrd_datasets.find(params[:id])
+    else
+      @scxrd_dataset = ScxrdDataset.find(params[:id])
+      @well = @scxrd_dataset.well  # Set well for use in views
+    end
   end
 
   def process_compressed_archive(uploaded_archive)
