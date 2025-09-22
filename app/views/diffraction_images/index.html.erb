@@ -1,0 +1,77 @@
+<% content_for :title, "Diffraction Images - #{@scxrd_dataset.experiment_name}" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2>Diffraction Images</h2>
+    <div class="text-muted">
+      <strong>Dataset:</strong> <%= @scxrd_dataset.experiment_name %>
+      <% if @scxrd_dataset.well %>
+        | <strong>Well:</strong> <%= @scxrd_dataset.well.plate.barcode %>-<%= @scxrd_dataset.well.well_label %>
+      <% else %>
+        | <strong>Type:</strong> <span class="badge bg-secondary">Standalone</span>
+      <% end %>
+    </div>
+  </div>
+  <div>
+    <%= link_to "Back to Dataset", 
+               @scxrd_dataset.well ? [@scxrd_dataset.well, @scxrd_dataset] : @scxrd_dataset,
+               class: "btn btn-secondary" %>
+  </div>
+</div>
+
+<% if @diffraction_images.any? %>
+  <div class="alert alert-info mb-4">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong><%= @diffraction_images.count %></strong> diffraction images across <strong><%= @runs.keys.length %></strong> runs
+  </div>
+
+  <% @runs.each do |run_number, images| %>
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="fas fa-play me-2"></i>Run <%= run_number %>
+          <span class="badge bg-primary ms-2"><%= images.length %> images</span>
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <% images.each do |image| %>
+            <div class="col-md-4 col-lg-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <i class="fas fa-camera fa-3x text-primary mb-3"></i>
+                  <h6 class="card-title">Image <%= image.image_number %></h6>
+                  <p class="card-text small text-muted">
+                    <%= image.file_size_human %>
+                  </p>
+                  <div class="btn-group btn-group-sm">
+                    <%= link_to [@scxrd_dataset, image], 
+                               class: "btn btn-outline-primary" do %>
+                      <i class="fas fa-eye me-1"></i>View
+                    <% end %>
+                    <%= link_to download_scxrd_dataset_diffraction_image_path(@scxrd_dataset, image), 
+                               class: "btn btn-outline-success" do %>
+                      <i class="fas fa-download me-1"></i>Download
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+<% else %>
+  <div class="alert alert-warning text-center">
+    <i class="fas fa-exclamation-triangle fa-3x mb-3 text-muted"></i>
+    <h4>No Diffraction Images</h4>
+    <p>This dataset doesn't have any diffraction images stored yet.</p>
+    <p class="mb-0">
+      <small class="text-muted">
+        Diffraction images are extracted when uploading a compressed archive containing frames/*.rodhypix files.
+      </small>
+    </p>
+  </div>
+<% end %>

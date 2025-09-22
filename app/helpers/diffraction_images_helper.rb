@@ -1,0 +1,2 @@
+module DiffractionImagesHelper
+end

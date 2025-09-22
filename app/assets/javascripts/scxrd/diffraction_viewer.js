@@ -17,11 +17,24 @@ class ScxrdDiffractionViewer {
     return window.VisualHeatmap || window.visualHeatmap;
   }
 
-  async loadImageData(wellId, datasetId) {
-    console.log(`Loading SCXRD image data for well ${wellId}, dataset ${datasetId}`);
+  async loadImageData(wellId, datasetId, diffractionImageId = null) {
+    console.log(`Loading SCXRD image data for well ${wellId}, dataset ${datasetId}, diffraction image ${diffractionImageId}`);
 
     try {
-      const url = `/wells/${wellId}/scxrd_datasets/${datasetId}/image_data`;
+      // Use different URL based on whether we're loading a specific diffraction image or the first/legacy image
+      let url;
+      if (diffractionImageId) {
+        // Load specific diffraction image
+        url = wellId && wellId !== 'null' && wellId !== null
+          ? `/wells/${wellId}/scxrd_datasets/${datasetId}/diffraction_images/${diffractionImageId}/image_data`
+          : `/scxrd_datasets/${datasetId}/diffraction_images/${diffractionImageId}/image_data`;
+      } else {
+        // Load first/legacy image (backward compatibility)
+        url = wellId && wellId !== 'null' && wellId !== null
+          ? `/wells/${wellId}/scxrd_datasets/${datasetId}/image_data`
+          : `/scxrd_datasets/${datasetId}/image_data`;
+      }
+
       console.log(`Fetching from: ${url}`);
       const response = await fetch(url);
 
@@ -40,6 +53,7 @@ class ScxrdDiffractionViewer {
       this.imageData = data.image_data;
       this.dimensions = data.dimensions;
       this.metadata = data.metadata;
+      this.currentDiffractionImageId = diffractionImageId;
 
       console.log(`Loaded ${this.dimensions[0]}x${this.dimensions[1]} diffraction image`);
       return true;
@@ -48,6 +62,89 @@ class ScxrdDiffractionViewer {
       this.showError(error.message);
       return false;
     }
+  }
+
+  async loadDiffractionImagesList(wellId, datasetId) {
+    console.log(`Loading diffraction images list for well ${wellId}, dataset ${datasetId}`);
+
+    try {
+      const url = wellId && wellId !== 'null' && wellId !== null
+        ? `/wells/${wellId}/scxrd_datasets/${datasetId}/diffraction_images`
+        : `/scxrd_datasets/${datasetId}/diffraction_images`;
+
+      console.log(`Fetching diffraction images from: ${url}`);
+      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Received diffraction images data:', { success: data.success, count: data.diffraction_images?.length });
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load diffraction images');
+      }
+
+      this.diffractionImages = data.diffraction_images;
+      this.availableRuns = data.runs;
+      this.totalImagesCount = data.total_count;
+
+      console.log(`Loaded ${this.totalImagesCount} diffraction images across ${this.availableRuns.length} runs`);
+      return true;
+    } catch (error) {
+      console.error('Error loading diffraction images list:', error);
+      // If loading diffraction images fails, continue with legacy mode
+      this.diffractionImages = [];
+      this.availableRuns = [];
+      this.totalImagesCount = 0;
+      return false;
+    }
+  }
+
+  getCurrentImageIndex() {
+    if (!this.diffractionImages || !this.currentDiffractionImageId) return -1;
+    return this.diffractionImages.findIndex(img => img.id === this.currentDiffractionImageId);
+  }
+
+  getNextImage() {
+    const currentIndex = this.getCurrentImageIndex();
+    if (currentIndex === -1 || currentIndex >= this.diffractionImages.length - 1) return null;
+    return this.diffractionImages[currentIndex + 1];
+  }
+
+  getPreviousImage() {
+    const currentIndex = this.getCurrentImageIndex();
+    if (currentIndex <= 0) return null;
+    return this.diffractionImages[currentIndex - 1];
+  }
+
+  async navigateToImage(diffractionImageId) {
+    if (!diffractionImageId) return false;
+
+    console.log(`Navigating to diffraction image ${diffractionImageId}`);
+    const success = await this.loadImageData(this.wellId, this.datasetId, diffractionImageId);
+    if (success) {
+      this.plotImage();
+      this.updateNavigationControls();
+    }
+    return success;
+  }
+
+  async navigateNext() {
+    const nextImage = this.getNextImage();
+    if (nextImage) {
+      return await this.navigateToImage(nextImage.id);
+    }
+    return false;
+  }
+
+  async navigatePrevious() {
+    const previousImage = this.getPreviousImage();
+    if (previousImage) {
+      return await this.navigateToImage(previousImage.id);
+    }
+    return false;
   }
 
   createSuperpixelHeatmapData() {
@@ -132,7 +229,7 @@ class ScxrdDiffractionViewer {
     this.plotDiv.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column;">
         <div id="${this.containerId}-canvas" style="width: 100%; flex: 1; border: 1px solid #dee2e6; overflow: hidden; background: #000;"></div>
-        <div id="${this.containerId}-controls" style="height: 50px; padding: 5px; background: #f8f9fa; border-top: 1px solid #dee2e6; flex-shrink: 0;">
+        <div id="${this.containerId}-controls" style="height: 60px; padding: 5px; background: #f8f9fa; border-top: 1px solid #dee2e6; flex-shrink: 0;">
           <!-- Controls will be added here -->
         </div>
       </div>
@@ -275,8 +372,29 @@ class ScxrdDiffractionViewer {
     const defaultValue = Math.round(this.defaultIntensity || 100);
     const maxValue = Math.round(this.maxSliderValue || 1000);
 
+    // Build navigation controls if we have multiple diffraction images
+    let navigationControls = '';
+    if (this.totalImagesCount > 1) {
+      const currentIndex = this.getCurrentImageIndex();
+      const currentImage = this.diffractionImages[currentIndex];
+      const imageInfo = currentImage ? `${currentImage.display_name}` : 'Legacy Image';
+
+      navigationControls = `
+        <div class="d-flex align-items-center me-3">
+          <button id="${this.containerId}-prev" class="btn btn-sm btn-outline-secondary me-1" ${currentIndex <= 0 ? 'disabled' : ''}>
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <span class="mx-2 small text-nowrap">${imageInfo} (${currentIndex + 1}/${this.totalImagesCount})</span>
+          <button id="${this.containerId}-next" class="btn btn-sm btn-outline-secondary ms-1" ${currentIndex >= this.totalImagesCount - 1 ? 'disabled' : ''}>
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      `;
+    }
+
     controlsDiv.innerHTML = `
-      <div class="d-flex align-items-center justify-content-center" style="font-size: 0.8rem;">
+      <div class="d-flex align-items-center justify-content-center flex-wrap gap-2" style="font-size: 0.8rem;">
+        ${navigationControls}
         <div class="d-flex align-items-center">
           <label class="me-2">Intensity:</label>
           <input type="range" id="${this.containerId}-intensity" class="form-range me-2" 
@@ -322,6 +440,26 @@ class ScxrdDiffractionViewer {
       }
     });
 
+    // Add navigation event listeners
+    const prevButton = document.getElementById(`${this.containerId}-prev`);
+    const nextButton = document.getElementById(`${this.containerId}-next`);
+
+    if (prevButton) {
+      prevButton.addEventListener('click', async () => {
+        prevButton.disabled = true;
+        await this.navigatePrevious();
+        // Button state will be updated by updateNavigationControls
+      });
+    }
+
+    if (nextButton) {
+      nextButton.addEventListener('click', async () => {
+        nextButton.disabled = true;
+        await this.navigateNext();
+        // Button state will be updated by updateNavigationControls
+      });
+    }
+
     // Store reference for export function
     window[`scxrdViewer_${this.containerId.replace('-', '_')}`] = this;
   }
@@ -332,6 +470,26 @@ class ScxrdDiffractionViewer {
       this.heatmapInstance.setZoom(zoomLevel);
       this.heatmapInstance.render();
       console.log(`Zoom set to ${zoomLevel}x`);
+    }
+  }
+
+  updateNavigationControls() {
+    const prevButton = document.getElementById(`${this.containerId}-prev`);
+    const nextButton = document.getElementById(`${this.containerId}-next`);
+
+    if (prevButton && nextButton) {
+      const currentIndex = this.getCurrentImageIndex();
+      const currentImage = this.diffractionImages[currentIndex];
+
+      prevButton.disabled = currentIndex <= 0;
+      nextButton.disabled = currentIndex >= this.totalImagesCount - 1;
+
+      // Update the image info display
+      const imageInfo = currentImage ? `${currentImage.display_name}` : 'Legacy Image';
+      const infoSpan = prevButton.parentElement.querySelector('.mx-2');
+      if (infoSpan) {
+        infoSpan.textContent = `${imageInfo} (${currentIndex + 1}/${this.totalImagesCount})`;
+      }
     }
   }
 

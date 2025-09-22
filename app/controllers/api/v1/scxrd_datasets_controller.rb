@@ -247,6 +247,9 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
     base_json.merge({
       peak_table_size: dataset.has_peak_table? ? number_to_human_size(dataset.peak_table_size) : nil,
       first_image_size: dataset.has_first_image? ? number_to_human_size(dataset.first_image_size) : nil,
+      has_diffraction_images: dataset.has_diffraction_images?,
+      diffraction_images_count: dataset.diffraction_images_count,
+      total_diffraction_images_size: dataset.has_diffraction_images? ? number_to_human_size(dataset.total_diffraction_images_size) : nil,
       image_metadata: dataset.has_first_image? ? dataset.image_metadata : nil,
       nearby_point_of_interests: dataset.has_real_world_coordinates? ?
         dataset.nearby_point_of_interests.map do |poi|

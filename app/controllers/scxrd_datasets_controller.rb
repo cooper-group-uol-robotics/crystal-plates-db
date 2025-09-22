@@ -30,6 +30,8 @@ class ScxrdDatasetsController < ApplicationController
           lattice_centring: "primitive",  # Niggli reduced cells are always primitive
           has_peak_table: @scxrd_dataset.has_peak_table?,
           has_first_image: @scxrd_dataset.has_first_image?,
+          has_diffraction_images: @scxrd_dataset.has_diffraction_images?,
+          diffraction_images_count: @scxrd_dataset.diffraction_images_count,
           has_archive: @scxrd_dataset.archive.attached?,
           peak_table_size: @scxrd_dataset.has_peak_table? ? number_to_human_size(@scxrd_dataset.peak_table_size) : nil,
           first_image_size: @scxrd_dataset.has_first_image? ? number_to_human_size(@scxrd_dataset.first_image_size) : nil,
@@ -308,6 +310,41 @@ class ScxrdDatasetsController < ApplicationController
               content_type: "application/octet-stream"
             )
             Rails.logger.info "SCXRD: First image stored (#{number_to_human_size(result[:first_image].bytesize)})"
+          end
+
+          # Store all diffraction images as DiffractionImage records
+          if result[:all_diffraction_images] && result[:all_diffraction_images].any?
+            Rails.logger.info "SCXRD: Processing #{result[:all_diffraction_images].length} diffraction images..."
+            
+            result[:all_diffraction_images].each_with_index do |image_data, index|
+              begin
+                diffraction_image = @scxrd_dataset.diffraction_images.build(
+                  run_number: image_data[:run_number],
+                  image_number: image_data[:image_number],
+                  filename: image_data[:filename],
+                  file_size: image_data[:file_size]
+                )
+                
+                diffraction_image.rodhypix_file.attach(
+                  io: StringIO.new(image_data[:data]),
+                  filename: image_data[:filename],
+                  content_type: "application/octet-stream"
+                )
+                
+                diffraction_image.save!
+                
+                # Log progress every 100 images to avoid log spam
+                if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
+                  Rails.logger.info "SCXRD: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
+                end
+                
+              rescue => e
+                Rails.logger.error "SCXRD: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
+              end
+            end
+            
+            total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
+            Rails.logger.info "SCXRD: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
           end
 
           # Store unit cell parameters from .par file if available

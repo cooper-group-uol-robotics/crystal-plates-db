@@ -50,6 +50,12 @@ Rails.application.routes.draw do
         get :image_data
         get :peak_table_data
       end
+      resources :diffraction_images, only: [:index, :show] do
+        member do
+          get :image_data
+          get :download
+        end
+      end
     end
     resources :well_contents do
       collection do
@@ -73,6 +79,12 @@ Rails.application.routes.draw do
       get :download_first_image
       get :image_data
       get :peak_table_data
+    end
+    resources :diffraction_images, only: [:index, :show] do
+      member do
+        get :image_data
+        get :download
+      end
     end
   end
   resources :plates do
@@ -133,6 +145,11 @@ Rails.application.routes.draw do
               get :spatial_correlations
               get :search
             end
+            resources :diffraction_images, only: [:index, :show] do
+              member do
+                get :image_data
+              end
+            end
           end
         end
       end
@@ -162,6 +179,11 @@ Rails.application.routes.draw do
           collection do
             get :spatial_correlations
             get :search
+          end
+          resources :diffraction_images, only: [:index, :show] do
+            member do
+              get :image_data
+            end
           end
         end
       end

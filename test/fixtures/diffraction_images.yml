@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  scxrd_dataset: one
+  run_number: 1
+  image_number: 1
+  filename: MyString
+
+two:
+  scxrd_dataset: two
+  run_number: 1
+  image_number: 1
+  filename: MyString

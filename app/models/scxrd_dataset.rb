@@ -1,5 +1,6 @@
 class ScxrdDataset < ApplicationRecord
   belongs_to :well, optional: true
+  has_many :diffraction_images, dependent: :destroy
   has_one_attached :archive
   has_one_attached :peak_table
   has_one_attached :first_image
@@ -83,7 +84,7 @@ class ScxrdDataset < ApplicationRecord
   end
 
   def has_first_image?
-    first_image.attached?
+    first_image.attached? || diffraction_images.any?
   end
 
   def peak_table_size
@@ -96,19 +97,46 @@ class ScxrdDataset < ApplicationRecord
     first_image.blob.byte_size
   end
 
-  def parsed_image_data(force_refresh: false)
-    return @parsed_image_data if @parsed_image_data && !force_refresh
-    return nil unless has_first_image?
+  # Diffraction images methods
+  def has_diffraction_images?
+    diffraction_images.any?
+  end
+
+  def diffraction_images_count
+    diffraction_images.count
+  end
+
+  def runs_available
+    diffraction_images.distinct.pluck(:run_number).sort
+  end
+
+  def first_diffraction_image
+    diffraction_images.ordered.first
+  end
+
+  def total_diffraction_images_size
+    diffraction_images.sum(&:file_size) || 0
+  end
+
+  def parsed_image_data(force_refresh: false, diffraction_image: nil)
+    return @parsed_image_data if @parsed_image_data && !force_refresh && diffraction_image.nil?
+    
+    # Determine which image to parse
+    image_source = diffraction_image&.rodhypix_file || first_image
+    return nil unless image_source&.attached?
 
     begin
       # Download the image data
-      image_data = first_image.blob.download
+      image_data = image_source.blob.download
 
       # Parse using the ROD parser service
       parser = RodImageParserService.new(image_data)
-      @parsed_image_data = parser.parse
-
-      @parsed_image_data
+      parsed_data = parser.parse
+      
+      # Cache only if parsing the default first image
+      @parsed_image_data = parsed_data if diffraction_image.nil?
+      
+      parsed_data
     rescue => e
       Rails.logger.error "SCXRD Dataset #{id}: Error parsing image data: #{e.message}"
       {
@@ -137,9 +165,9 @@ class ScxrdDataset < ApplicationRecord
     parsed_data[:metadata] if parsed_data[:success]
   end
 
-  def has_valid_image_data?
-    return false unless has_first_image?
-    parsed_data = parsed_image_data
+  def has_valid_image_data?(diffraction_image: nil)
+    return false unless (diffraction_image&.rodhypix_file&.attached? || first_image.attached?)
+    parsed_data = parsed_image_data(diffraction_image: diffraction_image)
     parsed_data[:success] && !parsed_data[:image_data].empty?
   end
 

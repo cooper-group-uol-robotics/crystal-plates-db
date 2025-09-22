@@ -45,14 +45,30 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
           `;
 
           // Now create viewer and load data
-          setTimeout(() => {
+          setTimeout(async () => {
             const viewer = new window.ScxrdDiffractionViewer(plotId);
             viewer.showLoading();
-            viewer.loadImageData(wellId, datasetId).then(success => {
-              if (success) {
-                viewer.plotImage();
-              }
-            });
+
+            // Store well and dataset IDs for navigation
+            viewer.wellId = wellId;
+            viewer.datasetId = datasetId;
+
+            // Load diffraction images list first (for navigation)
+            await viewer.loadDiffractionImagesList(wellId, datasetId);
+
+            // Load the first available diffraction image, or fall back to legacy first image
+            let success = false;
+            if (viewer.diffractionImages && viewer.diffractionImages.length > 0) {
+              // Load the first diffraction image from the new system
+              success = await viewer.loadImageData(wellId, datasetId, viewer.diffractionImages[0].id);
+            } else {
+              // Fall back to legacy first image
+              success = await viewer.loadImageData(wellId, datasetId);
+            }
+
+            if (success) {
+              viewer.plotImage();
+            }
           }, 100);
         } else {
           // Fallback if ScxrdDiffractionViewer is not available

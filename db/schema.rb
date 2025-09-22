@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_22_124910) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_22_145639) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -52,6 +52,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_124910) do
     t.index ["barcode"], name: "index_chemicals_on_barcode"
     t.index ["cas"], name: "index_chemicals_on_cas"
     t.index ["name"], name: "index_chemicals_on_name"
+  end
+
+  create_table "diffraction_images", force: :cascade do |t|
+    t.integer "scxrd_dataset_id", null: false
+    t.integer "run_number", null: false
+    t.integer "image_number", null: false
+    t.string "filename", null: false
+    t.bigint "file_size"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["scxrd_dataset_id", "run_number", "image_number"], name: "index_diffraction_images_on_dataset_run_image", unique: true
+    t.index ["scxrd_dataset_id", "run_number"], name: "index_diffraction_images_on_scxrd_dataset_id_and_run_number"
+    t.index ["scxrd_dataset_id"], name: "index_diffraction_images_on_scxrd_dataset_id"
   end
 
   create_table "images", force: :cascade do |t|
@@ -242,6 +255,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_124910) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "diffraction_images", "scxrd_datasets"
   add_foreign_key "images", "wells"
   add_foreign_key "plate_locations", "locations"
   add_foreign_key "plate_locations", "plates"

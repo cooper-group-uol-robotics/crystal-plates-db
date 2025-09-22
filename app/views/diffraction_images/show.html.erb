@@ -1,0 +1,78 @@
+<% content_for :title, "#{@diffraction_image.display_name} - #{@scxrd_dataset.experiment_name}" %>
+<% content_for :head do %>
+  <%= stylesheet_link_tag 'scxrd/gallery' %>
+  <%= javascript_include_tag 'scxrd/diffraction_viewer' %>
+<% end %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2><%= @diffraction_image.display_name %></h2>
+    <div class="text-muted">
+      <strong>Dataset:</strong> <%= @scxrd_dataset.experiment_name %>
+      | <strong>Filename:</strong> <%= @diffraction_image.filename %>
+      | <strong>Size:</strong> <%= @diffraction_image.file_size_human %>
+    </div>
+  </div>
+  <div class="btn-group">
+    <%= link_to "Back to Images", 
+               [@scxrd_dataset, :diffraction_images],
+               class: "btn btn-secondary" %>
+    <%= link_to "Back to Dataset", 
+               @scxrd_dataset.well ? [@scxrd_dataset.well, @scxrd_dataset] : @scxrd_dataset,
+               class: "btn btn-outline-secondary" %>
+    <%= link_to download_scxrd_dataset_diffraction_image_path(@scxrd_dataset, @diffraction_image), 
+               class: "btn btn-success" do %>
+      <i class="fas fa-download me-1"></i>Download
+    <% end %>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Diffraction Image Viewer</h5>
+      </div>
+      <div class="card-body p-0">
+        <div id="diffraction-image-viewer" style="height: 70vh;">
+          <div class="d-flex justify-content-center align-items-center h-100">
+            <div class="text-center">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <div class="mt-2">Loading diffraction image...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Create diffraction viewer for this specific image
+    if (window.ScxrdDiffractionViewer) {
+      const viewer = new window.ScxrdDiffractionViewer('diffraction-image-viewer');
+      viewer.wellId = <%= @scxrd_dataset.well&.id || 'null' %>;
+      viewer.datasetId = <%= @scxrd_dataset.id %>;
+      
+      viewer.showLoading();
+      
+      // Load this specific diffraction image
+      viewer.loadImageData(viewer.wellId, viewer.datasetId, <%= @diffraction_image.id %>).then(success => {
+        if (success) {
+          viewer.plotImage();
+        }
+      });
+    } else {
+      console.error('ScxrdDiffractionViewer not available');
+      document.getElementById('diffraction-image-viewer').innerHTML = `
+        <div class="alert alert-danger m-3">
+          <h6>Error Loading Viewer</h6>
+          <p>The diffraction image viewer could not be loaded.</p>
+        </div>
+      `;
+    }
+  });
+</script>
