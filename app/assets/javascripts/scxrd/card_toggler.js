@@ -11,13 +11,18 @@ class ScxrdCardToggler {
     document.addEventListener('DOMContentLoaded', () => {
       this.setupCardToggles();
     });
-    
+
     // Also setup immediately in case DOM is already ready
-    if (document.readyState === 'loading') {
-      // DOM is still loading
-    } else {
+    if (document.readyState !== 'loading') {
       this.setupCardToggles();
     }
+  }
+
+  // Public method to reinitialize when new content is loaded
+  reinitialize() {
+    console.log('Reinitializing SCXRD card toggler');
+    this.maximizedHistory = [];
+    this.setupCardToggles();
   }
 
   setupCardToggles() {
@@ -25,17 +30,20 @@ class ScxrdCardToggler {
     cardContainers.forEach(container => {
       const header = container.querySelector('.card-header');
       const cardId = container.getAttribute('data-card-id');
-      
-      if (header) {
+
+      if (header && !header.classList.contains('toggle-initialized')) {
         header.style.cursor = 'pointer';
         header.style.userSelect = 'none';
         header.addEventListener('click', () => this.toggleCard(cardId));
-        
+
         // Add visual indication that it's clickable
         header.innerHTML += ' <i class="fas fa-chevron-up toggle-icon ms-1" style="font-size: 0.8em; transition: transform 0.3s ease;"></i>';
+
+        // Mark as initialized to avoid duplicate handlers
+        header.classList.add('toggle-initialized');
       }
     });
-    
+
     // Initialize default states
     this.initializeDefaultStates();
   }
@@ -58,7 +66,7 @@ class ScxrdCardToggler {
   applyMinimizedStyling(container) {
     const headerText = container.querySelector('.card-header small');
     const toggleIcon = container.querySelector('.toggle-icon');
-    
+
     if (headerText) {
       headerText.classList.add('minimized-text');
     }
@@ -72,7 +80,7 @@ class ScxrdCardToggler {
     if (!container) return;
 
     const isMinimized = container.classList.contains('minimized');
-    
+
     if (isMinimized) {
       this.maximizeCard(container, cardId);
     } else {
@@ -83,18 +91,18 @@ class ScxrdCardToggler {
   minimizeCard(container, cardId) {
     const cardBody = container.querySelector('.card-body');
     const toggleIcon = container.querySelector('.toggle-icon');
-    
+
     // Remove from maximized history
     this.maximizedHistory = this.maximizedHistory.filter(id => id !== cardId);
-    
+
     container.classList.add('minimized');
-    
+
     // Animate to vertical strip
     container.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
     container.style.width = '60px';
     container.style.minWidth = '60px';
     container.style.zIndex = '10';
-    
+
     // Hide card body with fade
     if (cardBody) {
       cardBody.style.transition = 'opacity 0.2s ease';
@@ -103,12 +111,12 @@ class ScxrdCardToggler {
         cardBody.style.display = 'none';
       }, 200);
     }
-    
+
     // Rotate icon
     if (toggleIcon) {
       toggleIcon.style.transform = 'rotate(180deg)';
     }
-    
+
     // Add minimized class for CSS styling
     const headerText = container.querySelector('.card-header small');
     if (headerText) {
@@ -127,28 +135,28 @@ class ScxrdCardToggler {
         this.minimizeCard(oldestContainer, oldestCardId);
       }
     }
-    
+
     // Add to maximized history
     this.maximizedHistory = this.maximizedHistory.filter(id => id !== cardId); // Remove if already exists
     this.maximizedHistory.push(cardId); // Add to end
-    
+
     const cardBody = container.querySelector('.card-body');
     const toggleIcon = container.querySelector('.toggle-icon');
-    
+
     container.classList.remove('minimized');
-    
+
     // Restore card size
     container.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
     container.style.width = '';
     container.style.minWidth = '';
     container.style.zIndex = '';
-    
+
     // Restore header text
     const headerText = container.querySelector('.card-header small');
     if (headerText) {
       headerText.classList.remove('minimized-text');
     }
-    
+
     // Show card body with fade in
     if (cardBody) {
       setTimeout(() => {
@@ -157,7 +165,7 @@ class ScxrdCardToggler {
         cardBody.style.opacity = '1';
       }, 200);
     }
-    
+
     // Rotate icon back
     if (toggleIcon) {
       toggleIcon.style.transform = 'rotate(0deg)';

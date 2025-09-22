@@ -54,38 +54,38 @@ const Utils = {
 };
 
 // Global functions for image management
-window.showImageInMain = function(imageId, imageUrl, largeImageUrl) {
+window.showImageInMain = function (imageId, imageUrl, largeImageUrl) {
   try {
     const mainImage = document.querySelector('img[id^="main-image-"]');
     const thumbnailImage = document.getElementById(`thumb-image-${imageId}`);
     const thumbnail = thumbnailImage?.closest('.image-thumbnail');
-    
+
     if (!mainImage || !thumbnailImage || !thumbnail) {
       console.warn('Required elements not found for image switching');
       return;
     }
-    
+
     const imageSrc = largeImageUrl || thumbnailImage.src;
-    
+
     // Add loading state
     mainImage.style.opacity = '0.5';
-    
+
     // Create a new image to preload
     const tempImage = new Image();
-    tempImage.onload = function() {
+    tempImage.onload = function () {
       mainImage.src = imageSrc;
       mainImage.id = `main-image-${imageId}`;
       mainImage.style.opacity = '1';
-      
+
       // Update related elements
       ImageManager.updateImageElements(imageId, imageUrl, thumbnail);
     };
-    
-    tempImage.onerror = function() {
+
+    tempImage.onerror = function () {
       console.error('Failed to load image:', imageSrc);
       mainImage.style.opacity = '1';
     };
-    
+
     // Set timeout for image loading
     setTimeout(() => {
       if (tempImage.complete === false) {
@@ -93,9 +93,9 @@ window.showImageInMain = function(imageId, imageUrl, largeImageUrl) {
         mainImage.style.opacity = '1';
       }
     }, CONSTANTS.IMAGE_LOAD_TIMEOUT);
-    
+
     tempImage.src = imageSrc;
-    
+
   } catch (error) {
     console.error('Error in showImageInMain:', error);
   }
@@ -109,34 +109,34 @@ const ImageManager = {
       if (mainImageLink) {
         mainImageLink.href = imageUrl;
       }
-      
+
       // Update image info overlay
       const imageInfo = thumbnail.getAttribute('data-image-info');
       const infoOverlay = document.getElementById('image-info-overlay');
       if (infoOverlay && imageInfo) {
         infoOverlay.innerHTML = `<small>${imageInfo}</small>`;
       }
-      
+
       // Update header info
       const capturedDate = thumbnail.getAttribute('data-image-captured');
       const headerInfo = document.getElementById('current-image-info');
       if (headerInfo) {
         headerInfo.innerHTML = capturedDate ? `Captured: ${capturedDate}` : '';
       }
-      
+
       // Update description
       const description = thumbnail.getAttribute('data-image-description');
       const descriptionElement = document.getElementById('current-image-description');
       if (descriptionElement) {
         descriptionElement.textContent = description || '';
       }
-      
+
       // Update action buttons
       this.updateActionButtons(imageId, imageUrl);
-      
+
       // Update thumbnail highlighting
       this.updateThumbnailHighlighting(thumbnail);
-      
+
     } catch (error) {
       console.error('Error updating image elements:', error);
     }
@@ -276,7 +276,7 @@ class WellSelector {
   selectRow(row) {
     const wellButtons = document.querySelectorAll('.well-select-btn');
     let allSelected = true;
-    
+
     wellButtons.forEach(btn => {
       if (btn.getAttribute('data-row') == row) {
         const wellId = btn.getAttribute('data-well-id');
@@ -313,7 +313,7 @@ class WellSelector {
   selectColumn(col) {
     const wellButtons = document.querySelectorAll('.well-select-btn');
     let allSelected = true;
-    
+
     wellButtons.forEach(btn => {
       if (btn.getAttribute('data-col') == col) {
         const wellId = btn.getAttribute('data-well-id');
@@ -350,7 +350,7 @@ class WellSelector {
   selectSubwell(subwell) {
     const wellButtons = document.querySelectorAll('.well-select-btn');
     let allSelected = true;
-    
+
     wellButtons.forEach(btn => {
       if (btn.getAttribute('data-subwell') == subwell) {
         const wellId = btn.getAttribute('data-well-id');
@@ -426,11 +426,11 @@ class WellSelector {
         </div>
       </div>
     `;
-    
+
     // Remove any existing modal
     const existingModal = document.getElementById('editMultipleWellsModal');
     if (existingModal) existingModal.remove();
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modalEl = document.getElementById('editMultipleWellsModal');
     const modal = new bootstrap.Modal(modalEl);
@@ -450,7 +450,7 @@ class WellSelector {
 
     if (!bulkSearchInput || !bulkResultsDiv || !bulkForm) return;
 
-    bulkSearchInput.addEventListener('input', function() {
+    bulkSearchInput.addEventListener('input', function () {
       const query = bulkSearchInput.value.trim();
       if (query.length < 2) {
         bulkResultsDiv.classList.remove('show');
@@ -463,26 +463,26 @@ class WellSelector {
           'X-Requested-With': 'XMLHttpRequest'
         }
       })
-      .then(response => response.json())
-      .then(data => {
-        if (data.length === 0) {
-          bulkResultsDiv.innerHTML = '<div class="dropdown-item text-muted">No stock solutions found</div>';
-        } else {
-          bulkResultsDiv.innerHTML = data.map(solution => 
-            `<button type="button" class="dropdown-item" 
+        .then(response => response.json())
+        .then(data => {
+          if (data.length === 0) {
+            bulkResultsDiv.innerHTML = '<div class="dropdown-item text-muted">No stock solutions found</div>';
+          } else {
+            bulkResultsDiv.innerHTML = data.map(solution =>
+              `<button type="button" class="dropdown-item" 
                      data-solution-id="${solution.id}" 
                      data-solution-name="${solution.display_name}">
               <strong>${solution.display_name}</strong>
               ${solution.component_summary ? `<br><small class="text-muted">${solution.component_summary}</small>` : ''}
             </button>`
-          ).join('');
-        }
-        bulkResultsDiv.classList.remove('d-none');
-        bulkResultsDiv.classList.add('show');
-      });
+            ).join('');
+          }
+          bulkResultsDiv.classList.remove('d-none');
+          bulkResultsDiv.classList.add('show');
+        });
     });
 
-    bulkResultsDiv.addEventListener('click', function(event) {
+    bulkResultsDiv.addEventListener('click', function (event) {
       const target = event.target.closest('.dropdown-item');
       if (target && target.dataset.solutionId) {
         document.getElementById('bulkStockSolutionId').value = target.dataset.solutionId;
@@ -493,18 +493,18 @@ class WellSelector {
     });
 
     // Hide dropdown on blur
-    bulkSearchInput.addEventListener('blur', function() {
+    bulkSearchInput.addEventListener('blur', function () {
       setTimeout(() => {
         bulkResultsDiv.classList.remove('show');
         bulkResultsDiv.classList.add('d-none');
       }, 200);
     });
 
-    bulkForm.addEventListener('submit', function(event) {
+    bulkForm.addEventListener('submit', function (event) {
       event.preventDefault();
       const stockSolutionId = document.getElementById('bulkStockSolutionId').value;
       const volumeWithUnit = document.getElementById('bulkVolumeAmountInput').value.trim();
-      
+
       if (!stockSolutionId) {
         bulkContentMessages.innerHTML = '<div class="alert alert-danger">Please select a stock solution</div>';
         return;
@@ -513,13 +513,13 @@ class WellSelector {
         bulkContentMessages.innerHTML = '<div class="alert alert-danger">Please enter a volume with unit (e.g., 50 μL)</div>';
         return;
       }
-      
+
       const csrfToken = document.querySelector('meta[name="csrf-token"]');
       if (!csrfToken) {
         bulkContentMessages.innerHTML = '<div class="alert alert-danger">CSRF token not found</div>';
         return;
       }
-      
+
       fetch('/wells/bulk_add_content', {
         method: 'POST',
         headers: {
@@ -533,17 +533,17 @@ class WellSelector {
           volume_with_unit: volumeWithUnit
         })
       })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          bulkContentMessages.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-        } else {
-          bulkContentMessages.innerHTML = `<div class="alert alert-danger">${data.message || 'Bulk add failed'}</div>`;
-        }
-      })
-      .catch(error => {
-        bulkContentMessages.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
-      });
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            bulkContentMessages.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+          } else {
+            bulkContentMessages.innerHTML = `<div class="alert alert-danger">${data.message || 'Bulk add failed'}</div>`;
+          }
+        })
+        .catch(error => {
+          bulkContentMessages.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        });
     });
   }
 }
@@ -645,10 +645,10 @@ class WellModal {
 
     // Load images tab with priority
     setTimeout(() => this.loadImagesTab(wellId), 0);
-    
+
     // Load content tab with slight delay
     setTimeout(() => this.loadContentTab(wellId), 50);
-    
+
     // Show placeholder in PXRD tab for lazy loading
     document.getElementById('wellPxrdContent').innerHTML = `
       <div class="text-center py-4 text-muted">
@@ -671,7 +671,7 @@ class WellModal {
   loadImagesTab(wellId) {
     const startTime = performance.now();
     const container = document.getElementById('wellImagesContent');
-    
+
     // Show immediate loading state
     container.innerHTML = `
       <div class="text-center py-3">
@@ -700,9 +700,9 @@ class WellModal {
       .then(html => {
         const loadTime = performance.now() - startTime;
         console.log(`Images loaded in ${Math.round(loadTime)}ms`);
-        
+
         container.innerHTML = html;
-        
+
         // Initialize thumbnails immediately without setTimeout delay
         if (window.initializeThumbnails) {
           window.initializeThumbnails();
@@ -726,7 +726,7 @@ class WellModal {
 
   loadPxrdTab(wellId) {
     const container = document.getElementById('wellPxrdContent');
-    
+
     // Show loading indicator
     container.innerHTML = `
       <div class="text-center py-4">
@@ -746,18 +746,18 @@ class WellModal {
       })
       .then(html => {
         container.innerHTML = html;
-        
+
         // Execute any scripts that were injected
         const scripts = container.querySelectorAll('script');
         scripts.forEach(script => {
           try {
             // Use Function constructor instead of eval for better security
             new Function(script.innerHTML)();
-          } catch(e) {
+          } catch (e) {
             console.error('Error executing PXRD script:', e);
           }
         });
-        
+
         console.log('PXRD data loaded successfully for well', wellId);
       })
       .catch((error) => {
@@ -776,7 +776,7 @@ class WellModal {
 
   loadScxrdTab(wellId) {
     const container = document.getElementById('wellScxrdContent');
-    
+
     // Show loading indicator
     container.innerHTML = `
       <div class="text-center py-4">
@@ -795,19 +795,21 @@ class WellModal {
         return response.text();
       })
       .then(html => {
+        console.log('SCXRD: Received HTML response:', html.substring(0, 200) + '...');
         container.innerHTML = html;
-        
+
         // Execute any scripts that were injected
         const scripts = container.querySelectorAll('script');
+        console.log('SCXRD: Found', scripts.length, 'scripts to execute');
         scripts.forEach(script => {
           try {
             // Use Function constructor instead of eval for better security
             new Function(script.innerHTML)();
-          } catch(e) {
+          } catch (e) {
             console.error('Error executing SCXRD script:', e);
           }
         });
-        
+
         console.log('SCXRD data loaded successfully for well', wellId);
       })
       .catch((error) => {
@@ -840,18 +842,18 @@ class WellModal {
     thumbnails.forEach((thumbnail) => {
       if (thumbnail.hasAttribute('data-initialized')) return;
       thumbnail.setAttribute('data-initialized', 'true');
-      
-      thumbnail.addEventListener('mouseenter', function() {
+
+      thumbnail.addEventListener('mouseenter', function () {
         const actions = this.querySelector('.image-actions');
         if (actions) actions.classList.remove('d-none');
       });
-      
-      thumbnail.addEventListener('mouseleave', function() {
+
+      thumbnail.addEventListener('mouseleave', function () {
         const actions = this.querySelector('.image-actions');
         if (actions) actions.classList.add('d-none');
       });
-      
-      thumbnail.addEventListener('click', function(e) {
+
+      thumbnail.addEventListener('click', function (e) {
         const imageId = this.getAttribute('data-image-id');
         const imageUrl = this.getAttribute('data-image-url');
         const largeImageUrl = this.getAttribute('data-large-image-url');
@@ -915,12 +917,12 @@ class WellModal {
   async searchStockSolutions(input, hiddenFieldId, resultsId) {
     const query = input.value.trim();
     const resultsDiv = document.getElementById(resultsId);
-    
+
     if (query.length < 2) {
       resultsDiv.classList.add('d-none');
       return;
     }
-    
+
     try {
       const response = await fetch(`/stock_solutions/search?q=${encodeURIComponent(query)}`, {
         headers: {
@@ -928,11 +930,11 @@ class WellModal {
           'X-Requested-With': 'XMLHttpRequest'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Search failed');
       }
-      
+
       const data = await response.json();
       this.displayStockSolutionResults(data, resultsId, hiddenFieldId, input);
     } catch (error) {
@@ -944,11 +946,11 @@ class WellModal {
 
   displayStockSolutionResults(results, resultsId, hiddenFieldId, input) {
     const resultsDiv = document.getElementById(resultsId);
-    
+
     if (results.length === 0) {
       resultsDiv.innerHTML = '<div class="dropdown-item text-muted">No stock solutions found</div>';
     } else {
-      resultsDiv.innerHTML = results.map(solution => 
+      resultsDiv.innerHTML = results.map(solution =>
         `<button type="button" class="dropdown-item" 
                  data-solution-id="${solution.id}" 
                  data-solution-name="${solution.display_name}"
@@ -960,22 +962,22 @@ class WellModal {
         </button>`
       ).join('');
     }
-    
+
     resultsDiv.classList.remove('d-none');
   }
 
   selectStockSolution(id, name, hiddenFieldId, inputId, resultsId) {
     const hiddenField = document.getElementById(hiddenFieldId);
     const inputField = document.getElementById(inputId);
-    
+
     if (hiddenField) {
       hiddenField.value = id;
     }
-    
+
     if (inputField) {
       inputField.value = name;
     }
-    
+
     this.hideStockSolutionResults(resultsId);
   }
 
@@ -990,10 +992,10 @@ class WellModal {
     const hiddenInput = document.getElementById(`stockSolutionId_${wellId}`);
     const searchInput = document.getElementById(`stockSolutionSearch_${wellId}`);
     const volumeInput = document.getElementById(`volumeAmountInput_${wellId}`);
-    
+
     const stockSolutionId = hiddenInput.value;
     const volumeWithUnit = volumeInput.value.trim();
-    
+
     if (!stockSolutionId) {
       this.showMessage(wellId, 'Please select a stock solution', 'danger');
       return;
@@ -1005,7 +1007,7 @@ class WellModal {
     }
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]');
-    
+
     if (!csrfToken) {
       this.showMessage(wellId, 'CSRF token not found', 'danger');
       return;
@@ -1025,24 +1027,24 @@ class WellModal {
         }
       })
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'success') {
-        this.showMessage(wellId, data.message, 'success');
-        // Reload the content form
-        this.reloadContentForm(wellId);
-        // Reset the form
-        hiddenInput.value = '';
-        searchInput.value = '';
-        volumeInput.value = '';
-      } else {
-        this.showMessage(wellId, data.message, 'danger');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      this.showMessage(wellId, 'Error adding stock solution: ' + error.message, 'danger');
-    });
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          this.showMessage(wellId, data.message, 'success');
+          // Reload the content form
+          this.reloadContentForm(wellId);
+          // Reset the form
+          hiddenInput.value = '';
+          searchInput.value = '';
+          volumeInput.value = '';
+        } else {
+          this.showMessage(wellId, data.message, 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        this.showMessage(wellId, 'Error adding stock solution: ' + error.message, 'danger');
+      });
   }
 
   removeStockSolution(wellId, contentId) {
@@ -1051,7 +1053,7 @@ class WellModal {
     }
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]');
-    
+
     fetch(`/wells/${wellId}/well_contents/${contentId}`, {
       method: 'DELETE',
       headers: {
@@ -1060,20 +1062,20 @@ class WellModal {
         'X-CSRF-Token': csrfToken.getAttribute('content')
       }
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'success') {
-        this.showMessage(wellId, data.message, 'success');
-        // Reload the content form
-        this.reloadContentForm(wellId);
-      } else {
-        this.showMessage(wellId, data.message, 'danger');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      this.showMessage(wellId, 'Error removing stock solution', 'danger');
-    });
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          this.showMessage(wellId, data.message, 'success');
+          // Reload the content form
+          this.reloadContentForm(wellId);
+        } else {
+          this.showMessage(wellId, data.message, 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        this.showMessage(wellId, 'Error removing stock solution', 'danger');
+      });
   }
 
   removeAllContent(wellId) {
@@ -1093,20 +1095,20 @@ class WellModal {
         remove_all_content: true
       })
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        this.showMessage(wellId, data.message, 'success');
-        // Reload the content form
-        this.reloadContentForm(wellId);
-      } else {
-        this.showMessage(wellId, data.message, 'danger');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      this.showMessage(wellId, 'Error removing content', 'danger');
-    });
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          this.showMessage(wellId, data.message, 'success');
+          // Reload the content form
+          this.reloadContentForm(wellId);
+        } else {
+          this.showMessage(wellId, data.message, 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        this.showMessage(wellId, 'Error removing content', 'danger');
+      });
   }
 
   reloadContentForm(wellId) {
@@ -1126,14 +1128,14 @@ class WellModal {
       console.error('Messages div not found for well:', wellId);
       return;
     }
-    
+
     messagesDiv.innerHTML = `
       <div class="alert alert-${type} alert-dismissible fade show" role="alert">
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     `;
-    
+
     // Auto-hide after 3 seconds
     setTimeout(() => {
       const alert = messagesDiv.querySelector('.alert');
@@ -1169,21 +1171,21 @@ class KeyboardShortcuts {
         e.preventDefault();
         this.toggleSelectMode();
         break;
-      
+
       case CONSTANTS.SHORTCUTS.EDIT_SELECTED:
         if (window.wellSelector?.selectedWells?.size > 0) {
           e.preventDefault();
           window.wellSelector.openBulkEditModal();
         }
         break;
-      
+
       case CONSTANTS.SHORTCUTS.CLEAR_SELECTION:
         if (window.wellSelector?.selectMode) {
           e.preventDefault();
           this.clearSelection();
         }
         break;
-      
+
       case CONSTANTS.SHORTCUTS.ESCAPE:
         this.handleEscape();
         break;
@@ -1195,7 +1197,7 @@ class KeyboardShortcuts {
     if (selectSwitch) {
       selectSwitch.checked = !selectSwitch.checked;
       selectSwitch.dispatchEvent(new Event('change'));
-      
+
       // Show user feedback
       const mode = selectSwitch.checked ? 'enabled' : 'disabled';
       this.showShortcutFeedback(`Multi-select mode ${mode}`);
@@ -1222,7 +1224,7 @@ class KeyboardShortcuts {
         bsModal.hide();
       }
     });
-    
+
     // Clear selection if in select mode
     if (window.wellSelector?.selectMode) {
       this.clearSelection();
@@ -1239,9 +1241,9 @@ class KeyboardShortcuts {
         <small>${message}</small>
       </div>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     setTimeout(() => {
       toast.remove();
     }, 1500);

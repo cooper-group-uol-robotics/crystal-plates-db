@@ -6,6 +6,8 @@ class ScxrdDatasetsController < ApplicationController
 
   def index
     @scxrd_datasets = @well.scxrd_datasets.order(created_at: :desc)
+    Rails.logger.info "SCXRD: Loading gallery for well #{@well.id}, found #{@scxrd_datasets.count} datasets"
+    @scxrd_datasets.each { |ds| Rails.logger.info "SCXRD: Dataset #{ds.id} - #{ds.experiment_name}" }
     render partial: "scxrd_datasets/gallery", locals: { well: @well }
   end
 

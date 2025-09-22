@@ -1,10 +1,6 @@
 <%# app/views/scxrd_datasets/_gallery.html.erb %>
 
-<%= javascript_include_tag 'scxrd/diffraction_viewer' %>
-<%= javascript_include_tag 'scxrd/card_toggler' %>
-<%= javascript_include_tag 'scxrd/reciprocal_lattice_viewer' %>
-<%= javascript_include_tag 'scxrd/gallery' %>
-<%= stylesheet_link_tag 'scxrd/gallery' %>
+<!-- SCXRD Gallery Debug: Rendering with <%= @scxrd_datasets.count %> datasets -->
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0">SCXRD Datasets (<%= @well.scxrd_datasets.count %>)</h5>
@@ -143,27 +139,32 @@
   </div>
 
   <script>
+    // Reinitialize card toggler for this new gallery content
+    if (window.scxrdCardToggler && typeof window.scxrdCardToggler.reinitialize === 'function') {
+      window.scxrdCardToggler.reinitialize();
+    }
+    
     // Initialize the first dataset when the gallery loads
     <% if @scxrd_datasets.first %>
-      document.addEventListener('DOMContentLoaded', function() {
-        // Wait for external JavaScript modules to load
-        function initializeScxrdGallery() {
-          if (typeof window.showScxrdDatasetInMain === 'function') {
-            showScxrdDatasetInMain(
-              '<%= @scxrd_datasets.first.id %>', 
-              '<%= j(@scxrd_datasets.first.experiment_name) %>', 
-              '<%= well_scxrd_dataset_path(@well, @scxrd_datasets.first) %>',
-              '<%= @well.id %>'
-            );
-          } else {
-            console.log('SCXRD modules not loaded yet, retrying...');
-            setTimeout(initializeScxrdGallery, 200);
-          }
+      function initializeScxrdGallery() {
+        if (typeof window.showScxrdDatasetInMain === 'function') {
+          console.log('Initializing SCXRD gallery with first dataset');
+          showScxrdDatasetInMain(
+            '<%= @scxrd_datasets.first.id %>', 
+            '<%= j(@scxrd_datasets.first.experiment_name) %>', 
+            '<%= well_scxrd_dataset_path(@well, @scxrd_datasets.first) %>',
+            '<%= @well.id %>'
+          );
+        } else {
+          console.log('SCXRD showScxrdDatasetInMain function not available, retrying in 200ms...');
+          setTimeout(initializeScxrdGallery, 200);
         }
-        
-        // Start initialization after a short delay to ensure modules are loaded
-        setTimeout(initializeScxrdGallery, 500);
-      });
+      }
+      
+      // Start initialization after a short delay to ensure modules are loaded
+      setTimeout(initializeScxrdGallery, 500);
+    <% else %>
+      console.log('No SCXRD datasets to initialize');
     <% end %>
   </script>
 
