@@ -47,6 +47,7 @@ Rails.application.routes.draw do
         get :download
         get :download_peak_table
         get :crystal_image
+        get :structure_file
 
         get :image_data
         get :peak_table_data
@@ -79,6 +80,7 @@ Rails.application.routes.draw do
       get :download
       get :download_peak_table
       get :crystal_image
+      get :structure_file
 
       get :image_data
       get :peak_table_data

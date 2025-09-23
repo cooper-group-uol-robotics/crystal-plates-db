@@ -11,3 +11,4 @@ import "@hotwired/turbo-rails"
 import "./scxrd_diffraction_viewer"
 
 // Note: Reciprocal Lattice Viewer is loaded via assets pipeline to avoid conflicts
+// Note: CifVis is loaded via script tag to avoid module format conflicts

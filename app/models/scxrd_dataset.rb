@@ -4,6 +4,7 @@ class ScxrdDataset < ApplicationRecord
   has_one_attached :archive
   has_one_attached :peak_table
   has_one_attached :crystal_image
+  has_one_attached :structure_file
 
 
   validates :experiment_name, :measured_at, presence: true
@@ -86,6 +87,25 @@ class ScxrdDataset < ApplicationRecord
 
   def has_crystal_image?
     crystal_image.attached?
+  end
+
+  def has_structure_file?
+    structure_file.attached?
+  end
+
+  def structure_file_format
+    return nil unless has_structure_file?
+    
+    filename = structure_file.filename.to_s.downcase
+    if filename.end_with?('.ins')
+      'ins'
+    elsif filename.end_with?('.res')
+      'res'
+    elsif filename.end_with?('.cif')
+      'cif'
+    else
+      'unknown'
+    end
   end
 
   def has_first_image?

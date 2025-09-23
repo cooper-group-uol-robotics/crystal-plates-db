@@ -2,7 +2,7 @@ class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
   before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
-  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :image_data, :peak_table_data ]
+  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :structure_file, :image_data, :peak_table_data ]
 
   def index
     if params[:well_id].present?
@@ -176,6 +176,27 @@ class ScxrdDatasetsController < ApplicationController
   def crystal_image
     if @scxrd_dataset.has_crystal_image?
       redirect_to rails_blob_path(@scxrd_dataset.crystal_image, disposition: "inline")
+    else
+      head :not_found
+    end
+  end
+
+  def structure_file
+    if @scxrd_dataset.has_structure_file?
+      # Serve the structure file content directly for CifVis to consume
+      structure_content = @scxrd_dataset.structure_file.download
+      content_type = case @scxrd_dataset.structure_file_format
+                     when 'cif'
+                       'chemical/x-cif'
+                     when 'ins', 'res'
+                       'chemical/x-shelx'
+                     else
+                       'text/plain'
+                     end
+        
+      response.headers['Content-Type'] = content_type
+      response.headers['Cache-Control'] = 'public, max-age=3600'
+      render plain: structure_content
     else
       head :not_found
     end
@@ -442,6 +463,18 @@ class ScxrdDatasetsController < ApplicationController
             )
           elsif result[:crystal_image]
             Rails.logger.info "SCXRD: Crystal image found in archive but dataset already has an image attached, skipping"
+          end
+
+          # Store structure file if available and no structure file is already attached
+          if result[:structure_file] && !@scxrd_dataset.structure_file.attached?
+            Rails.logger.info "SCXRD: Attaching structure file from archive: #{result[:structure_file][:filename]} (#{number_to_human_size(result[:structure_file][:data].bytesize)})"
+            @scxrd_dataset.structure_file.attach(
+              io: StringIO.new(result[:structure_file][:data]),
+              filename: result[:structure_file][:filename],
+              content_type: result[:structure_file][:content_type]
+            )
+          elsif result[:structure_file]
+            Rails.logger.info "SCXRD: Structure file found in archive but dataset already has a structure file attached, skipping"
           end
 
           # Store the original archive as the zip attachment

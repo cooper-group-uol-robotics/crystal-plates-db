@@ -14,3 +14,5 @@ pin "rod_image_parser", to: "rod_image_parser.js"
 
 # SCXRD Reciprocal Lattice Viewer using Three.js
 pin "reciprocal_lattice_viewer", to: "reciprocal_lattice_viewer.js"
+
+# Note: CifVis is loaded via javascript_include_tag as a regular script

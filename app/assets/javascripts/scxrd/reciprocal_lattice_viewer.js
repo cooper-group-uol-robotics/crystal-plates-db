@@ -50,16 +50,23 @@ class ScxrdReciprocalLatticeViewer {
     // Use traditional script loading approach with better CDN selection
     console.log('Loading Three.js using traditional script approach...');
 
+    // Suppress the Multiple instances warning by temporarily removing __THREE__
+    const previousTHREE = window.__THREE__;
+    delete window.__THREE__;
+
     // Use CDN that serves the current Three.js global build
     const threeScript = document.createElement('script');
     threeScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.1/three.min.js';
     threeScript.onload = () => {
-      console.log('Three.js loaded successfully');
+      console.log('Three.js loaded successfully for reciprocal lattice viewer');
       this.threeAvailable = true;
       window.threeJsLoading = false; // Reset loading flag
       window.threeJsLoaded = true; // Mark as globally loaded
 
-      // Using basic mouse interaction (no external controls needed)
+      // Restore previous __THREE__ if it existed (for CifVis)
+      if (previousTHREE) {
+        window.__THREE__ = previousTHREE;
+      }
 
       // Notify that Three.js is ready
       window.dispatchEvent(new CustomEvent('threeJsLoaded'));
@@ -76,12 +83,22 @@ class ScxrdReciprocalLatticeViewer {
         this.threeAvailable = true;
         window.threeJsLoading = false; // Reset loading flag
         window.threeJsLoaded = true; // Mark as globally loaded
+
+        // Restore previous __THREE__ if it existed (for CifVis)
+        if (previousTHREE) {
+          window.__THREE__ = previousTHREE;
+        }
+
         window.dispatchEvent(new CustomEvent('threeJsLoaded'));
       };
       fallbackScript.onerror = () => {
         console.error('All Three.js loading attempts failed');
         window.threeJsLoading = false; // Reset loading flag
-        // Don't show error immediately, let the timeout handle it
+
+        // Restore previous __THREE__ if it existed (for CifVis)
+        if (previousTHREE) {
+          window.__THREE__ = previousTHREE;
+        }
       };
       document.head.appendChild(fallbackScript);
     };

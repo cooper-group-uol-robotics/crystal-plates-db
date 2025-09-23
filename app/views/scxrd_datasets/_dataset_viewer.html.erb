@@ -41,8 +41,37 @@
       </div>
     </div>
 
-    <!-- Crystal Image Panel -->
-    <div class="scxrd-card-container d-flex" data-card-id="crystal-image-<%= unique_id %>">
+    <!-- Structure Panel -->
+    <div class="scxrd-card-container d-flex" data-card-id="structure-<%= unique_id %>">
+      <div class="card h-100 w-100">
+        <div class="card-header text-center bg-light">
+          <small class="text-muted">Crystal Structure</small>
+        </div>
+        <div id="<%= unique_id %>-structure-panel" class="card-body p-0">
+          <% if dataset.has_structure_file? %>
+            <div class="structure-viewer-container" style="height: 357px; width: 100%;">
+              <% structure_url = well.present? ? structure_file_well_scxrd_dataset_path(well, dataset) : structure_file_scxrd_dataset_path(dataset) %>
+              <cifview-widget 
+                src="<%= structure_url %>"
+                caption="<%= dataset.structure_file.filename %>"
+                style="width: 100%; height: 100%;">
+              </cifview-widget>
+            </div>
+          <% else %>
+            <div class="d-flex align-items-center justify-content-center h-100">
+              <div class="text-center text-muted">
+                <i class="fas fa-cube fa-3x mb-3"></i>
+                <p>No structure file available</p>
+                <small>Structure files are automatically extracted from struct/best_res/</small>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+        <!-- Crystal Image Panel -->
+    <div class="scxrd-card-container d-flex minimized" data-card-id="crystal-image-<%= unique_id %>">
       <div class="card h-100 w-100">
         <div class="card-header text-center bg-light">
           <small class="text-muted">Crystal Image</small>
@@ -58,20 +87,7 @@
       </div>
     </div>
 
-    <!-- Structure Panel -->
-    <div class="scxrd-card-container d-flex minimized" data-card-id="structure-<%= unique_id %>">
-      <div class="card h-100 w-100">
-        <div class="card-header text-center bg-light">
-          <small class="text-muted">Crystal Structure</small>
-        </div>
-        <div id="<%= unique_id %>-structure-panel" class="card-body d-flex align-items-center justify-content-center">
-          <div class="text-center text-muted">
-            <i class="fas fa-cube fa-3x mb-3"></i>
-            <p>Loading crystal structure...</p>
-          </div>
-        </div>
-      </div>
-    </div>
+  
   </div>
 
   <script>

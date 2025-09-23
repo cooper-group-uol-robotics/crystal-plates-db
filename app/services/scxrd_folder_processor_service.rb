@@ -10,6 +10,7 @@ class ScxrdFolderProcessorService
     @zip_data = nil
     @file_count = 0
     @crystal_image_data = nil
+    @structure_file_data = nil
   end
 
   def process
@@ -21,7 +22,8 @@ class ScxrdFolderProcessorService
       all_diffraction_images: @all_diffraction_images,
       zip_archive: @zip_data,
       par_data: @par_data,
-      crystal_image: @crystal_image_data
+      crystal_image: @crystal_image_data,
+      structure_file: @structure_file_data
     }
   end
 
@@ -99,6 +101,9 @@ class ScxrdFolderProcessorService
 
     # Extract crystal image from movie/oneclickmovie*.jpg
     extract_crystal_image
+
+    # Extract structure file from struct/best_res/*.res
+    extract_structure_file
   end
 
   def extract_all_diffraction_images
@@ -551,6 +556,56 @@ class ScxrdFolderProcessorService
       end
     else
       Rails.logger.info "SCXRD: No crystal image files found in movie folder"
+    end
+  end
+
+  def extract_structure_file
+    Rails.logger.info "SCXRD: Searching for structure file in struct/best_res folder"
+
+    # Look for .res files in struct/best_res folder recursively
+    struct_folder = File.join(@folder_path, "struct", "best_res")
+    unless Dir.exist?(struct_folder)
+      Rails.logger.info "SCXRD: struct/best_res folder does not exist"
+      return
+    end
+
+    res_file_pattern = File.join(struct_folder, "**", "*.res")
+    res_files = Dir.glob(res_file_pattern, File::FNM_CASEFOLD)
+
+    Rails.logger.info "SCXRD: Found #{res_files.count} .res files in struct/best_res: #{res_files.map { |f| File.basename(f) }.inspect}"
+
+    if res_files.any?
+      # Take the first .res file found
+      structure_file = res_files.first
+      Rails.logger.info "SCXRD: Using structure file: #{structure_file}"
+
+      begin
+        structure_content = File.read(structure_file, encoding: "UTF-8")
+        
+        # Determine content type based on file extension
+        file_extension = File.extname(structure_file).downcase
+        content_type = case file_extension
+                       when '.res', '.ins'
+                         'chemical/x-shelx'
+                       when '.cif'
+                         'chemical/x-cif'
+                       else
+                         'text/plain'
+                       end
+
+        @structure_file_data = {
+          data: structure_content,
+          filename: File.basename(structure_file),
+          content_type: content_type
+        }
+        
+        Rails.logger.info "SCXRD: Structure file extracted successfully: #{@structure_file_data[:filename]} (#{number_to_human_size(@structure_file_data[:data].bytesize)})"
+      rescue => e
+        Rails.logger.error "SCXRD: Error reading structure file #{structure_file}: #{e.message}"
+        @structure_file_data = nil
+      end
+    else
+      Rails.logger.info "SCXRD: No .res files found in struct/best_res folder"
     end
   end
 end

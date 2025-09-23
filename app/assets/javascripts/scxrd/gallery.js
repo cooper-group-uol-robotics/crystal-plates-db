@@ -152,18 +152,8 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
         `;
       }
 
-      // Update structure panel (placeholder)
-      const structurePanel = document.getElementById(`${uniqueId}-structure-panel`);
-      structurePanel.innerHTML = `
-        <div class="text-center p-3">
-          <i class="fas fa-cube fa-3x mb-3 text-info"></i>
-          <h6>Crystal Structure</h6>
-          <p class="text-muted small">3D visualization placeholder</p>
-          <button class="btn btn-sm btn-info" disabled>
-            <i class="fas fa-eye me-1"></i>View 3D
-          </button>
-        </div>
-      `;
+      // Structure panel is handled by the ERB template - don't override it
+      // The 3D viewer is embedded directly in the template based on has_structure_file?
 
       // Update crystal image panel with well image, crystal image, or fallback
       const crystalImagePanel = document.getElementById(`${uniqueId}-crystal-image-panel`);

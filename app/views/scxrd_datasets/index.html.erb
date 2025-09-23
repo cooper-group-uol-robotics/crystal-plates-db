@@ -63,17 +63,19 @@
                 </div>
               </div>
               <div class="text-end">
-                <div class="btn-group btn-group-sm">
-                  <%= link_to scxrd_dataset_path(dataset), 
-                             class: "btn btn-outline-primary btn-sm" do %>
-                    <i class="bi bi-eye"></i> Details
-                  <% end %>
-                  <% if dataset.archive.attached? %>
-                    <%= link_to download_scxrd_dataset_path(dataset), 
-                               class: "btn btn-outline-success btn-sm" do %>
-                      <i class="bi bi-download"></i> Archive
+                <div class="d-flex align-items-center gap-2">
+                  <div class="btn-group btn-group-sm">
+                    <%= link_to scxrd_dataset_path(dataset), 
+                               class: "btn btn-outline-primary btn-sm" do %>
+                      <i class="bi bi-eye"></i> Details
                     <% end %>
-                  <% end %>
+                    <% if dataset.archive.attached? %>
+                      <%= link_to download_scxrd_dataset_path(dataset), 
+                                 class: "btn btn-outline-success btn-sm" do %>
+                        <i class="bi bi-download"></i> Archive
+                      <% end %>
+                    <% end %>
+                  </div>
                 </div>
               </div>
             </div>

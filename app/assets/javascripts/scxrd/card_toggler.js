@@ -2,7 +2,7 @@
 class ScxrdCardToggler {
   constructor() {
     this.maxMaximizedCards = 3;
-    this.maximizedHistory = []; // Track order of maximization
+    this.datasetInstances = new Map(); // Map of dataset ID -> instance data
     this.initializeToggleHandlers();
   }
 
@@ -21,7 +21,7 @@ class ScxrdCardToggler {
   // Public method to reinitialize when new content is loaded
   reinitialize() {
     console.log('Reinitializing SCXRD card toggler');
-    this.maximizedHistory = [];
+    this.datasetInstances.clear();
     this.setupCardToggles();
   }
 
@@ -29,6 +29,18 @@ class ScxrdCardToggler {
   reinitializeForContainer(container) {
     if (!container) return;
     console.log('Reinitializing SCXRD card toggler for container:', container);
+
+    const datasetId = container.getAttribute('data-dataset-id');
+    const datasetIndex = container.getAttribute('data-index');
+    const instanceKey = `${datasetId}-${datasetIndex}`;
+
+    // Initialize instance data for this dataset
+    if (!this.datasetInstances.has(instanceKey)) {
+      this.datasetInstances.set(instanceKey, {
+        maximizedHistory: [],
+        container: container
+      });
+    }
 
     const cardContainers = container.querySelectorAll('[data-card-id]');
     cardContainers.forEach(cardContainer => {
@@ -38,7 +50,7 @@ class ScxrdCardToggler {
       if (header && !header.classList.contains('toggle-initialized')) {
         header.style.cursor = 'pointer';
         header.style.userSelect = 'none';
-        header.addEventListener('click', () => this.toggleCard(cardId));
+        header.addEventListener('click', () => this.toggleCard(cardId, instanceKey));
 
         // Add visual indication that it's clickable
         header.innerHTML += ' <i class="fas fa-chevron-up toggle-icon ms-1" style="font-size: 0.8em; transition: transform 0.3s ease;"></i>';
@@ -49,17 +61,20 @@ class ScxrdCardToggler {
     });
 
     // Initialize default states for this container
-    this.initializeDefaultStatesForContainer(container);
+    this.initializeDefaultStatesForContainer(container, instanceKey);
   }
 
-  initializeDefaultStatesForContainer(container) {
+  initializeDefaultStatesForContainer(container, instanceKey) {
+    const instanceData = this.datasetInstances.get(instanceKey);
+    if (!instanceData) return;
+
     const allCards = container.querySelectorAll('[data-card-id]');
     allCards.forEach((cardElement, index) => {
       const cardId = cardElement.getAttribute('data-card-id');
       if (index < 3 && !cardElement.classList.contains('minimized')) {
         // Add to maximized history for the first 3 cards
-        if (!this.maximizedHistory.includes(cardId)) {
-          this.maximizedHistory.push(cardId);
+        if (!instanceData.maximizedHistory.includes(cardId)) {
+          instanceData.maximizedHistory.push(cardId);
         }
       } else if (cardElement.classList.contains('minimized')) {
         // Ensure minimized cards have the right styling
@@ -69,42 +84,48 @@ class ScxrdCardToggler {
   }
 
   setupCardToggles() {
-    const cardContainers = document.querySelectorAll('[data-card-id]');
-    cardContainers.forEach(container => {
-      const header = container.querySelector('.card-header');
-      const cardId = container.getAttribute('data-card-id');
+    // Find all dataset viewers and initialize them separately
+    const datasetViewers = document.querySelectorAll('.scxrd-dataset-viewer');
+    datasetViewers.forEach(viewer => {
+      const datasetId = viewer.getAttribute('data-dataset-id');
+      const datasetIndex = viewer.getAttribute('data-index');
+      const instanceKey = `${datasetId}-${datasetIndex}`;
 
-      if (header && !header.classList.contains('toggle-initialized')) {
-        header.style.cursor = 'pointer';
-        header.style.userSelect = 'none';
-        header.addEventListener('click', () => this.toggleCard(cardId));
-
-        // Add visual indication that it's clickable
-        header.innerHTML += ' <i class="fas fa-chevron-up toggle-icon ms-1" style="font-size: 0.8em; transition: transform 0.3s ease;"></i>';
-
-        // Mark as initialized to avoid duplicate handlers
-        header.classList.add('toggle-initialized');
+      // Initialize instance data for this dataset
+      if (!this.datasetInstances.has(instanceKey)) {
+        this.datasetInstances.set(instanceKey, {
+          maximizedHistory: [],
+          container: viewer
+        });
       }
-    });
 
-    // Initialize default states
-    this.initializeDefaultStates();
+      const cardContainers = viewer.querySelectorAll('[data-card-id]');
+      cardContainers.forEach(container => {
+        const header = container.querySelector('.card-header');
+        const cardId = container.getAttribute('data-card-id');
+
+        if (header && !header.classList.contains('toggle-initialized')) {
+          header.style.cursor = 'pointer';
+          header.style.userSelect = 'none';
+          header.addEventListener('click', () => this.toggleCard(cardId, instanceKey));
+
+          // Add visual indication that it's clickable
+          header.innerHTML += ' <i class="fas fa-chevron-up toggle-icon ms-1" style="font-size: 0.8em; transition: transform 0.3s ease;"></i>';
+
+          // Mark as initialized to avoid duplicate handlers
+          header.classList.add('toggle-initialized');
+        }
+      });
+
+      // Initialize default states for this dataset
+      this.initializeDefaultStatesForContainer(viewer, instanceKey);
+    });
   }
 
-  initializeDefaultStates() {
-    // Initialize the first 3 cards as maximized
-    const allCards = document.querySelectorAll('[data-card-id]');
-    allCards.forEach((container, index) => {
-      const cardId = container.getAttribute('data-card-id');
-      if (index < 3 && !container.classList.contains('minimized')) {
-        // Add to maximized history for the first 3 cards
-        this.maximizedHistory.push(cardId);
-      } else if (container.classList.contains('minimized')) {
-        // Ensure minimized cards have the right styling
-        this.applyMinimizedStyling(container);
-      }
-    });
-  }
+  // This method is no longer needed as initialization is handled per container
+  // initializeDefaultStates() {
+  //   // Initialization is now handled per dataset in setupCardToggles()
+  // }
 
   applyMinimizedStyling(container) {
     const headerText = container.querySelector('.card-header small');
@@ -118,25 +139,28 @@ class ScxrdCardToggler {
     }
   }
 
-  toggleCard(cardId) {
+  toggleCard(cardId, instanceKey) {
     const container = document.querySelector(`[data-card-id="${cardId}"]`);
     if (!container) return;
 
     const isMinimized = container.classList.contains('minimized');
 
     if (isMinimized) {
-      this.maximizeCard(container, cardId);
+      this.maximizeCard(container, cardId, instanceKey);
     } else {
-      this.minimizeCard(container, cardId);
+      this.minimizeCard(container, cardId, instanceKey);
     }
   }
 
-  minimizeCard(container, cardId) {
+  minimizeCard(container, cardId, instanceKey) {
+    const instanceData = this.datasetInstances.get(instanceKey);
+    if (!instanceData) return;
+
     const cardBody = container.querySelector('.card-body');
     const toggleIcon = container.querySelector('.toggle-icon');
 
-    // Remove from maximized history
-    this.maximizedHistory = this.maximizedHistory.filter(id => id !== cardId);
+    // Remove from maximized history for this dataset instance
+    instanceData.maximizedHistory = instanceData.maximizedHistory.filter(id => id !== cardId);
 
     container.classList.add('minimized');
 
@@ -169,19 +193,23 @@ class ScxrdCardToggler {
     }
   }
 
-  maximizeCard(container, cardId) {
-    // Check if we need to minimize the least recently maximized card
-    if (this.maximizedHistory.length >= this.maxMaximizedCards) {
-      const oldestCardId = this.maximizedHistory[0];
-      const oldestContainer = document.querySelector(`[data-card-id="${oldestCardId}"]`);
+  maximizeCard(container, cardId, instanceKey) {
+    const instanceData = this.datasetInstances.get(instanceKey);
+    if (!instanceData) return;
+
+    // Check if we need to minimize the least recently maximized card in THIS dataset
+    if (instanceData.maximizedHistory.length >= this.maxMaximizedCards) {
+      const oldestCardId = instanceData.maximizedHistory[0];
+      // Only look for cards within this dataset's container
+      const oldestContainer = instanceData.container.querySelector(`[data-card-id="${oldestCardId}"]`);
       if (oldestContainer && !oldestContainer.classList.contains('minimized')) {
-        this.minimizeCard(oldestContainer, oldestCardId);
+        this.minimizeCard(oldestContainer, oldestCardId, instanceKey);
       }
     }
 
-    // Add to maximized history
-    this.maximizedHistory = this.maximizedHistory.filter(id => id !== cardId); // Remove if already exists
-    this.maximizedHistory.push(cardId); // Add to end
+    // Add to maximized history for this dataset instance
+    instanceData.maximizedHistory = instanceData.maximizedHistory.filter(id => id !== cardId); // Remove if already exists
+    instanceData.maximizedHistory.push(cardId); // Add to end
 
     const cardBody = container.querySelector('.card-body');
     const toggleIcon = container.querySelector('.toggle-icon');

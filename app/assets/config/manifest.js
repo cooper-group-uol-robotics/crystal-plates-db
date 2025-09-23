@@ -14,3 +14,4 @@
 //= link scxrd/reciprocal_lattice_viewer.js
 //= link scxrd/gallery.js
 //= link scxrd/gallery.css
+//= link cifvis.alldeps.js

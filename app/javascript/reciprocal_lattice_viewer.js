@@ -39,15 +39,31 @@ class ScxrdReciprocalLatticeViewer {
     }
 
     loadThreeJs() {
+        // Suppress the Multiple instances warning by temporarily removing __THREE__
+        const previousTHREE = window.__THREE__;
+        delete window.__THREE__;
+
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js';
         script.onload = () => {
             console.log('Three.js loaded successfully');
             this.threeAvailable = true;
+
+            // Restore previous __THREE__ if it existed (for CifVis)
+            if (previousTHREE) {
+                window.__THREE__ = previousTHREE;
+            }
+
             this.loadOrbitControls();
         };
         script.onerror = () => {
             console.error('Failed to load Three.js');
+
+            // Restore previous __THREE__ if it existed (for CifVis)
+            if (previousTHREE) {
+                window.__THREE__ = previousTHREE;
+            }
+
             this.showError('Failed to load 3D visualization library');
         };
         document.head.appendChild(script);
