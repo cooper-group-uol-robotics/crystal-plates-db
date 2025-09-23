@@ -11,8 +11,8 @@ class CreateDiffractionImages < ActiveRecord::Migration[8.0]
     end
 
     # Add indexes for efficient querying (scxrd_dataset_id index is automatically created by references)
-    add_index :diffraction_images, [:scxrd_dataset_id, :run_number, :image_number], 
+    add_index :diffraction_images, [ :scxrd_dataset_id, :run_number, :image_number ],
               unique: true, name: 'index_diffraction_images_on_dataset_run_image'
-    add_index :diffraction_images, [:scxrd_dataset_id, :run_number]
+    add_index :diffraction_images, [ :scxrd_dataset_id, :run_number ]
   end
 end

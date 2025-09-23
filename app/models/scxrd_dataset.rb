@@ -130,7 +130,7 @@ class ScxrdDataset < ApplicationRecord
       # Parse just the header using the ROD parser service
       parser = RodImageParserService.new(image_data)
       metadata = parser.parse_header_only
-      
+
       metadata
     rescue => e
       Rails.logger.error "SCXRD Dataset #{id}: Error parsing image metadata: #{e.message}"
@@ -146,7 +146,7 @@ class ScxrdDataset < ApplicationRecord
 
   def parsed_image_data(force_refresh: false, diffraction_image: nil)
     return @parsed_image_data if @parsed_image_data && !force_refresh && diffraction_image.nil?
-    
+
     # Determine which image to parse
     image_source = diffraction_image&.rodhypix_file || first_image
     return nil unless image_source&.attached?
@@ -158,10 +158,10 @@ class ScxrdDataset < ApplicationRecord
       # Parse using the ROD parser service
       parser = RodImageParserService.new(image_data)
       parsed_data = parser.parse
-      
+
       # Cache only if parsing the default first image
       @parsed_image_data = parsed_data if diffraction_image.nil?
-      
+
       parsed_data
     rescue => e
       Rails.logger.error "SCXRD Dataset #{id}: Error parsing image data: #{e.message}"
@@ -192,7 +192,7 @@ class ScxrdDataset < ApplicationRecord
   end
 
   def has_valid_image_data?(diffraction_image: nil)
-    return false unless (diffraction_image&.rodhypix_file&.attached? || first_image.attached?)
+    return false unless diffraction_image&.rodhypix_file&.attached? || first_image.attached?
     parsed_data = parsed_image_data(diffraction_image: diffraction_image)
     parsed_data[:success] && !parsed_data[:image_data].empty?
   end

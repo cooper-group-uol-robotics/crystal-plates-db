@@ -1,11 +1,11 @@
 class DiffractionImagesController < ApplicationController
   before_action :set_scxrd_dataset
-  before_action :set_diffraction_image, only: [:show, :image_data, :parsed_image_data, :download]
+  before_action :set_diffraction_image, only: [ :show, :image_data, :parsed_image_data, :download ]
 
   def index
     @diffraction_images = @scxrd_dataset.diffraction_images.ordered
     @runs = @diffraction_images.group_by(&:run_number)
-    
+
     respond_to do |format|
       format.html
       format.json do
@@ -57,13 +57,27 @@ class DiffractionImagesController < ApplicationController
     return render_error("No rodhypix file attached") unless @diffraction_image.rodhypix_file.attached?
 
     begin
+      # Set cache headers - cache for 1 hour based on diffraction image ID and blob checksum
+      blob = @diffraction_image.rodhypix_file.blob
+      etag = "#{@diffraction_image.id}-#{blob.checksum}"
+
+      # Set cache headers
+      response.headers["Cache-Control"] = "public, max-age=3600" # 1 hour
+      response.headers["ETag"] = etag
+
+      # Check if client has cached version
+      if request.headers["If-None-Match"] == etag
+        head :not_modified
+        return
+      end
+
       # Get metadata without full parsing
       metadata = @scxrd_dataset.image_metadata_only(diffraction_image: @diffraction_image)
-      
+
       if metadata[:success]
         # Serve the raw file data as base64 for client-side processing
-        raw_data = @diffraction_image.rodhypix_file.blob.download
-        
+        raw_data = blob.download
+
         render json: {
           success: true,
           raw_data: Base64.strict_encode64(raw_data),
@@ -92,7 +106,7 @@ class DiffractionImagesController < ApplicationController
     begin
       # Parse the diffraction image data using the dataset's parsing method
       parsed_data = @scxrd_dataset.parsed_image_data(diffraction_image: @diffraction_image)
-      
+
       if parsed_data[:success]
         render json: {
           success: true,
@@ -116,7 +130,7 @@ class DiffractionImagesController < ApplicationController
 
   def download
     return render_error("No rodhypix file attached") unless @diffraction_image.rodhypix_file.attached?
-    
+
     redirect_to rails_blob_path(@diffraction_image.rodhypix_file, disposition: "attachment")
   end
 

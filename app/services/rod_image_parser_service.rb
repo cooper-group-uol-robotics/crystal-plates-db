@@ -386,7 +386,7 @@ class RodImageParserService
         mask = (1 << nbit) - 1
         (0...BLOCKSIZE).each do |j|
           break if opos >= width
-          
+
           ret[opos] = ((v >> (nbit * j)) & mask) - zero_at
           opos += 1
         end
@@ -394,12 +394,12 @@ class RodImageParserService
 
       # Apply differential encoding to the block just processed
       start_idx = opos - BLOCKSIZE * 2
-      
+
       (start_idx...opos).each do |i|
         break if i <= 0 || i >= width
 
         offset = ret[i]
-        
+
         if offset >= SHORT_OVERFLOW_SIGNED
           if offset >= LONG_OVERFLOW_SIGNED
             if ipos + 3 < linedata.length

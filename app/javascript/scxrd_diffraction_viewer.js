@@ -12,7 +12,7 @@ class ScxrdDiffractionViewer {
     this.currentZoom = 1;
     this.diffractionImages = [];
     this.currentImageIndex = 0;
-    
+
     // Image preloading cache
     this.imageCache = new Map(); // imageId -> {data, dimensions, metadata, timestamp}
     this.maxCacheSize = 50;
@@ -39,6 +39,11 @@ class ScxrdDiffractionViewer {
 
       // Add interactive controls
       this.addControls();
+
+      // Start preloading images for fast navigation
+      if (this.diffractionImages.length > 1) {
+        setTimeout(() => this.preloadImages(), 1000); // Delay to avoid blocking initial render
+      }
 
       console.log('SCXRD Diffraction Viewer initialized successfully');
     } catch (error) {
@@ -110,7 +115,11 @@ class ScxrdDiffractionViewer {
   async loadData() {
     try {
       console.log('SCXRD Viewer: Fetching raw diffraction data...');
-      const response = await fetch(this.dataUrl);
+      const response = await fetch(this.dataUrl, {
+        headers: {
+          'Cache-Control': 'max-age=3600'  // Request 1-hour cache
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -289,6 +298,283 @@ class ScxrdDiffractionViewer {
 
     this.intensityRange = [min, max];
     console.log(`Intensity range: ${min} - ${max}`);
+  }
+
+  // Image preloading system for fast scrolling
+  async preloadImages() {
+    if (this.diffractionImages.length <= 1 || this.isPreloading) return;
+
+    this.isPreloading = true;
+    console.log(`Starting preload of up to ${this.maxCacheSize} images...`);
+
+    // Priority order: current +/- 10, then expand outward
+    const preloadOrder = this.generatePreloadOrder();
+
+    for (const imageIndex of preloadOrder) {
+      if (this.imageCache.size >= this.maxCacheSize) break;
+
+      const imageInfo = this.diffractionImages[imageIndex];
+      if (!imageInfo || this.imageCache.has(imageInfo.id)) continue;
+
+      try {
+        await this.preloadSingleImage(imageInfo, imageIndex);
+
+        // Small delay to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } catch (error) {
+        console.warn(`Failed to preload image ${imageIndex + 1}:`, error.message);
+      }
+    }
+
+    this.isPreloading = false;
+    console.log(`Preloading complete. Cached ${this.imageCache.size} images.`);
+  }
+
+  generatePreloadOrder() {
+    const order = [];
+    const total = this.diffractionImages.length;
+    const current = this.currentImageIndex;
+
+    // Add current image first
+    order.push(current);
+
+    // Add adjacent images in expanding order
+    for (let offset = 1; offset < total && order.length < this.maxCacheSize; offset++) {
+      // Add next image
+      if (current + offset < total) {
+        order.push(current + offset);
+      }
+      // Add previous image
+      if (current - offset >= 0) {
+        order.push(current - offset);
+      }
+    }
+
+    return order.slice(0, this.maxCacheSize);
+  }
+
+  async preloadSingleImage(imageInfo, imageIndex) {
+    const imageUrl = this.dataUrl.replace(/\/\d+\/image_data$/, `/${imageInfo.id}/image_data`);
+
+    console.log(`Preloading image ${imageIndex + 1}/${this.diffractionImages.length}: ${imageInfo.display_name}`);
+
+    try {
+      const response = await fetch(imageUrl, {
+        headers: {
+          'Cache-Control': 'max-age=3600'  // Request 1-hour cache
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      if (!responseData.success) {
+        throw new Error(responseData.error || 'Failed to fetch data');
+      }
+
+      let processedData, dimensions;
+
+      // Parse raw data if needed
+      if (responseData.raw_data) {
+        if (!window.RodImageParser) {
+          throw new Error('ROD Image Parser not available');
+        }
+
+        const parser = new RodImageParser(responseData.raw_data);
+        const parsedData = await parser.parse();
+
+        if (!parsedData.success) {
+          throw new Error(`Parsing failed: ${parsedData.error}`);
+        }
+
+        processedData = this.convertToHeatmapData(parsedData.image_data, parsedData.dimensions);
+        dimensions = parsedData.dimensions;
+      } else if (responseData.image_data) {
+        processedData = this.convertToHeatmapData(responseData.image_data, responseData.dimensions);
+        dimensions = responseData.dimensions;
+      } else {
+        throw new Error('No valid image data found');
+      }
+
+      // Store in cache with timestamp for LRU eviction
+      this.imageCache.set(imageInfo.id, {
+        data: processedData,
+        dimensions: dimensions,
+        metadata: {
+          ...responseData.metadata,
+          run_number: imageInfo.run_number,
+          image_number: imageInfo.image_number,
+          filename: imageInfo.filename,
+          display_name: imageInfo.display_name
+        },
+        timestamp: Date.now()
+      });
+
+      // Manage cache size and update UI
+      this.manageCacheSize();
+      this.updateCacheStatus();
+
+    } catch (error) {
+      console.warn(`Failed to preload image ${imageInfo.display_name}:`, error.message);
+    }
+  }
+
+  convertToHeatmapData(imageData, dimensions) {
+    const [width, height] = dimensions;
+    const heatmapData = [];
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = y * width + x;
+        const value = imageData[index];
+        if (value > 0) { // Only include non-zero values for performance
+          heatmapData.push({ x, y, value });
+        }
+      }
+    }
+
+    return heatmapData;
+  }
+
+  manageCacheSize() {
+    if (this.imageCache.size <= this.maxCacheSize) return;
+
+    // Remove oldest entries (LRU eviction)
+    const entries = Array.from(this.imageCache.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+    const toRemove = entries.slice(0, this.imageCache.size - this.maxCacheSize);
+    toRemove.forEach(([id]) => this.imageCache.delete(id));
+
+    console.log(`Cache trimmed: removed ${toRemove.length} images, ${this.imageCache.size} remaining`);
+    this.updateCacheStatus();
+  }
+
+  updateCacheStatus() {
+    const cacheStatusElement = document.getElementById(`${this.containerId}_cache_status`);
+    if (cacheStatusElement) {
+      cacheStatusElement.innerHTML = `
+        <span class="badge bg-success">
+          📦 ${this.imageCache.size}/${this.maxCacheSize} cached
+        </span>
+      `;
+    }
+  }
+
+  async loadFromCacheOrFetch(imageInfo) {
+    // Check cache first
+    if (this.imageCache.has(imageInfo.id)) {
+      console.log(`Loading from cache: ${imageInfo.display_name}`);
+      const cached = this.imageCache.get(imageInfo.id);
+
+      // Update timestamp for LRU
+      cached.timestamp = Date.now();
+
+      // Use cached data
+      this.currentData = cached.data;
+      this.metadata = {
+        ...this.metadata,
+        ...cached.metadata,
+        dimensions: cached.dimensions
+      };
+
+      this.calculateIntensityRange();
+      return;
+    }
+
+    // Not in cache, fetch and cache
+    console.log(`Cache miss, loading and caching: ${imageInfo.display_name}`);
+
+    try {
+      const response = await fetch(this.dataUrl, {
+        headers: {
+          'Cache-Control': 'max-age=3600'  // Request 1-hour cache
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      if (!responseData.success) {
+        throw new Error(responseData.error || 'Failed to fetch data');
+      }
+
+      let processedData, dimensions;
+
+      // Parse raw data if needed
+      if (responseData.raw_data) {
+        console.log('SCXRD Viewer: Parsing raw ROD data client-side and caching...');
+
+        if (!window.RodImageParser) {
+          throw new Error('ROD Image Parser not available');
+        }
+
+        const parser = new RodImageParser(responseData.raw_data);
+        const parsedData = await parser.parse();
+
+        if (!parsedData.success) {
+          throw new Error(`Parsing failed: ${parsedData.error}`);
+        }
+
+        processedData = this.convertToHeatmapData(parsedData.image_data, parsedData.dimensions);
+        dimensions = parsedData.dimensions;
+
+        // Use the parsed data immediately
+        this.currentData = processedData;
+
+      } else if (responseData.image_data) {
+        console.log('SCXRD Viewer: Using pre-parsed data and caching...');
+        processedData = this.convertToHeatmapData(responseData.image_data, responseData.dimensions);
+        dimensions = responseData.dimensions;
+
+        // Use the data immediately
+        this.currentData = processedData;
+
+      } else {
+        throw new Error('No valid image data found');
+      }
+
+      // Update metadata
+      this.metadata = {
+        ...this.metadata,
+        ...responseData.metadata,
+        dimensions: dimensions,
+        pixel_size: responseData.pixel_size,
+        run_number: imageInfo.run_number,
+        image_number: imageInfo.image_number,
+        filename: imageInfo.filename,
+        display_name: imageInfo.display_name
+      };
+
+      // Store in cache for future use
+      this.imageCache.set(imageInfo.id, {
+        data: processedData,
+        dimensions: dimensions,
+        metadata: {
+          ...responseData.metadata,
+          run_number: imageInfo.run_number,
+          image_number: imageInfo.image_number,
+          filename: imageInfo.filename,
+          display_name: imageInfo.display_name
+        },
+        timestamp: Date.now()
+      });
+
+      // Manage cache size and update UI
+      this.manageCacheSize();
+      this.updateCacheStatus();
+
+      // Calculate intensity range
+      this.calculateIntensityRange();
+
+      console.log(`Successfully loaded and cached ${imageInfo.display_name}`);
+
+    } catch (error) {
+      console.error(`Failed to load image data:`, error);
+      throw new Error(`Failed to load diffraction data: ${error.message}`);
+    }
   }
 
   createVisualization() {
@@ -484,12 +770,19 @@ class ScxrdDiffractionViewer {
           </div>
           <div class="row mt-2">
             <div class="col-md-12">
-              <div class="d-inline-block">
+              <div class="d-flex justify-content-between align-items-center">
                 <small class="text-muted">
                   Data points: ${this.currentData ? this.currentData.length.toLocaleString() : 0}
                   ${this.metadata.dimensions ? ` | Size: ${this.metadata.dimensions}` : ''}
                   ${this.metadata.filename ? ` | File: ${this.metadata.filename}` : ''}
                 </small>
+                ${this.diffractionImages.length > 1 ? `
+                  <small class="text-muted" id="${this.containerId}_cache_status">
+                    <span class="badge bg-success">
+                      📦 ${this.imageCache.size}/${this.maxCacheSize} cached
+                    </span>
+                  </small>
+                ` : ''}
               </div>
             </div>
           </div>
@@ -690,40 +983,35 @@ class ScxrdDiffractionViewer {
       // Construct new URL for the selected image
       const newUrl = this.dataUrl.replace(/\/\d+\/image_data$/, `/${imageInfo.id}/image_data`);
 
-      // Update metadata
-      this.metadata = {
-        ...this.metadata,
-        run_number: imageInfo.run_number,
-        image_number: imageInfo.image_number,
-        filename: imageInfo.filename
-      };
-
       console.log(`Navigating to image ${index + 1}/${this.diffractionImages.length}: ${imageInfo.display_name}`);
 
-      // Show loading state
-      const container = document.getElementById(this.containerId);
-      if (container) {
-        const heatmapContainer = container.querySelector(`#${this.containerId}_heatmap`);
-        if (heatmapContainer) {
-          heatmapContainer.innerHTML = `
-            <div class="d-flex justify-content-center align-items-center h-100">
-              <div class="text-center">
-                <div class="spinner-border text-primary" role="status">
-                  <span class="visually-hidden">Loading...</span>
+      // Show loading state only if not cached
+      const isCached = this.imageCache.has(imageInfo.id);
+      if (!isCached) {
+        const container = document.getElementById(this.containerId);
+        if (container) {
+          const heatmapContainer = container.querySelector(`#${this.containerId}_heatmap`);
+          if (heatmapContainer) {
+            heatmapContainer.innerHTML = `
+              <div class="d-flex justify-content-center align-items-center h-100">
+                <div class="text-center">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <div class="mt-2">Loading ${imageInfo.display_name}...</div>
                 </div>
-                <div class="mt-2">Loading ${imageInfo.display_name}...</div>
               </div>
-            </div>
-          `;
+            `;
+          }
         }
       }
 
       // Clean up current data before loading new image
       this.cleanup();
 
-      // Load new data
+      // Load from cache or fetch from server
       this.dataUrl = newUrl;
-      await this.loadData();
+      await this.loadFromCacheOrFetch(imageInfo);
 
       // Recreate visualization
       this.createVisualization();
@@ -731,10 +1019,48 @@ class ScxrdDiffractionViewer {
       // Update controls
       this.addControls();
 
-      console.log(`Successfully loaded ${imageInfo.display_name}`);
+      console.log(`Successfully loaded ${imageInfo.display_name} ${isCached ? '(from cache)' : '(from server)'}`);
+
+      // Trigger background preloading of adjacent images
+      if (!this.isPreloading) {
+        setTimeout(() => this.preloadAdjacentImages(index), 100);
+      }
+
     } catch (error) {
       console.error(`Failed to navigate to image ${index}:`, error);
       this.showError(`Failed to load image: ${error.message}`);
+    }
+  }
+
+  async preloadAdjacentImages(currentIndex) {
+    // Preload next 5 images in each direction for smooth scrolling
+    const adjacentRange = 5;
+    const toPreload = [];
+
+    for (let offset = 1; offset <= adjacentRange; offset++) {
+      // Next images
+      if (currentIndex + offset < this.diffractionImages.length) {
+        toPreload.push(currentIndex + offset);
+      }
+      // Previous images
+      if (currentIndex - offset >= 0) {
+        toPreload.push(currentIndex - offset);
+      }
+    }
+
+    for (const imageIndex of toPreload) {
+      if (this.imageCache.size >= this.maxCacheSize) break;
+
+      const imageInfo = this.diffractionImages[imageIndex];
+      if (!imageInfo || this.imageCache.has(imageInfo.id)) continue;
+
+      try {
+        await this.preloadSingleImage(imageInfo, imageIndex);
+        // Small delay to avoid overwhelming
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.warn(`Failed to preload adjacent image ${imageIndex}:`, error.message);
+      }
     }
   }
 

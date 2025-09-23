@@ -50,7 +50,7 @@ Rails.application.routes.draw do
         get :image_data
         get :peak_table_data
       end
-      resources :diffraction_images, only: [:index, :show] do
+      resources :diffraction_images, only: [ :index, :show ] do
         member do
           get :image_data
           get :parsed_image_data
@@ -81,7 +81,7 @@ Rails.application.routes.draw do
       get :image_data
       get :peak_table_data
     end
-    resources :diffraction_images, only: [:index, :show] do
+    resources :diffraction_images, only: [ :index, :show ] do
       member do
         get :image_data
         get :parsed_image_data
@@ -147,7 +147,7 @@ Rails.application.routes.draw do
               get :spatial_correlations
               get :search
             end
-            resources :diffraction_images, only: [:index, :show] do
+            resources :diffraction_images, only: [ :index, :show ] do
               member do
                 get :image_data
                 get :parsed_image_data
@@ -184,7 +184,7 @@ Rails.application.routes.draw do
             get :spatial_correlations
             get :search
           end
-          resources :diffraction_images, only: [:index, :show] do
+          resources :diffraction_images, only: [ :index, :show ] do
             member do
               get :image_data
               get :parsed_image_data

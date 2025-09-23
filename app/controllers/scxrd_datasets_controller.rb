@@ -15,7 +15,7 @@ class ScxrdDatasetsController < ApplicationController
                                    .order(created_at: :desc)
                                    .page(params[:page])
                                    .per(10)
-      
+
       respond_to do |format|
         format.html { render "index" }
         format.json do
@@ -93,12 +93,12 @@ class ScxrdDatasetsController < ApplicationController
 
     if @well
       @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
-      success_redirect = [@well, @scxrd_dataset]
+      success_redirect = [ @well, @scxrd_dataset ]
     else
       @scxrd_dataset = ScxrdDataset.new(scxrd_dataset_params)
       success_redirect = @scxrd_dataset
     end
-    
+
     @scxrd_dataset.date_uploaded = Time.current
 
     # Set measurement date to current date if not provided
@@ -131,7 +131,7 @@ class ScxrdDatasetsController < ApplicationController
     end
 
     if @scxrd_dataset.update(scxrd_dataset_params)
-      redirect_path = @well ? [@well, @scxrd_dataset] : @scxrd_dataset
+      redirect_path = @well ? [ @well, @scxrd_dataset ] : @scxrd_dataset
       redirect_to redirect_path, notice: "SCXRD dataset was successfully updated."
     else
       # Note: Lattice centrings removed - Niggli reduced cells are always primitive
@@ -340,7 +340,7 @@ class ScxrdDatasetsController < ApplicationController
           # Store all diffraction images as DiffractionImage records
           if result[:all_diffraction_images] && result[:all_diffraction_images].any?
             Rails.logger.info "SCXRD: Processing #{result[:all_diffraction_images].length} diffraction images..."
-            
+
             result[:all_diffraction_images].each_with_index do |image_data, index|
               begin
                 diffraction_image = @scxrd_dataset.diffraction_images.build(
@@ -349,25 +349,25 @@ class ScxrdDatasetsController < ApplicationController
                   filename: image_data[:filename],
                   file_size: image_data[:file_size]
                 )
-                
+
                 diffraction_image.rodhypix_file.attach(
                   io: StringIO.new(image_data[:data]),
                   filename: image_data[:filename],
                   content_type: "application/octet-stream"
                 )
-                
+
                 diffraction_image.save!
-                
+
                 # Log progress every 100 images to avoid log spam
                 if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
                   Rails.logger.info "SCXRD: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
                 end
-                
+
               rescue => e
                 Rails.logger.error "SCXRD: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
               end
             end
-            
+
             total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
             Rails.logger.info "SCXRD: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
           end
@@ -441,8 +441,8 @@ class ScxrdDatasetsController < ApplicationController
     filtered_params[:scxrd_dataset] = params[:scxrd_dataset].except(:compressed_archive) if params[:scxrd_dataset]
 
     # Determine permitted parameters based on context
-    permitted_params = [:experiment_name, :date_measured]
-    
+    permitted_params = [ :experiment_name, :date_measured ]
+
     # Only allow well_id when we're in well context (not standalone)
     permitted_params << :well_id if @well.present?
 

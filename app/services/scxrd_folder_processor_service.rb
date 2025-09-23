@@ -83,7 +83,7 @@ class ScxrdFolderProcessorService
     else
       Rails.logger.warn "SCXRD: No crystal.ini files found in expinfo folder"
     end
-          # Parse coordinates from cmdscript.mac if parsing succeeded
+    # Parse coordinates from cmdscript.mac if parsing succeeded
     if @par_data
       coordinates = parse_cmdscript_coordinates
       @par_data.merge!(coordinates) if coordinates
@@ -92,31 +92,31 @@ class ScxrdFolderProcessorService
 
   def extract_all_diffraction_images
     Rails.logger.info "SCXRD: Starting to extract all diffraction images from frames folder"
-    
+
     frames_pattern = File.join(@folder_path, "frames", "*.rodhypix")
     all_rodhypix_files = Dir.glob(frames_pattern, File::FNM_CASEFOLD)
-    
+
     # Exclude files starting with 'pre_'
     rodhypix_files = all_rodhypix_files.reject { |file| File.basename(file).start_with?("pre_") }
-    
+
     Rails.logger.info "SCXRD: Found #{rodhypix_files.length} diffraction images (excluding pre_* files)"
-    
+
     @all_diffraction_images = []
-    
+
     rodhypix_files.each do |file_path|
       filename = File.basename(file_path)
-      
+
       # Parse filename to extract run number and image number
       # Expected format: <variable_string>_<run_number>_<image_number>.rodhypix
       if filename =~ /^(.+)_(\d+)_(\d+)\.rodhypix$/i
         base_name = $1
         run_number = $2.to_i
         image_number = $3.to_i
-        
+
         begin
           image_data = File.binread(file_path)
           file_size = image_data.bytesize
-          
+
           @all_diffraction_images << {
             filename: filename,
             run_number: run_number,
@@ -124,7 +124,7 @@ class ScxrdFolderProcessorService
             data: image_data,
             file_size: file_size
           }
-          
+
           Rails.logger.debug "SCXRD: Extracted #{filename} - Run: #{run_number}, Image: #{image_number}, Size: #{number_to_human_size(file_size)}"
         rescue => e
           Rails.logger.error "SCXRD: Error reading diffraction image #{filename}: #{e.message}"
@@ -133,22 +133,22 @@ class ScxrdFolderProcessorService
         Rails.logger.warn "SCXRD: Filename #{filename} doesn't match expected pattern <name>_<run>_<image>.rodhypix"
       end
     end
-    
+
     # Sort by run number and image number for consistent ordering
-    @all_diffraction_images.sort_by! { |img| [img[:run_number], img[:image_number]] }
-    
+    @all_diffraction_images.sort_by! { |img| [ img[:run_number], img[:image_number] ] }
+
     Rails.logger.info "SCXRD: Successfully extracted #{@all_diffraction_images.length} diffraction images"
-    
+
     if @all_diffraction_images.any?
       runs = @all_diffraction_images.group_by { |img| img[:run_number] }.keys.sort
       Rails.logger.info "SCXRD: Found runs: #{runs.join(', ')}"
-      
+
       runs.each do |run|
         images_in_run = @all_diffraction_images.select { |img| img[:run_number] == run }
         image_numbers = images_in_run.map { |img| img[:image_number] }.sort
         Rails.logger.info "SCXRD: Run #{run}: #{images_in_run.length} images (#{image_numbers.first}-#{image_numbers.last})"
       end
-      
+
       total_size = @all_diffraction_images.sum { |img| img[:file_size] }
       Rails.logger.info "SCXRD: Total diffraction images size: #{number_to_human_size(total_size)}"
     end

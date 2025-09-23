@@ -9,9 +9,9 @@ Rails.application.config.assets.version = "1.0"
 # Precompile additional assets.
 # application.js, application.css, and all non-JS/CSS in the app/assets
 # folder are already added.
-Rails.application.config.assets.precompile += %w( wasm/rod_decoder.js wasm/rod_decoder.wasm )
+Rails.application.config.assets.precompile += %w[ wasm/rod_decoder.js wasm/rod_decoder.wasm ]
 
 # Configure WebAssembly MIME type for asset pipeline
 Rails.application.config.assets.configure do |env|
-  env.register_mime_type 'application/wasm', extensions: ['.wasm']
+  env.register_mime_type "application/wasm", extensions: [ ".wasm" ]
 end
