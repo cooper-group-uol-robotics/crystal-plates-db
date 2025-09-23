@@ -39,29 +39,30 @@
                     <%= link_to "#{dataset.well.plate.barcode}-#{dataset.well.well_label}", 
                                dataset.well.plate, 
                                class: "text-decoration-none" %>
+                    <% if dataset.real_world_x_mm.present? && dataset.real_world_y_mm.present? && dataset.real_world_z_mm.present? %>
+                      <span class="text-info ms-2">
+                        (x=<%= number_with_precision(dataset.real_world_x_mm, precision: 2) %>mm, 
+                         y=<%= number_with_precision(dataset.real_world_y_mm, precision: 2) %>mm, 
+                         z=<%= number_with_precision(dataset.real_world_z_mm, precision: 2) %>mm)
+                      </span>
+                    <% end %>
                     | 
                   <% else %>
                     <strong>Type:</strong> <span class="badge bg-secondary">Standalone</span> | 
                   <% end %>
                   <strong>Measured:</strong> <%= (dataset.date_measured || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
                   <% if dataset.niggli_a.present? %>
-                    | <strong>Unit Cell:</strong> 
-                    a=<%= number_with_precision(dataset.niggli_a, precision: 3) %>Å 
-                    b=<%= number_with_precision(dataset.niggli_b, precision: 3) %>Å 
-                    c=<%= number_with_precision(dataset.niggli_c, precision: 3) %>Å
+                    | <strong>Reduced (Niggli) Cell:</strong> 
+                        a=<%= number_with_precision(dataset.niggli_a, precision: 3) %>Å 
+                        b=<%= number_with_precision(dataset.niggli_b, precision: 3) %>Å 
+                        c=<%= number_with_precision(dataset.niggli_c, precision: 3) %>Å
+                        α=<%= number_with_precision(dataset.niggli_alpha, precision: 2) %>°
+                        β=<%= number_with_precision(dataset.niggli_beta, precision: 2) %>°
+                        γ=<%= number_with_precision(dataset.niggli_gamma, precision: 2) %>°
                   <% end %>
                 </div>
               </div>
               <div class="text-end">
-                <div class="mb-1">
-                  <% if dataset.has_first_image? %>
-                    <span class="badge bg-primary">Image</span>
-                  <% end %>
-                  <% if dataset.has_peak_table? %>
-                    <span class="badge bg-success">Peak Table</span>
-                  <% end %>
-                  <span class="badge bg-info">Primitive</span>
-                </div>
                 <div class="btn-group btn-group-sm">
                   <%= link_to scxrd_dataset_path(dataset), 
                              class: "btn btn-outline-primary btn-sm" do %>

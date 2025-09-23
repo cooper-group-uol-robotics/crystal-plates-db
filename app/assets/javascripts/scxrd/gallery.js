@@ -2,14 +2,14 @@
 
 // Define function in global scope for SCXRD dataset switching
 window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl, wellId, uniqueId = 'scxrd') {
-  console.log('showScxrdDatasetInMain called with:', datasetId, experimentName, datasetUrl, wellId, uniqueId);
+
 
   // Use different API endpoints for well-associated vs standalone datasets
   const apiUrl = (wellId && wellId !== 'null' && wellId !== null)
     ? `/wells/${wellId}/scxrd_datasets/${datasetId}`
     : `/scxrd_datasets/${datasetId}`;
 
-  console.log('Fetching from API URL:', apiUrl);
+
 
   // Update the main display panels
   fetch(apiUrl, {
@@ -33,8 +33,7 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
         `;
 
         // Load and display interactive diffraction viewer
-        console.log('ScxrdDiffractionViewer available:', !!window.ScxrdDiffractionViewer);
-        console.log('Visual Heatmap available:', !!window.VisualHeatmap);
+
         if (window.ScxrdDiffractionViewer) {
           // First, replace panel content with plot container
           const plotId = `${uniqueId}-diffraction-plot`;
@@ -110,7 +109,7 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
         `;
 
         // Load and display interactive reciprocal lattice viewer
-        console.log('ScxrdReciprocalLatticeViewer available:', !!window.ScxrdReciprocalLatticeViewer);
+
         if (window.ScxrdReciprocalLatticeViewer) {
           // First, replace panel content with plot container
           const latticeId = `${uniqueId}-reciprocal-lattice-plot`;
@@ -198,42 +197,7 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
         `;
       }
 
-      // Update experiment info card
-      const infoCard = document.getElementById(`${uniqueId}-info-card`);
-      let unitCellInfo = '';
-      // Handle both unit_cell (from well endpoint) and niggli_unit_cell (from standalone endpoint)
-      const unitCell = data.unit_cell || data.niggli_unit_cell;
-      if (unitCell && unitCell.a) {
-        unitCellInfo = `| Cell: a=${unitCell.a}Å b=${unitCell.b}Å c=${unitCell.c}Å α=${unitCell.alpha}° β=${unitCell.beta}° γ=${unitCell.gamma}°`;
-      }
 
-      infoCard.innerHTML = `
-        <div class="card-body py-1">
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="flex-grow-1 me-3">
-              <span class="fw-bold">${experimentName}</span>
-              <small class="text-muted ms-2">
-                | Measured: ${data.date_measured || 'Unknown'}
-                ${data.real_world_coordinates ? `| Position: (${data.real_world_coordinates.x_mm || 'N/A'}, ${data.real_world_coordinates.y_mm || 'N/A'}, ${data.real_world_coordinates.z_mm || 'N/A'})mm` : ''}
-                ${unitCellInfo}
-              </small>
-            </div>
-            <div class="btn-group btn-group-sm flex-shrink-0">
-            <a href="${datasetUrl}" class="btn btn-outline-primary">
-              <i class="fas fa-eye me-1"></i>View Details
-            </a>
-            <a href="${datasetUrl}/edit" class="btn btn-outline-secondary">
-              <i class="fas fa-edit me-1"></i>Edit
-            </a>
-            ${data.has_archive ? `
-              <a href="${(wellId && wellId !== 'null' && wellId !== null) ? `/wells/${wellId}/scxrd_datasets/${datasetId}/download` : `/scxrd_datasets/${datasetId}/download`}" class="btn btn-outline-success">
-                <i class="fas fa-download me-1"></i>Archive
-              </a>
-            ` : ''}
-            </div>
-          </div>
-        </div>
-      `;
     })
     .catch(error => {
       console.error('Error loading SCXRD dataset details:', error);
@@ -251,7 +215,7 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
 
 // Function to load well image with crystal location circle
 window.loadWellImageWithCrystalLocation = function (datasetId, crystalX, crystalY, crystalZ, wellId, containerId = 'crystal-well-image-container') {
-  console.log(`Loading well image with crystal location: (${crystalX}, ${crystalY}, ${crystalZ})mm for dataset ${datasetId}`);
+
 
   const container = document.getElementById(containerId);
   if (!container) {
@@ -261,7 +225,7 @@ window.loadWellImageWithCrystalLocation = function (datasetId, crystalX, crystal
 
   // Handle standalone datasets (no well association)
   if (!wellId || wellId === 'null' || wellId === null) {
-    console.log('Standalone dataset - no well image available');
+
     container.innerHTML = `
       <div class="text-center p-3 text-muted">
         <i class="fas fa-info-circle fa-2x mb-3"></i>
@@ -285,7 +249,7 @@ window.loadWellImageWithCrystalLocation = function (datasetId, crystalX, crystal
       return response.json();
     })
     .then(correlationData => {
-      console.log('Spatial correlations data:', correlationData);
+
 
       // Find the closest POI to the current crystal coordinates
       let closestPOI = null;
@@ -320,8 +284,7 @@ window.loadWellImageWithCrystalLocation = function (datasetId, crystalX, crystal
       }
 
       if (closestPOI && matchingDataset) {
-        console.log(`Found spatial correlation: crystal at (${crystalX}, ${crystalY}) correlates with POI at pixel (${closestPOI.pixel_coordinates.x}, ${closestPOI.pixel_coordinates.y}) at distance ${minDistance.toFixed(3)}mm`);
-        console.log(`Loading image with ID: ${closestPOI.image_id}`);
+
 
         // Fetch the image details to get the file URL
         fetch(`/api/v1/wells/${wellId}/images/${closestPOI.image_id}`, {
@@ -334,7 +297,7 @@ window.loadWellImageWithCrystalLocation = function (datasetId, crystalX, crystal
             return response.json();
           })
           .then(imageData => {
-            console.log('Image data:', imageData);
+
             const imageUrl = imageData.data ? imageData.data.file_url : null;
             const pixelSizeX = imageData.data ? imageData.data.pixel_size_x_mm : null;
             const pixelSizeY = imageData.data ? imageData.data.pixel_size_y_mm : null;
@@ -372,7 +335,7 @@ window.loadWellImageWithCrystalLocation = function (datasetId, crystalX, crystal
             `;
           });
       } else {
-        console.log('No spatial correlations found for this crystal location');
+
         container.innerHTML = `
           <div class="text-center p-3 text-muted">
             <i class="fas fa-gem fa-3x mb-3"></i>
@@ -446,8 +409,7 @@ window.drawCrystalLocationCircle = function (pixelX, pixelY) {
   ctx.arc(canvasX, canvasY, 2, 0, 2 * Math.PI);
   ctx.fill();
 
-  console.log(`Drew crystal location circle at (${canvasX.toFixed(1)}, ${canvasY.toFixed(1)}) with radius ${circleRadius.toFixed(1)}px`);
-  console.log(`Using pixel scale: ${pixelSizeX}mm/px (X), ${pixelSizeY}mm/px (Y), 0.3mm = ${averageRadiusPixels.toFixed(1)} pixels`);
+
 }
 
 // Function to handle well image loading errors

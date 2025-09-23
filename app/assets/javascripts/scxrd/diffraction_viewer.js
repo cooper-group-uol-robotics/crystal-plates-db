@@ -10,6 +10,13 @@ class ScxrdDiffractionViewer {
     this.currentIntensityRange = [0, 1000];
     this.currentZoom = 1;
     this.initialScale = 1;
+    this.intensityScaleSet = false; // Track if intensity scale has been set from first image
+    this.defaultIntensity = null; // Store the default intensity from first image
+    this.maxSliderValue = null; // Store the max slider value from first image
+    this.currentSliderValue = null; // Store the current slider value to prevent reset
+    this.isPlaying = false; // Track if movie is playing
+    this.playTimer = null; // Store the play timer
+    this.playSpeed = 100; // Default play speed in milliseconds
   }
 
   getVisualHeatmap() {
@@ -18,7 +25,17 @@ class ScxrdDiffractionViewer {
   }
 
   async loadImageData(wellId, datasetId, diffractionImageId = null) {
-    console.log(`Loading SCXRD image data for well ${wellId}, dataset ${datasetId}, diffraction image ${diffractionImageId}`);
+
+
+    // Reset intensity scale if we're loading a new dataset
+    if (this.datasetId && this.datasetId !== datasetId) {
+      console.log(`Switching from dataset ${this.datasetId} to ${datasetId} - resetting intensity scale`);
+      this.resetIntensityScale();
+    }
+
+    // Store the current dataset and well IDs
+    this.datasetId = datasetId;
+    this.wellId = wellId;
 
     try {
       // Use different URL based on whether we're loading a specific diffraction image or the first/legacy image
@@ -35,16 +52,13 @@ class ScxrdDiffractionViewer {
           : `/scxrd_datasets/${datasetId}/image_data`;
       }
 
-      console.log(`Fetching from: ${url}`);
       const response = await fetch(url);
-
-      console.log(`Response status: ${response.status}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('Received data:', { success: data.success, dimensions: data.dimensions, dataLength: data.image_data?.length, hasRawData: !!data.raw_data });
+
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to load image data');
@@ -52,19 +66,14 @@ class ScxrdDiffractionViewer {
 
       // Handle both old format (image_data array) and new format (raw_data base64)
       if (data.raw_data && !data.image_data) {
-        console.log('Processing raw ROD data client-side...');
-        console.log('Available window objects:', Object.keys(window).filter(k => k.toLowerCase().includes('rod')));
-        console.log('RodImageParser available:', !!window.RodImageParser);
+
 
         // Parse raw data using client-side ROD parser
         if (window.RodImageParser) {
           try {
-            console.log('Creating RodImageParser instance...');
             const parser = new window.RodImageParser(data.raw_data);
-            console.log('Parsing data...');
             const parsedData = await parser.parse();
             if (parsedData.success) {
-              console.log(`Client-side ROD parsing successful: ${parsedData.image_data.length} pixels`);
 
               // Use client-side results
               this.imageData = parsedData.image_data;
@@ -90,7 +99,7 @@ class ScxrdDiffractionViewer {
       this.metadata = data.metadata;
       this.currentDiffractionImageId = diffractionImageId;
 
-      console.log(`Loaded ${this.dimensions[0]}x${this.dimensions[1]} diffraction image`);
+
       return true;
     } catch (error) {
       console.error('Error loading SCXRD image data:', error);
@@ -102,14 +111,14 @@ class ScxrdDiffractionViewer {
 
 
   async loadDiffractionImagesList(wellId, datasetId) {
-    console.log(`Loading diffraction images list for well ${wellId}, dataset ${datasetId}`);
+
 
     try {
       const url = wellId && wellId !== 'null' && wellId !== null
         ? `/wells/${wellId}/scxrd_datasets/${datasetId}/diffraction_images`
         : `/scxrd_datasets/${datasetId}/diffraction_images`;
 
-      console.log(`Fetching diffraction images from: ${url}`);
+
       const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
 
       if (!response.ok) {
@@ -117,7 +126,7 @@ class ScxrdDiffractionViewer {
       }
 
       const data = await response.json();
-      console.log('Received diffraction images data:', { success: data.success, count: data.diffraction_images?.length });
+
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to load diffraction images');
@@ -127,7 +136,7 @@ class ScxrdDiffractionViewer {
       this.availableRuns = data.runs;
       this.totalImagesCount = data.total_count;
 
-      console.log(`Loaded ${this.totalImagesCount} diffraction images across ${this.availableRuns.length} runs`);
+
       return true;
     } catch (error) {
       console.error('Error loading diffraction images list:', error);
@@ -159,7 +168,7 @@ class ScxrdDiffractionViewer {
   async navigateToImage(diffractionImageId) {
     if (!diffractionImageId) return false;
 
-    console.log(`Navigating to diffraction image ${diffractionImageId}`);
+
     const success = await this.loadImageData(this.wellId, this.datasetId, diffractionImageId);
     if (success) {
       this.plotImage();
@@ -195,7 +204,7 @@ class ScxrdDiffractionViewer {
     const binnedWidth = Math.ceil(width / binSize);
     const binnedHeight = Math.ceil(height / binSize);
 
-    console.log(`Binning ${width}x${height} image into ${binnedWidth}x${binnedHeight} superpixels (${binSize}x${binSize} each)`);
+
 
     const heatmapData = [];
 
@@ -225,19 +234,13 @@ class ScxrdDiffractionViewer {
       }
     }
 
-    console.log(`Generated ${heatmapData.length} superpixel data points from ${width}x${height} image (${binnedWidth}x${binnedHeight} grid)`);
-    console.log(`Reduction: ${(this.imageData.length - heatmapData.length).toLocaleString()} fewer points`);
-    console.log(`Sample superpixel data:`, heatmapData.slice(0, 10));
+
 
     return heatmapData;
   }
 
   plotImage() {
-    console.log('plotImage() called, checking Visual Heatmap availability...');
-    console.log('window.VisualHeatmap:', window.VisualHeatmap);
-    console.log('window.visualHeatmap:', window.visualHeatmap);
-    console.log('typeof VisualHeatmap:', typeof window.VisualHeatmap);
-    console.log('typeof visualHeatmap:', typeof window.visualHeatmap);
+
 
     if (!this.getVisualHeatmap()) {
       console.error('Visual Heatmap library not available');
@@ -265,9 +268,17 @@ class ScxrdDiffractionViewer {
     // Create container with heatmap div and controls
     this.plotDiv.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column;">
-        <div id="${this.containerId}-canvas" style="width: 100%; flex: 1; border: 1px solid #dee2e6; overflow: hidden; background: #000;"></div>
-        <div id="${this.containerId}-controls" style="height: 60px; padding: 5px; background: #f8f9fa; border-top: 1px solid #dee2e6; flex-shrink: 0;">
-          <!-- Controls will be added here -->
+        <div id="${this.containerId}-canvas" style="position: relative; width: 100%; flex: 1; border: 1px solid #dee2e6; overflow: hidden; background: #000;">
+          <!-- Intensity slider overlay -->
+          <div id="${this.containerId}-intensity-overlay" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+            <label class="text-white fw-medium" style="font-size: 0.8rem; margin: 0;">Intensity:</label>
+            <input type="range" id="${this.containerId}-intensity" class="form-range" 
+                   style="width: 100px; height: 4px;" min="1" max="1000" value="100">
+            <span id="${this.containerId}-intensity-value" class="text-white fw-medium" style="font-size: 0.8rem; min-width: 24px; text-align: center;">100</span>
+          </div>
+        </div>
+        <div id="${this.containerId}-controls" style="height: 50px; padding: 5px; background: #f8f9fa; border-top: 1px solid #dee2e6; flex-shrink: 0;">
+          <!-- Navigation controls will be added here -->
         </div>
       </div>
     `;
@@ -277,22 +288,29 @@ class ScxrdDiffractionViewer {
     // Create superpixel heatmap data
     const heatmapData = this.createSuperpixelHeatmapData();
 
-    // Calculate intensity statistics for better scaling
-    const sortedValues = this.imageData.filter(v => v > 0).sort((a, b) => a - b);
-    const maxIntensity = sortedValues[sortedValues.length - 1] || 1;
-    const p99 = sortedValues[Math.floor(sortedValues.length * 0.99)] || maxIntensity;
+    // Calculate intensity statistics for better scaling - only from first image
+    let p99;
+    let maxIntensity;
+    if (!this.intensityScaleSet) {
 
-    this.currentIntensityRange = [0, p99];
+      const sortedValues = this.imageData.filter(v => v > 0).sort((a, b) => a - b);
+      maxIntensity = sortedValues[sortedValues.length - 1] || 1;
+      p99 = sortedValues[Math.floor(sortedValues.length * 0.99)] || maxIntensity;
 
-    console.log(`Creating visual heatmap with ${heatmapData.length} data points`);
-    console.log(`Intensity range: 0 to ${p99} (max: ${maxIntensity})`);
+      this.currentIntensityRange = [0, p99];
+      this.maxIntensity = maxIntensity; // Store for later use
+      this.intensityScaleSet = true;
+
+    } else {
+      // Use the previously set intensity range
+      p99 = this.currentIntensityRange[1];
+      maxIntensity = this.maxIntensity || 1; // Use stored value
+    }
 
     // Calculate scale factor to fit the card width
     const containerRect = heatmapContainer.getBoundingClientRect();
     const containerWidth = containerRect.width - 2; // Account for border
     const scaleFactor = Math.min(containerWidth / width, 1.0); // Don't scale up, only down
-
-    console.log(`Container width: ${containerWidth}px, Image width: ${width}px, Scale factor: ${scaleFactor}`);
 
     // Apply scaling to coordinates while keeping top-left anchored
     const scaledHeatmapData = heatmapData.map(point => ({
@@ -305,8 +323,7 @@ class ScxrdDiffractionViewer {
     try {
       const HeatmapConstructor = this.getVisualHeatmap();
 
-      console.log(`First few scaled data points:`, scaledHeatmapData.slice(0, 5));
-      console.log(`Data value range: min=${Math.min(...scaledHeatmapData.map(d => d.value))}, max=${Math.max(...scaledHeatmapData.map(d => d.value))}`);
+
 
       // Visual Heatmap expects a container ID/selector, not canvas element
       this.heatmapInstance = HeatmapConstructor(`#${this.containerId}-canvas`, {
@@ -332,8 +349,7 @@ class ScxrdDiffractionViewer {
       });
 
       // Render the data
-      console.log('Attempting to render data to heatmap instance...');
-      console.log('Heatmap instance methods:', Object.keys(this.heatmapInstance));
+
 
       if (typeof this.heatmapInstance.renderData === 'function') {
         this.heatmapInstance.renderData(scaledHeatmapData);
@@ -348,7 +364,6 @@ class ScxrdDiffractionViewer {
         console.log('Data rendered with setData()');
       } else {
         console.error('No suitable data rendering method found on heatmap instance');
-        console.log('Available methods:', Object.keys(this.heatmapInstance));
       }
 
       // Force a render/repaint
@@ -361,31 +376,37 @@ class ScxrdDiffractionViewer {
       // Store the initial scale for zoom controls (no scaling now)
       this.initialScale = 1.0;
 
-      // Calculate average pixel intensity and set default to 10x average
-      let totalIntensity = 0;
-      let nonZeroPixels = 0;
-      for (let i = 0; i < this.imageData.length; i++) {
-        if (this.imageData[i] > 0) {
-          totalIntensity += this.imageData[i];
-          nonZeroPixels++;
+      // Calculate average pixel intensity and set default to 50x average - only from first image
+      if (!this.defaultIntensity) {
+
+        let totalIntensity = 0;
+        let nonZeroPixels = 0;
+        for (let i = 0; i < this.imageData.length; i++) {
+          if (this.imageData[i] > 0) {
+            totalIntensity += this.imageData[i];
+            nonZeroPixels++;
+          }
         }
+        const averageIntensity = nonZeroPixels > 0 ? totalIntensity / nonZeroPixels : 100;
+        this.averageIntensity = averageIntensity; // Store for later use
+        this.defaultIntensity = averageIntensity * 50;
+        this.maxSliderValue = this.defaultIntensity * 5;
       }
-      const averageIntensity = nonZeroPixels > 0 ? totalIntensity / nonZeroPixels : 100;
-      this.defaultIntensity = averageIntensity * 50;
-      this.maxSliderValue = this.defaultIntensity * 5;
 
       this.addControls();
 
-      if (typeof this.heatmapInstance.setMax === 'function') {
-        this.heatmapInstance.setMax(this.defaultIntensity);
-        this.heatmapInstance.render();
-        console.log(`Set initial intensity to: ${this.defaultIntensity.toFixed(2)} (10x average: ${averageIntensity.toFixed(2)})`);
+      // Trigger the slider event to apply the initial intensity (ensures consistent behavior)
+      const intensitySlider = document.getElementById(`${this.containerId}-intensity`);
+      if (intensitySlider) {
+        const event = new Event('input', { bubbles: true });
+        intensitySlider.dispatchEvent(event);
+
       }
 
       // Add window resize handler to rescale the diffraction image
       this.setupResizeHandler();
 
-      console.log('Visual heatmap created successfully');
+
 
     } catch (error) {
       console.error('Error creating visual heatmap:', error);
@@ -398,16 +419,13 @@ class ScxrdDiffractionViewer {
     if (!controlsDiv) return;
 
     const [width, height] = this.dimensions;
-    // Fix: Don't spread large array - use manual calculation
-    let maxIntensity = 0;
-    for (let i = 0; i < this.imageData.length; i++) {
-      if (this.imageData[i] > maxIntensity) {
-        maxIntensity = this.imageData[i];
-      }
-    }
 
+    // Use the pre-calculated values from the first image
     const defaultValue = Math.round(this.defaultIntensity || 100);
     const maxValue = Math.round(this.maxSliderValue || 1000);
+
+    // Use current slider value if available, otherwise use default
+    const currentValue = this.currentSliderValue !== null ? this.currentSliderValue : defaultValue;
 
     // Build navigation controls if we have multiple diffraction images
     let navigationControls = '';
@@ -418,71 +436,86 @@ class ScxrdDiffractionViewer {
 
       navigationControls = `
         <div class="d-flex align-items-center me-3">
-          <button id="${this.containerId}-prev" class="btn btn-sm btn-outline-secondary me-1" ${currentIndex <= 0 ? 'disabled' : ''}>
-            <i class="fas fa-chevron-left"></i>
+          <button id="${this.containerId}-prev" class="btn btn-outline-secondary me-1" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Previous frame" ${currentIndex <= 0 ? 'disabled' : ''}>
+            <i class="bi bi-arrow-left-short" style="font-size: 16px;"></i>
           </button>
-          <span class="mx-2 small text-nowrap">${imageInfo} (${currentIndex + 1}/${this.totalImagesCount})</span>
-          <button id="${this.containerId}-next" class="btn btn-sm btn-outline-secondary ms-1" ${currentIndex >= this.totalImagesCount - 1 ? 'disabled' : ''}>
-            <i class="fas fa-chevron-right"></i>
+          <button id="${this.containerId}-play" class="btn btn-outline-primary me-1" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Play/Pause sequence">
+            <i class="bi bi-play-fill" style="font-size: 16px;"></i>
+          </button>          
+          <span class="mx-2 fw-medium text-nowrap" style="font-size: 0.85rem;">${imageInfo} (${currentIndex + 1}/${this.totalImagesCount})</span>
+          <button id="${this.containerId}-next" class="btn btn-outline-secondary ms-1" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Next frame" ${currentIndex >= this.totalImagesCount - 1 ? 'disabled' : ''}>
+            <i class="bi bi-arrow-right-short" style="font-size: 16px;"></i>
           </button>
         </div>
       `;
     }
 
     controlsDiv.innerHTML = `
-      <div class="d-flex align-items-center justify-content-center flex-wrap gap-2" style="font-size: 0.8rem;">
+      <div class="d-flex align-items-center justify-content-center">
         ${navigationControls}
-        <div class="d-flex align-items-center">
-          <label class="me-2">Intensity:</label>
-          <input type="range" id="${this.containerId}-intensity" class="form-range me-2" 
-                 style="width: 120px;" min="1" max="${maxValue}" value="${defaultValue}">
-          <span id="${this.containerId}-intensity-value">${defaultValue}</span>
-        </div>
       </div>
     `;
 
-    // Add event listener for intensity control
+    // Update the intensity slider values in the overlay
     const intensitySlider = document.getElementById(`${this.containerId}-intensity`);
     const intensityValue = document.getElementById(`${this.containerId}-intensity-value`);
 
-    intensitySlider.addEventListener('input', (e) => {
-      const sliderValue = parseInt(e.target.value);
-      intensityValue.textContent = sliderValue;
+    if (intensitySlider && intensityValue) {
+      intensitySlider.max = maxValue;
+      intensitySlider.value = currentValue;
+      intensityValue.textContent = currentValue;
+    }
 
-      // Use the slider value directly as the intensity threshold (1-100)
-      const newMax = sliderValue;
-      this.currentIntensityRange[1] = newMax;
+    // Add event listener for intensity control (elements already retrieved above)
+    if (intensitySlider) {
+      intensitySlider.addEventListener('input', (e) => {
+        const sliderValue = parseInt(e.target.value);
+        intensityValue.textContent = sliderValue;
 
-      // Update the heatmap's max value and re-render
-      if (this.heatmapInstance) {
-        console.log(`Intensity threshold set to: ${newMax}`);
+        // Store the current slider value to prevent reset when changing images
+        this.currentSliderValue = sliderValue;
 
-        // Try different API methods for updating max value
-        if (typeof this.heatmapInstance.setMax === 'function') {
-          this.heatmapInstance.setMax(newMax);
-        } else if (typeof this.heatmapInstance.configure === 'function') {
-          this.heatmapInstance.configure({ max: newMax });
-        } else if (typeof this.heatmapInstance.setConfig === 'function') {
-          this.heatmapInstance.setConfig({ max: newMax });
+        // Use the slider value directly as the intensity threshold (1-100)
+        const newMax = sliderValue;
+        this.currentIntensityRange[1] = newMax;
+
+        // Update the heatmap's max value and re-render
+        if (this.heatmapInstance) {
+
+
+          // Try different API methods for updating max value
+          if (typeof this.heatmapInstance.setMax === 'function') {
+            this.heatmapInstance.setMax(newMax);
+          } else if (typeof this.heatmapInstance.configure === 'function') {
+            this.heatmapInstance.configure({ max: newMax });
+          } else if (typeof this.heatmapInstance.setConfig === 'function') {
+            this.heatmapInstance.setConfig({ max: newMax });
+          }
+
+          // Force re-render
+          if (typeof this.heatmapInstance.render === 'function') {
+            this.heatmapInstance.render();
+          } else if (typeof this.heatmapInstance.repaint === 'function') {
+            this.heatmapInstance.repaint();
+          }
+
+          console.log(`Intensity threshold updated to: ${newMax}`);
         }
-
-        // Force re-render
-        if (typeof this.heatmapInstance.render === 'function') {
-          this.heatmapInstance.render();
-        } else if (typeof this.heatmapInstance.repaint === 'function') {
-          this.heatmapInstance.repaint();
-        }
-
-        console.log(`Intensity threshold updated to: ${newMax}`);
-      }
-    });
+      });
+    }
 
     // Add navigation event listeners
     const prevButton = document.getElementById(`${this.containerId}-prev`);
     const nextButton = document.getElementById(`${this.containerId}-next`);
+    const playButton = document.getElementById(`${this.containerId}-play`);
 
     if (prevButton) {
       prevButton.addEventListener('click', async () => {
+        // Stop playing when user manually navigates
+        if (this.isPlaying) {
+          this.stopPlay();
+        }
+
         prevButton.disabled = true;
         await this.navigatePrevious();
         // Button state will be updated by updateNavigationControls
@@ -491,9 +524,20 @@ class ScxrdDiffractionViewer {
 
     if (nextButton) {
       nextButton.addEventListener('click', async () => {
+        // Stop playing when user manually navigates
+        if (this.isPlaying) {
+          this.stopPlay();
+        }
+
         nextButton.disabled = true;
         await this.navigateNext();
         // Button state will be updated by updateNavigationControls
+      });
+    }
+
+    if (playButton) {
+      playButton.addEventListener('click', () => {
+        this.togglePlay();
       });
     }
 
@@ -513,6 +557,7 @@ class ScxrdDiffractionViewer {
   updateNavigationControls() {
     const prevButton = document.getElementById(`${this.containerId}-prev`);
     const nextButton = document.getElementById(`${this.containerId}-next`);
+    const playButton = document.getElementById(`${this.containerId}-play`);
 
     if (prevButton && nextButton) {
       const currentIndex = this.getCurrentImageIndex();
@@ -520,6 +565,11 @@ class ScxrdDiffractionViewer {
 
       prevButton.disabled = currentIndex <= 0;
       nextButton.disabled = currentIndex >= this.totalImagesCount - 1;
+
+      // Disable play button if there's only one image
+      if (playButton) {
+        playButton.disabled = this.totalImagesCount <= 1;
+      }
 
       // Update the image info display
       const imageInfo = currentImage ? `${currentImage.display_name}` : 'Legacy Image';
@@ -760,7 +810,82 @@ class ScxrdDiffractionViewer {
     }
   }
 
+  togglePlay() {
+    if (this.isPlaying) {
+      this.stopPlay();
+    } else {
+      this.startPlay();
+    }
+  }
+
+  startPlay() {
+    if (this.totalImagesCount <= 1) return; // Can't play with only one image
+
+    this.isPlaying = true;
+    this.updatePlayButton();
+
+    // Start the play timer
+    this.playTimer = setInterval(async () => {
+      const currentIndex = this.getCurrentImageIndex();
+
+      // If we're at the last image, loop back to the first
+      if (currentIndex >= this.totalImagesCount - 1) {
+        await this.navigateToImage(this.diffractionImages[0].id);
+      } else {
+        await this.navigateNext();
+      }
+    }, this.playSpeed);
+  }
+
+  stopPlay() {
+    this.isPlaying = false;
+    this.updatePlayButton();
+
+    // Clear the play timer
+    if (this.playTimer) {
+      clearInterval(this.playTimer);
+      this.playTimer = null;
+    }
+  }
+
+  updatePlayButton() {
+    const playButton = document.getElementById(`${this.containerId}-play`);
+    if (playButton) {
+      const icon = playButton.querySelector('i');
+      if (this.isPlaying) {
+        icon.className = 'fas fa-pause-circle';
+        icon.style.fontSize = '16px';
+        playButton.title = 'Pause sequence';
+        playButton.classList.remove('btn-outline-primary');
+        playButton.classList.add('btn-primary');
+      } else {
+        icon.className = 'fas fa-play-circle';
+        icon.style.fontSize = '16px';
+        playButton.title = 'Play sequence';
+        playButton.classList.remove('btn-primary');
+        playButton.classList.add('btn-outline-primary');
+      }
+    }
+  }
+
+  resetIntensityScale() {
+    // Reset intensity scale to allow recalculation from next first image
+    this.intensityScaleSet = false;
+    this.defaultIntensity = null;
+    this.maxSliderValue = null;
+    this.maxIntensity = null;
+    this.averageIntensity = null;
+    this.currentSliderValue = null; // Reset slider value when switching datasets
+    this.currentIntensityRange = [0, 1000];
+
+  }
+
   destroy() {
+    // Stop playing and clean up timer
+    if (this.isPlaying) {
+      this.stopPlay();
+    }
+
     // Clean up resize handler when viewer is destroyed
     if (this.resizeHandler) {
       window.removeEventListener('resize', this.resizeHandler);
