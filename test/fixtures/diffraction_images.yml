@@ -4,10 +4,12 @@ one:
   scxrd_dataset: one
   run_number: 1
   image_number: 1
-  filename: MyString
+  filename: "test_image_001.rod"
+  file_size: 1024
 
 two:
   scxrd_dataset: two
   run_number: 1
   image_number: 1
-  filename: MyString
+  filename: "test_image_002.rod" 
+  file_size: 2048
