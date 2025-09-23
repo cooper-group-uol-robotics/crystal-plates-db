@@ -3,7 +3,7 @@ class ScxrdDataset < ApplicationRecord
   has_many :diffraction_images, dependent: :destroy
   has_one_attached :archive
   has_one_attached :peak_table
-  has_one_attached :first_image
+
 
   validates :experiment_name, :date_measured, presence: true
   validates :niggli_a, :niggli_b, :niggli_c, :niggli_alpha, :niggli_beta, :niggli_gamma, numericality: { greater_than: 0 }, allow_nil: true
@@ -84,7 +84,7 @@ class ScxrdDataset < ApplicationRecord
   end
 
   def has_first_image?
-    first_image.attached? || diffraction_images.any?
+    diffraction_images.any?
   end
 
   def peak_table_size
@@ -93,8 +93,9 @@ class ScxrdDataset < ApplicationRecord
   end
 
   def first_image_size
-    return 0 unless first_image.attached?
-    first_image.blob.byte_size
+    first_diffraction_image = diffraction_images.order(:run_number, :image_number).first
+    return 0 unless first_diffraction_image&.rodhypix_file&.attached?
+    first_diffraction_image.rodhypix_file.blob.byte_size
   end
 
   # Diffraction images methods
@@ -120,7 +121,7 @@ class ScxrdDataset < ApplicationRecord
 
   def image_metadata_only(diffraction_image: nil)
     # Fast metadata extraction without full decompression
-    image_source = diffraction_image&.rodhypix_file || first_image
+    image_source = diffraction_image&.rodhypix_file || diffraction_images.order(:run_number, :image_number).first&.rodhypix_file
     return { success: false, error: "No image file attached" } unless image_source&.attached?
 
     begin
@@ -148,7 +149,7 @@ class ScxrdDataset < ApplicationRecord
     return @parsed_image_data if @parsed_image_data && !force_refresh && diffraction_image.nil?
 
     # Determine which image to parse
-    image_source = diffraction_image&.rodhypix_file || first_image
+    image_source = diffraction_image&.rodhypix_file || diffraction_images.order(:run_number, :image_number).first&.rodhypix_file
     return nil unless image_source&.attached?
 
     begin
@@ -192,7 +193,7 @@ class ScxrdDataset < ApplicationRecord
   end
 
   def has_valid_image_data?(diffraction_image: nil)
-    return false unless diffraction_image&.rodhypix_file&.attached? || first_image.attached?
+    return false unless diffraction_image&.rodhypix_file&.attached? || diffraction_images.any?
     parsed_data = parsed_image_data(diffraction_image: diffraction_image)
     parsed_data[:success] && !parsed_data[:image_data].empty?
   end

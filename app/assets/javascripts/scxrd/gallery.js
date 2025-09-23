@@ -17,9 +17,9 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
   })
     .then(response => response.json())
     .then(data => {
-      // Update first diffraction image panel with interactive viewer
-      const imagePanel = document.getElementById(`${uniqueId}-first-image-panel`);
-      if (data.has_first_image) {
+      // Update diffraction image panel with interactive viewer
+      const imagePanel = document.getElementById(`${uniqueId}-diffraction-image-panel`);
+      if (data.has_diffraction_images) {
         // Show loading state
         imagePanel.innerHTML = `
           <div class="d-flex justify-content-center align-items-center h-100">
@@ -74,12 +74,11 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
           imagePanel.innerHTML = `
             <div class="text-center p-3">
               <i class="fas fa-camera fa-3x mb-3 text-primary"></i>
-              <h6>First Frame</h6>
-              <p class="text-muted small">Size: ${data.first_image_size}</p>
-              <a href="/wells/${wellId}/scxrd_datasets/${datasetId}/download_first_image" 
-                 class="btn btn-sm btn-primary">
-                <i class="fas fa-download me-1"></i>Download
-              </a>
+              <h6>Diffraction Images</h6>
+              <p class="text-muted small">${data.diffraction_images_count} images available</p>
+              <button class="btn btn-sm btn-primary" disabled>
+                <i class="fas fa-play me-1"></i>Interactive viewer loading...
+              </button>
             </div>
           `;
         }
@@ -87,8 +86,8 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
         imagePanel.innerHTML = `
           <div class="text-center p-3 text-muted">
             <i class="fas fa-camera fa-3x mb-3"></i>
-            <h6>First Frame</h6>
-            <p class="small">Not available</p>
+            <h6>Diffraction Images</h6>
+            <p class="small">No diffraction images available</p>
           </div>
         `;
       }

@@ -59,20 +59,13 @@
               <% end %>
             </dd>
 
-            <dt class="col-sm-3">First Diffraction Image</dt>
+            <dt class="col-sm-3">Diffraction Images</dt>
             <dd class="col-sm-9">
-              <% if @scxrd_dataset.has_first_image? %>
-                <span class="badge bg-success me-2">Available</span>
-                Size: <%= number_to_human_size(@scxrd_dataset.first_image_size) %> (.rodhypix)
-                <% if @scxrd_dataset.well.present? %>
-                  <%= link_to "Download", download_first_image_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
-                      class: "btn btn-secondary btn-sm ms-2" %>
-                <% else %>
-                  <%= link_to "Download", download_first_image_scxrd_dataset_path(@scxrd_dataset), 
-                      class: "btn btn-secondary btn-sm ms-2" %>
-                <% end %>
+              <% if @scxrd_dataset.has_diffraction_images? %>
+                <span class="badge bg-success me-2"><%= @scxrd_dataset.diffraction_images_count %> images</span>
+                Total size: <%= number_to_human_size(@scxrd_dataset.total_diffraction_images_size) %> (.rodhypix files)
               <% else %>
-                <span class="text-muted">Not available</span>
+                <span class="text-muted">No diffraction images available</span>
               <% end %>
             </dd>
 

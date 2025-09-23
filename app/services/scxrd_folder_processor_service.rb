@@ -6,7 +6,6 @@ class ScxrdFolderProcessorService
   def initialize(uploaded_folder_path)
     @folder_path = uploaded_folder_path
     @peak_table_data = nil
-    @first_image_data = nil
     @all_diffraction_images = []
     @zip_data = nil
     @file_count = 0
@@ -18,7 +17,6 @@ class ScxrdFolderProcessorService
 
     {
       peak_table: @peak_table_data,
-      first_image: @first_image_data,
       all_diffraction_images: @all_diffraction_images,
       zip_archive: @zip_data,
       par_data: @par_data
@@ -49,22 +47,7 @@ class ScxrdFolderProcessorService
 
     end
 
-    # Find first diffraction image (frames/*1.rodhypix) - exclude files starting with 'pre_'
 
-    first_image_pattern = File.join(@folder_path, "frames", "*1.rodhypix")
-    all_first_image_files = Dir.glob(first_image_pattern, File::FNM_CASEFOLD)
-    first_image_files = all_first_image_files.reject { |file| File.basename(file).start_with?("pre_") }
-
-
-    if first_image_files.any?
-      first_image_file = first_image_files.first
-
-      @first_image_data = File.binread(first_image_file) if File.exist?(first_image_file)
-
-    end
-
-    # Extract ALL diffraction images from frames folder
-    extract_all_diffraction_images
 
     # Find and parse crystal.ini file for reduced cell parameters - exclude files starting with 'pre_'
     Rails.logger.info "SCXRD: Searching for crystal.ini files in folder: #{@folder_path}"

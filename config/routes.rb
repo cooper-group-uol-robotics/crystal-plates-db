@@ -46,7 +46,7 @@ Rails.application.routes.draw do
       member do
         get :download
         get :download_peak_table
-        get :download_first_image
+
         get :image_data
         get :peak_table_data
       end
@@ -77,7 +77,7 @@ Rails.application.routes.draw do
     member do
       get :download
       get :download_peak_table
-      get :download_first_image
+
       get :image_data
       get :peak_table_data
     end

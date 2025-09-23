@@ -2,7 +2,7 @@ class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
   before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
-  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :download_first_image, :image_data, :peak_table_data ]
+  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :image_data, :peak_table_data ]
 
   def index
     if params[:well_id].present?
@@ -54,12 +54,12 @@ class ScxrdDatasetsController < ApplicationController
           date_measured: @scxrd_dataset.date_measured&.strftime("%Y-%m-%d"),
           lattice_centring: "primitive",  # Niggli reduced cells are always primitive
           has_peak_table: @scxrd_dataset.has_peak_table?,
-          has_first_image: @scxrd_dataset.has_first_image?,
+
           has_diffraction_images: @scxrd_dataset.has_diffraction_images?,
           diffraction_images_count: @scxrd_dataset.diffraction_images_count,
           has_archive: @scxrd_dataset.archive.attached?,
           peak_table_size: @scxrd_dataset.has_peak_table? ? number_to_human_size(@scxrd_dataset.peak_table_size) : nil,
-          first_image_size: @scxrd_dataset.has_first_image? ? number_to_human_size(@scxrd_dataset.first_image_size) : nil,
+
           niggli_unit_cell: @scxrd_dataset.niggli_a.present? ? {
             a: number_with_precision(@scxrd_dataset.niggli_a, precision: 3),
             b: number_with_precision(@scxrd_dataset.niggli_b, precision: 3),
@@ -161,19 +161,14 @@ class ScxrdDatasetsController < ApplicationController
     end
   end
 
-  def download_first_image
-    if @scxrd_dataset.has_first_image?
-      redirect_to rails_blob_path(@scxrd_dataset.first_image, disposition: "attachment")
-    else
-      redirect_to [ @well, @scxrd_dataset ], alert: "No first diffraction image available."
-    end
-  end
-
   def image_data
     Rails.logger.info "SCXRD: Serving parsed image data for dataset #{@scxrd_dataset.id}"
 
-    unless @scxrd_dataset.has_first_image?
-      render json: { error: "No first diffraction image available" }, status: :not_found
+    # Get the first diffraction image from the diffraction_images association
+    first_diffraction_image = @scxrd_dataset.diffraction_images.order(:run_number, :image_number).first
+    
+    unless first_diffraction_image&.rodhypix_file&.attached?
+      render json: { error: "No diffraction images available" }, status: :not_found
       return
     end
 
@@ -328,14 +323,7 @@ class ScxrdDatasetsController < ApplicationController
             Rails.logger.info "SCXRD: Peak table stored (#{number_to_human_size(result[:peak_table].bytesize)})"
           end
 
-          if result[:first_image]
-            @scxrd_dataset.first_image.attach(
-              io: StringIO.new(result[:first_image]),
-              filename: "#{@scxrd_dataset.experiment_name}_first_frame.rodhypix",
-              content_type: "application/octet-stream"
-            )
-            Rails.logger.info "SCXRD: First image stored (#{number_to_human_size(result[:first_image].bytesize)})"
-          end
+
 
           # Store all diffraction images as DiffractionImage records
           if result[:all_diffraction_images] && result[:all_diffraction_images].any?
