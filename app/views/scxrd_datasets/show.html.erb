@@ -33,14 +33,11 @@
 
             <dt class="col-sm-3">Date Measured</dt>
             <dd class="col-sm-9">
-              <%= @scxrd_dataset.date_measured.strftime('%Y-%m-%d') if @scxrd_dataset.date_measured %>
-              <% unless @scxrd_dataset.date_measured %>
+                <%= @scxrd_dataset.measured_at.strftime('%Y-%m-%d %H:%M') if @scxrd_dataset.measured_at %>
+              <% unless @scxrd_dataset.measured_at %>
                 <span class="text-muted">Not specified</span>
               <% end %>
             </dd>
-
-            <dt class="col-sm-3">Date Uploaded</dt>
-            <dd class="col-sm-9"><%= @scxrd_dataset.date_uploaded.strftime('%Y-%m-%d %H:%M') if @scxrd_dataset.date_uploaded %></dd>
 
             <dt class="col-sm-3">Peak Table</dt>
             <dd class="col-sm-9">

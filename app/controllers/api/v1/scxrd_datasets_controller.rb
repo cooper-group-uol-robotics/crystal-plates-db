@@ -25,7 +25,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
   # POST /api/v1/wells/:well_id/scxrd_datasets
   def create
     @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
-    @scxrd_dataset.date_uploaded = Time.current
+
 
     if @scxrd_dataset.save
       render json: {
@@ -143,11 +143,11 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
 
     # Filter by date range
     if params[:date_from].present?
-      datasets = datasets.where("date_measured >= ?", Date.parse(params[:date_from]))
+      datasets = datasets.where("measured_at >= ?", Date.parse(params[:date_from]))
     end
 
     if params[:date_to].present?
-      datasets = datasets.where("date_measured <= ?", Date.parse(params[:date_to]))
+      datasets = datasets.where("measured_at <= ?", Date.parse(params[:date_to]))
     end
 
     # Note: Lattice centering filtering removed as Niggli reduced cells are always primitive
@@ -208,7 +208,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
 
   def scxrd_dataset_params
     params.require(:scxrd_dataset).permit(
-      :experiment_name, :date_measured,
+      :experiment_name, :measured_at,
       :real_world_x_mm, :real_world_y_mm, :real_world_z_mm,
       :niggli_a, :niggli_b, :niggli_c, :niggli_alpha, :niggli_beta, :niggli_gamma
     )
@@ -218,8 +218,8 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
     {
       id: dataset.id,
       experiment_name: dataset.experiment_name,
-      date_measured: dataset.date_measured&.strftime("%Y-%m-%d"),
-      date_uploaded: dataset.date_uploaded&.strftime("%Y-%m-%d %H:%M:%S"),
+      measured_at: dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
+
       lattice_centring: "primitive",  # Niggli reduced cells are always primitive
       real_world_coordinates: (dataset.real_world_x_mm || dataset.real_world_y_mm || dataset.real_world_z_mm) ? {
         x_mm: dataset.real_world_x_mm,

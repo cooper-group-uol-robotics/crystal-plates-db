@@ -186,7 +186,7 @@ class ScxrdReciprocalLatticeViewer {
     this.container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
         <div id="${this.containerId}-canvas" style="width: 100%; flex: 1 1 auto; overflow: hidden; background: #000; min-height: 0; box-sizing: border-box;"></div>
-        <div id="${this.containerId}-controls" style="height: 60px; padding: 8px; background: #f8f9fa; border-top: 1px solid #dee2e6; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+        <div id="${this.containerId}-controls" style="height: 50px; padding: 8px; background: #f8f9fa; border-top: 1px solid #dee2e6; flex-shrink: 0; width: 100%; box-sizing: border-box;">
           <!-- Controls will be added here -->
         </div>
       </div>

@@ -2,7 +2,7 @@ class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
   before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
-  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :image_data, :peak_table_data ]
+  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :image_data, :peak_table_data ]
 
   def index
     if params[:well_id].present?
@@ -25,7 +25,7 @@ class ScxrdDatasetsController < ApplicationController
               {
                 id: dataset.id,
                 experiment_name: dataset.experiment_name,
-                date_measured: dataset.date_measured&.strftime("%Y-%m-%d"),
+                measured_at: dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
                 lattice_centring: "primitive",
                 has_peak_table: dataset.has_peak_table?,
                 total_diffraction_images: dataset.diffraction_images.count,
@@ -51,13 +51,14 @@ class ScxrdDatasetsController < ApplicationController
         render json: {
           id: @scxrd_dataset.id,
           experiment_name: @scxrd_dataset.experiment_name,
-          date_measured: @scxrd_dataset.date_measured&.strftime("%Y-%m-%d"),
+          measured_at: @scxrd_dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
           lattice_centring: "primitive",  # Niggli reduced cells are always primitive
           has_peak_table: @scxrd_dataset.has_peak_table?,
 
           has_diffraction_images: @scxrd_dataset.has_diffraction_images?,
           diffraction_images_count: @scxrd_dataset.diffraction_images_count,
           has_archive: @scxrd_dataset.archive.attached?,
+          has_crystal_image: @scxrd_dataset.has_crystal_image?,
           peak_table_size: @scxrd_dataset.has_peak_table? ? number_to_human_size(@scxrd_dataset.peak_table_size) : nil,
 
           niggli_unit_cell: @scxrd_dataset.niggli_a.present? ? {
@@ -99,20 +100,31 @@ class ScxrdDatasetsController < ApplicationController
       success_redirect = @scxrd_dataset
     end
 
-    @scxrd_dataset.date_uploaded = Time.current
+    # Set default measurement datetime if not provided (will be overridden by datacoll.ini if available)
+    @scxrd_dataset.measured_at = Time.current if @scxrd_dataset.measured_at.blank?
 
-    # Set measurement date to current date if not provided
-    @scxrd_dataset.date_measured = Date.current if @scxrd_dataset.date_measured.blank?
-
-    # Process uploaded compressed archive - this is required for new datasets
-    if compressed_archive.present?
-      process_compressed_archive(compressed_archive)
-    else
+    # Validate compressed archive is present
+    unless compressed_archive.present?
       @scxrd_dataset.errors.add(:base, "Experiment folder is required")
+      render :new
+      return
     end
 
+    # Save the dataset first to get an ID, then process the archive
     if @scxrd_dataset.save
-      redirect_to success_redirect, notice: "SCXRD dataset was successfully created."
+      begin
+        # Process uploaded compressed archive after dataset is saved with an ID
+        process_compressed_archive(compressed_archive)
+        
+        # Save again to persist any changes from archive processing
+        @scxrd_dataset.save!
+        
+        redirect_to success_redirect, notice: "SCXRD dataset was successfully created."
+      rescue => e
+        Rails.logger.error "SCXRD: Failed to process archive: #{e.message}"
+        @scxrd_dataset.errors.add(:base, "Failed to process experiment data: #{e.message}")
+        render :new
+      end
     else
       Rails.logger.error "SCXRD: Failed to save dataset. Errors: #{@scxrd_dataset.errors.full_messages.join(', ')}"
       # Note: Lattice centrings removed - Niggli reduced cells are always primitive
@@ -158,6 +170,14 @@ class ScxrdDatasetsController < ApplicationController
       redirect_to rails_blob_path(@scxrd_dataset.peak_table, disposition: "attachment")
     else
       redirect_to [ @well, @scxrd_dataset ], alert: "No peak table available."
+    end
+  end
+
+  def crystal_image
+    if @scxrd_dataset.has_crystal_image?
+      redirect_to rails_blob_path(@scxrd_dataset.crystal_image, disposition: "inline")
+    else
+      head :not_found
     end
   end
 
@@ -400,8 +420,28 @@ class ScxrdDatasetsController < ApplicationController
             else
               Rails.logger.info "SCXRD: No real world coordinates found in cmdscript.mac"
             end
+
+            # Store measurement time from datacoll.ini if available (takes precedence over default)
+            if par_data[:measured_at]
+              @scxrd_dataset.measured_at = par_data[:measured_at]
+              Rails.logger.info "SCXRD: Measurement time from datacoll.ini: #{@scxrd_dataset.measured_at}"
+            else
+              Rails.logger.info "SCXRD: No measurement time found in datacoll.ini, using default date: #{@scxrd_dataset.measured_at}"
+            end
           else
             Rails.logger.warn "SCXRD: No .par data found in processing result"
+          end
+
+          # Store crystal image if available and no image is already attached
+          if result[:crystal_image] && !@scxrd_dataset.crystal_image.attached?
+            Rails.logger.info "SCXRD: Attaching crystal image from archive (#{number_to_human_size(result[:crystal_image][:data].bytesize)})"
+            @scxrd_dataset.crystal_image.attach(
+              io: StringIO.new(result[:crystal_image][:data]),
+              filename: result[:crystal_image][:filename],
+              content_type: result[:crystal_image][:content_type]
+            )
+          elsif result[:crystal_image]
+            Rails.logger.info "SCXRD: Crystal image found in archive but dataset already has an image attached, skipping"
           end
 
           # Store the original archive as the zip attachment
@@ -429,7 +469,7 @@ class ScxrdDatasetsController < ApplicationController
     filtered_params[:scxrd_dataset] = params[:scxrd_dataset].except(:compressed_archive) if params[:scxrd_dataset]
 
     # Determine permitted parameters based on context
-    permitted_params = [ :experiment_name, :date_measured ]
+    permitted_params = [ :experiment_name, :measured_at, :crystal_image ]
 
     # Only allow well_id when we're in well context (not standalone)
     permitted_params << :well_id if @well.present?

@@ -3,9 +3,10 @@ class ScxrdDataset < ApplicationRecord
   has_many :diffraction_images, dependent: :destroy
   has_one_attached :archive
   has_one_attached :peak_table
+  has_one_attached :crystal_image
 
 
-  validates :experiment_name, :date_measured, presence: true
+  validates :experiment_name, :measured_at, presence: true
   validates :niggli_a, :niggli_b, :niggli_c, :niggli_alpha, :niggli_beta, :niggli_gamma, numericality: { greater_than: 0 }, allow_nil: true
   validates :real_world_x_mm, :real_world_y_mm, :real_world_z_mm, numericality: true, allow_nil: true
 
@@ -81,6 +82,10 @@ class ScxrdDataset < ApplicationRecord
 
   def has_peak_table?
     peak_table.attached?
+  end
+
+  def has_crystal_image?
+    crystal_image.attached?
   end
 
   def has_first_image?

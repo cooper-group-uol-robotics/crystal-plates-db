@@ -38,7 +38,7 @@
               <h5 class="card-title"><%= dataset.experiment_name %></h5>
               <p class="card-text">
                 <small class="text-muted">
-                  Measured: <%= dataset.date_measured.strftime("%Y-%m-%d") if dataset.date_measured %><br>
+                  Measured: <%= dataset.measured_at.strftime("%Y-%m-%d") if dataset.measured_at %><br>
                   Lattice: Primitive
                 </small>
               </p>

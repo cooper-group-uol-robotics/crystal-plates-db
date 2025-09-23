@@ -9,6 +9,7 @@ class ScxrdFolderProcessorService
     @all_diffraction_images = []
     @zip_data = nil
     @file_count = 0
+    @crystal_image_data = nil
   end
 
   def process
@@ -19,7 +20,8 @@ class ScxrdFolderProcessorService
       peak_table: @peak_table_data,
       all_diffraction_images: @all_diffraction_images,
       zip_archive: @zip_data,
-      par_data: @par_data
+      par_data: @par_data,
+      crystal_image: @crystal_image_data
     }
   end
 
@@ -66,11 +68,37 @@ class ScxrdFolderProcessorService
     else
       Rails.logger.warn "SCXRD: No crystal.ini files found in expinfo folder"
     end
+
+    # Find and parse datacoll.ini file for measurement start time - exclude files starting with 'pre_'
+    Rails.logger.info "SCXRD: Searching for datacoll.ini files in folder: #{@folder_path}"
+    datacoll_ini_pattern = File.join(@folder_path, "expinfo", "*_datacoll.ini")
+    all_datacoll_ini_files = Dir.glob(datacoll_ini_pattern, File::FNM_CASEFOLD)
+    Rails.logger.info "SCXRD: Found #{all_datacoll_ini_files.count} datacoll.ini files total: #{all_datacoll_ini_files.map { |f| File.basename(f) }.inspect}"
+
+    datacoll_ini_files = all_datacoll_ini_files.reject { |file| File.basename(file).start_with?("pre_") }
+    Rails.logger.info "SCXRD: Found #{datacoll_ini_files.count} datacoll.ini files (excluding pre_*): #{datacoll_ini_files.map { |f| File.basename(f) }.inspect}"
+
+    if datacoll_ini_files.any?
+      datacoll_ini_file = datacoll_ini_files.first
+      Rails.logger.info "SCXRD: Using datacoll.ini file: #{datacoll_ini_file}"
+      measurement_time = parse_datacoll_ini_file(datacoll_ini_file) if File.exist?(datacoll_ini_file)
+      Rails.logger.info "SCXRD: datacoll.ini parsing result: #{measurement_time ? 'SUCCESS' : 'FAILED'}"
+      
+      # Initialize @par_data if it doesn't exist and add measurement time
+      @par_data ||= {}
+      @par_data.merge!(measurement_time) if measurement_time
+    else
+      Rails.logger.warn "SCXRD: No datacoll.ini files found in expinfo folder"
+    end
+
     # Parse coordinates from cmdscript.mac if parsing succeeded
     if @par_data
       coordinates = parse_cmdscript_coordinates
       @par_data.merge!(coordinates) if coordinates
     end
+
+    # Extract crystal image from movie/oneclickmovie*.jpg
+    extract_crystal_image
   end
 
   def extract_all_diffraction_images
@@ -406,6 +434,123 @@ class ScxrdFolderProcessorService
     rescue => e
       Rails.logger.error "SCXRD: Error parsing cmdscript.mac file #{cmdscript_file}: #{e.message}"
       nil
+    end
+  end
+
+  def parse_datacoll_ini_file(datacoll_ini_file_path)
+    Rails.logger.info "SCXRD: Starting to parse datacoll.ini file: #{datacoll_ini_file_path}"
+
+    begin
+      # Check if file exists and is readable
+      unless File.exist?(datacoll_ini_file_path)
+        Rails.logger.error "SCXRD: datacoll.ini file does not exist: #{datacoll_ini_file_path}"
+        return nil
+      end
+
+      file_size = File.size(datacoll_ini_file_path)
+      Rails.logger.info "SCXRD: datacoll.ini file size: #{file_size} bytes"
+
+      # Read the file content - datacoll.ini files are typically text files
+      content = File.read(datacoll_ini_file_path, encoding: "UTF-8")
+      Rails.logger.info "SCXRD: Successfully read datacoll.ini file content (#{content.length} characters)"
+
+      # Look for the [Date] section and Start time
+      measurement_time = nil
+      in_date_section = false
+      lines_processed = 0
+
+      content.each_line.with_index do |line, index|
+        lines_processed += 1
+        # Clean the line
+        clean_line = line.strip
+
+        Rails.logger.debug "SCXRD: Processing line #{index + 1}: '#{clean_line}'"
+
+        # Check if we're entering the [Date] section
+        if clean_line == "[Date]"
+          Rails.logger.info "SCXRD: Found [Date] section at line #{index + 1}"
+          in_date_section = true
+          next
+        end
+
+        # Check if we're leaving the Date section (new section starting)
+        if in_date_section && clean_line.start_with?("[") && clean_line != "[Date]"
+          Rails.logger.info "SCXRD: Exiting [Date] section at line #{index + 1}"
+          in_date_section = false
+        end
+
+        # If we're in the Date section, look for Start time
+        if in_date_section && clean_line.start_with?('Start time=')
+          Rails.logger.info "SCXRD: Found Start time line at line #{index + 1}"
+
+          # Extract the time string from Start time="..."
+          if clean_line =~ /Start time="(.+)"/
+            time_string = $1
+            Rails.logger.info "SCXRD: Extracted time string: '#{time_string}'"
+
+            begin
+              # Parse the time string (format: "Tue May 13 17:58:33 2025")
+              parsed_time = Time.parse(time_string)
+              measurement_time = {
+                measured_at: parsed_time
+              }
+              Rails.logger.info "SCXRD: Successfully parsed measurement time: #{parsed_time}"
+              break # We found what we need
+            rescue => e
+              Rails.logger.warn "SCXRD: Could not parse time string '#{time_string}': #{e.message}"
+            end
+          else
+            Rails.logger.warn "SCXRD: Start time line found but couldn't parse format: '#{clean_line}'"
+          end
+        end
+      end
+
+      Rails.logger.info "SCXRD: Processed #{lines_processed} lines total"
+
+      if measurement_time.nil?
+        Rails.logger.warn "SCXRD: No measurement time found in datacoll.ini file"
+        nil
+      else
+        Rails.logger.info "SCXRD: Successfully parsed measurement time from datacoll.ini file"
+        measurement_time
+      end
+
+    rescue => e
+      Rails.logger.error "SCXRD: Error parsing datacoll.ini file #{datacoll_ini_file_path}: #{e.message}"
+      Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(10).join("\n")}"
+      nil
+    end
+  end
+
+  def extract_crystal_image
+    Rails.logger.info "SCXRD: Searching for crystal image in movie folder"
+    
+    # Look for oneclickmovie*.jpg files in movie folder
+    movie_folder = File.join(@folder_path, "movie")
+    return unless Dir.exist?(movie_folder)
+
+    crystal_image_pattern = File.join(movie_folder, "oneclickmovie*.jpg")
+    crystal_image_files = Dir.glob(crystal_image_pattern, File::FNM_CASEFOLD)
+    
+    Rails.logger.info "SCXRD: Found #{crystal_image_files.count} crystal image candidates: #{crystal_image_files.map { |f| File.basename(f) }.inspect}"
+
+    if crystal_image_files.any?
+      crystal_image_file = crystal_image_files.first
+      Rails.logger.info "SCXRD: Using crystal image file: #{crystal_image_file}"
+      
+      begin
+        @crystal_image_data = {
+          data: File.binread(crystal_image_file),
+          filename: File.basename(crystal_image_file),
+          content_type: "image/jpeg"
+        }
+        Rails.logger.info "SCXRD: Crystal image extracted successfully (#{number_to_human_size(@crystal_image_data[:data].bytesize)})"
+      rescue => e
+        Rails.logger.error "SCXRD: Error reading crystal image file #{crystal_image_file}: #{e.message}"
+        @crystal_image_data = nil
+      end
+    else
+      Rails.logger.info "SCXRD: No crystal image files found in movie folder"
     end
   end
 end

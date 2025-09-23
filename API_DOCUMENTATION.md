@@ -796,7 +796,7 @@ List all SCXRD datasets for a specific well.
     {
       "id": 456,
       "experiment_name": "crystal_001_scan",
-      "date_measured": "2024-01-15",
+      "measured_at": "2024-01-15",
       "date_uploaded": "2024-01-15 14:30:22",
       "lattice_centring": "P1",
       "real_world_coordinates": {
@@ -838,7 +838,7 @@ Get detailed information about a specific SCXRD dataset.
   "scxrd_dataset": {
     "id": 456,
     "experiment_name": "crystal_001_scan",
-    "date_measured": "2024-01-15",
+    "measured_at": "2024-01-15",
     "date_uploaded": "2024-01-15 14:30:22",
     "lattice_centring": "P1",
     "real_world_coordinates": {
@@ -894,7 +894,7 @@ Create a new SCXRD dataset.
 {
   "scxrd_dataset": {
     "experiment_name": "crystal_001_scan",
-    "date_measured": "2024-01-15",
+    "measured_at": "2024-01-15",
     "lattice_centring_id": 1,
     "real_world_x_mm": 1.234,
     "real_world_y_mm": 5.678,
@@ -1123,7 +1123,7 @@ Search SCXRD datasets with various filters.
 |-------|------|-------------|
 | `id` | integer | Unique identifier |
 | `experiment_name` | string | Name of the experiment |
-| `date_measured` | date | Date when measurement was taken |
+| `measured_at` | date | Date when measurement was taken |
 | `date_uploaded` | datetime | When dataset was uploaded |
 | `lattice_centring` | string | Lattice centering symbol (P1, P21, etc.) |
 | `real_world_coordinates` | object | Physical coordinates where measured |
@@ -1176,7 +1176,7 @@ datasets = response.json()
 new_dataset = {
     "scxrd_dataset": {
         "experiment_name": "my_crystal_experiment",
-        "date_measured": "2024-01-15",
+        "measured_at": "2024-01-15",
         "real_world_x_mm": 1.234,
         "real_world_y_mm": 5.678,
         "a": 15.5,
@@ -1222,7 +1222,7 @@ const datasets = await fetch(`${baseUrl}/wells/${wellId}/scxrd_datasets`)
 const newDataset = {
   scxrd_dataset: {
     experiment_name: 'my_crystal_experiment',
-    date_measured: '2024-01-15',
+    measured_at: '2024-01-15',
     real_world_x_mm: 1.234,
     real_world_y_mm: 5.678,
     a: 15.5,
@@ -1261,7 +1261,7 @@ curl -X POST http://localhost:3000/api/v1/wells/123/scxrd_datasets \
   -d '{
     "scxrd_dataset": {
       "experiment_name": "crystal_formation_day1",
-      "date_measured": "2024-01-15",
+      "measured_at": "2024-01-15",
       "real_world_x_mm": 1.234,
       "real_world_y_mm": 5.678,
       "real_world_z_mm": 2.100,
@@ -1430,7 +1430,7 @@ curl -X POST http://localhost:3000/api/v1/wells/123/scxrd_datasets \
   -d '{
     "scxrd_dataset": {
       "experiment_name": "crystal_formation_day1",
-      "date_measured": "2024-01-15",
+      "measured_at": "2024-01-15",
       "real_world_x_mm": 1.234,
       "real_world_y_mm": 5.678,
       "real_world_z_mm": 2.100,

@@ -29,7 +29,7 @@
                 <% end %>
                 | 
               <% end %>
-              <strong>Measured:</strong> <%= (dataset.date_measured || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
+              <strong>Measured:</strong> <%= (dataset.measured_at || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
               <% if dataset.niggli_a.present? %>
                 | <strong>Reduced (Niggli) Cell:</strong> 
                 a=<%= number_with_precision(dataset.niggli_a, precision: 3) %>Å 
@@ -92,7 +92,7 @@
                       <%= dataset.experiment_name %>
                     </div>
                     <div class="text-muted" style="font-size: 0.75rem;">
-                      <%= dataset.date_measured&.strftime("%m/%d/%y") || "No date" %>
+                      <%= dataset.measured_at&.strftime("%m/%d/%y") || "No date" %>
                     </div>
                   </div>
                 </div>

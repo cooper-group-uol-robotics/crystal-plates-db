@@ -50,7 +50,7 @@
                   <% else %>
                     <strong>Type:</strong> <span class="badge bg-secondary">Standalone</span> | 
                   <% end %>
-                  <strong>Measured:</strong> <%= (dataset.date_measured || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
+                  <strong>Measured:</strong> <%= (dataset.measured_at || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
                   <% if dataset.niggli_a.present? %>
                     | <strong>Reduced (Niggli) Cell:</strong> 
                         a=<%= number_with_precision(dataset.niggli_a, precision: 3) %>Å 

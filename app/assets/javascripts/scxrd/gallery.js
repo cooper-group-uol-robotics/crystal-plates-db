@@ -165,9 +165,16 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
         </div>
       `;
 
-      // Update crystal image panel with well image and circle around closest point of interest
+      // Update crystal image panel with well image, crystal image, or fallback
       const crystalImagePanel = document.getElementById(`${uniqueId}-crystal-image-panel`);
-      if (data.real_world_coordinates && data.real_world_coordinates.x_mm !== null && data.real_world_coordinates.y_mm !== null) {
+
+      // Check if we should show well image with coordinates
+      const hasCoordinates = data.real_world_coordinates &&
+        data.real_world_coordinates.x_mm !== null &&
+        data.real_world_coordinates.y_mm !== null;
+
+      if (hasCoordinates && wellId) {
+        // First try to load well image with coordinate circle
         crystalImagePanel.innerHTML = `
           <div class="position-relative w-100 h-100">
             <div id="crystal-well-image-container" class="w-100 h-100 d-flex align-items-center justify-content-center">
@@ -186,12 +193,23 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
           const containerId = `${uniqueId}-crystal-image-panel`;
           window.loadWellImageWithCrystalLocation(datasetId, data.real_world_coordinates.x_mm, data.real_world_coordinates.y_mm, data.real_world_coordinates.z_mm, wellId, containerId);
         }, 100);
+      } else if (data.has_crystal_image) {
+        // Show crystal image from archive if no coordinates or no well
+        crystalImagePanel.innerHTML = `
+          <div class="position-relative w-100 h-100">
+            <img src="${datasetUrl}/crystal_image" 
+                 alt="Crystal Image" 
+                 class="img-fluid w-100 h-100" 
+                 style="object-fit: contain;">
+          </div>
+        `;
       } else {
+        // Fallback message
         crystalImagePanel.innerHTML = `
           <div class="text-center p-3 text-muted">
             <i class="fas fa-gem fa-3x mb-3"></i>
             <h6>Crystal Image</h6>
-            <p class="small">No crystal coordinates available</p>
+            <p class="small">No crystal image or coordinates available</p>
           </div>
         `;
       }
