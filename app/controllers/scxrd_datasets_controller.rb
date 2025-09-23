@@ -186,16 +186,16 @@ class ScxrdDatasetsController < ApplicationController
       # Serve the structure file content directly for CifVis to consume
       structure_content = @scxrd_dataset.structure_file.download
       content_type = case @scxrd_dataset.structure_file_format
-                     when 'cif'
-                       'chemical/x-cif'
-                     when 'ins', 'res'
-                       'chemical/x-shelx'
-                     else
-                       'text/plain'
-                     end
-        
-      response.headers['Content-Type'] = content_type
-      response.headers['Cache-Control'] = 'public, max-age=3600'
+      when "cif"
+                       "chemical/x-cif"
+      when "ins", "res"
+                       "chemical/x-shelx"
+      else
+                       "text/plain"
+      end
+
+      response.headers["Content-Type"] = content_type
+      response.headers["Cache-Control"] = "public, max-age=3600"
       render plain: structure_content
     else
       head :not_found

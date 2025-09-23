@@ -581,24 +581,24 @@ class ScxrdFolderProcessorService
 
       begin
         structure_content = File.read(structure_file, encoding: "UTF-8")
-        
+
         # Determine content type based on file extension
         file_extension = File.extname(structure_file).downcase
         content_type = case file_extension
-                       when '.res', '.ins'
-                         'chemical/x-shelx'
-                       when '.cif'
-                         'chemical/x-cif'
-                       else
-                         'text/plain'
-                       end
+        when ".res", ".ins"
+                         "chemical/x-shelx"
+        when ".cif"
+                         "chemical/x-cif"
+        else
+                         "text/plain"
+        end
 
         @structure_file_data = {
           data: structure_content,
           filename: File.basename(structure_file),
           content_type: content_type
         }
-        
+
         Rails.logger.info "SCXRD: Structure file extracted successfully: #{@structure_file_data[:filename]} (#{number_to_human_size(@structure_file_data[:data].bytesize)})"
       rescue => e
         Rails.logger.error "SCXRD: Error reading structure file #{structure_file}: #{e.message}"

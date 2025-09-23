@@ -95,16 +95,16 @@ class ScxrdDataset < ApplicationRecord
 
   def structure_file_format
     return nil unless has_structure_file?
-    
+
     filename = structure_file.filename.to_s.downcase
-    if filename.end_with?('.ins')
-      'ins'
-    elsif filename.end_with?('.res')
-      'res'
-    elsif filename.end_with?('.cif')
-      'cif'
+    if filename.end_with?(".ins")
+      "ins"
+    elsif filename.end_with?(".res")
+      "res"
+    elsif filename.end_with?(".cif")
+      "cif"
     else
-      'unknown'
+      "unknown"
     end
   end
 
