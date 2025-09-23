@@ -17,10 +17,10 @@ class DiffractionImagesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should handle image_data without attached file" do
-    get image_data_scxrd_dataset_diffraction_image_url(@scxrd_dataset, @diffraction_image), 
+    get image_data_scxrd_dataset_diffraction_image_url(@scxrd_dataset, @diffraction_image),
         as: :json
     assert_response :unprocessable_entity
-    
+
     response_data = JSON.parse(response.body)
     assert_equal false, response_data["success"]
     assert_equal "No rodhypix file attached", response_data["error"]
@@ -30,7 +30,7 @@ class DiffractionImagesControllerTest < ActionDispatch::IntegrationTest
     get download_scxrd_dataset_diffraction_image_url(@scxrd_dataset, @diffraction_image),
         as: :json
     assert_response :unprocessable_entity
-    
+
     response_data = JSON.parse(response.body)
     assert_equal false, response_data["success"]
     assert_equal "No rodhypix file attached", response_data["error"]
