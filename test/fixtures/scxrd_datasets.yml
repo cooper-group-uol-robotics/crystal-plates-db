@@ -3,8 +3,7 @@
 one:
   well: one
   experiment_name: "test_experiment"
-  date_measured: 2025-01-01
-  date_uploaded: 2025-01-01 10:00:00
+  measured_at: 2025-01-01 10:00:00
   niggli_a: 7.2218583
   niggli_b: 8.5410638
   niggli_c: 8.5902173
@@ -15,5 +14,4 @@ one:
 two:
   well: two
   experiment_name: "test_experiment_2"
-  date_measured: 2025-01-02
-  date_uploaded: 2025-01-02 10:00:00
+  measured_at: 2025-01-02 10:00:00

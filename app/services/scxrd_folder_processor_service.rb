@@ -83,7 +83,7 @@ class ScxrdFolderProcessorService
       Rails.logger.info "SCXRD: Using datacoll.ini file: #{datacoll_ini_file}"
       measurement_time = parse_datacoll_ini_file(datacoll_ini_file) if File.exist?(datacoll_ini_file)
       Rails.logger.info "SCXRD: datacoll.ini parsing result: #{measurement_time ? 'SUCCESS' : 'FAILED'}"
-      
+
       # Initialize @par_data if it doesn't exist and add measurement time
       @par_data ||= {}
       @par_data.merge!(measurement_time) if measurement_time
@@ -480,7 +480,7 @@ class ScxrdFolderProcessorService
         end
 
         # If we're in the Date section, look for Start time
-        if in_date_section && clean_line.start_with?('Start time=')
+        if in_date_section && clean_line.start_with?("Start time=")
           Rails.logger.info "SCXRD: Found Start time line at line #{index + 1}"
 
           # Extract the time string from Start time="..."
@@ -524,20 +524,20 @@ class ScxrdFolderProcessorService
 
   def extract_crystal_image
     Rails.logger.info "SCXRD: Searching for crystal image in movie folder"
-    
+
     # Look for oneclickmovie*.jpg files in movie folder
     movie_folder = File.join(@folder_path, "movie")
     return unless Dir.exist?(movie_folder)
 
     crystal_image_pattern = File.join(movie_folder, "oneclickmovie*.jpg")
     crystal_image_files = Dir.glob(crystal_image_pattern, File::FNM_CASEFOLD)
-    
+
     Rails.logger.info "SCXRD: Found #{crystal_image_files.count} crystal image candidates: #{crystal_image_files.map { |f| File.basename(f) }.inspect}"
 
     if crystal_image_files.any?
       crystal_image_file = crystal_image_files.first
       Rails.logger.info "SCXRD: Using crystal image file: #{crystal_image_file}"
-      
+
       begin
         @crystal_image_data = {
           data: File.binread(crystal_image_file),

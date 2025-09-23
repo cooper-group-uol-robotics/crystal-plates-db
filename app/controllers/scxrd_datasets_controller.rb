@@ -115,10 +115,10 @@ class ScxrdDatasetsController < ApplicationController
       begin
         # Process uploaded compressed archive after dataset is saved with an ID
         process_compressed_archive(compressed_archive)
-        
+
         # Save again to persist any changes from archive processing
         @scxrd_dataset.save!
-        
+
         redirect_to success_redirect, notice: "SCXRD dataset was successfully created."
       rescue => e
         Rails.logger.error "SCXRD: Failed to process archive: #{e.message}"
@@ -186,7 +186,7 @@ class ScxrdDatasetsController < ApplicationController
 
     # Get the first diffraction image from the diffraction_images association
     first_diffraction_image = @scxrd_dataset.diffraction_images.order(:run_number, :image_number).first
-    
+
     unless first_diffraction_image&.rodhypix_file&.attached?
       render json: { error: "No diffraction images available" }, status: :not_found
       return
