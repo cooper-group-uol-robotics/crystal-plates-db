@@ -211,38 +211,24 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       return
     end
 
-    # Create a new standalone dataset
     @scxrd_dataset = ScxrdDataset.new(
-      experiment_name: "Processing...", # Will be updated from archive
+      experiment_name: "Processing...",
       measured_at: Time.current
     )
 
-    # Save the dataset first to get an ID, then process the archive
     if @scxrd_dataset.save
-      begin
-        # Process uploaded compressed archive after dataset is saved with an ID
-        process_compressed_archive(compressed_archive)
+      # Attach the archive file
+      compressed_archive.rewind if compressed_archive.respond_to?(:rewind)
+      @scxrd_dataset.archive.attach(compressed_archive)
 
-        # Re-save with any updates from archive processing
-        if @scxrd_dataset.save
-          render json: {
-            message: "SCXRD dataset created successfully from archive",
-            scxrd_dataset: detailed_dataset_json(@scxrd_dataset)
-          }, status: :created
-        else
-          render json: {
-            error: "Failed to save SCXRD dataset after processing archive",
-            errors: @scxrd_dataset.errors.full_messages
-          }, status: :unprocessable_entity
-        end
-      rescue => e
-        Rails.logger.error "API SCXRD: Failed to process archive: #{e.message}"
-        @scxrd_dataset.destroy # Clean up the created dataset
-        render json: {
-          error: "Failed to process archive",
-          details: e.message
-        }, status: :unprocessable_entity
-      end
+      # Kick off background job for processing
+      ScxrdArchiveProcessingJob.perform_later(@scxrd_dataset.id)
+
+      render json: {
+        message: "Archive received. Processing will continue in background.",
+        scxrd_dataset_id: @scxrd_dataset.id,
+        status: "processing"
+      }, status: :accepted
     else
       render json: {
         error: "Failed to create SCXRD dataset",
