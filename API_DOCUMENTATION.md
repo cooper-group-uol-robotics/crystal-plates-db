@@ -732,9 +732,9 @@ Points of Interest are markers placed on images to identify features like crysta
   }
   ```
 
-### Upload PXRD Pattern
+### Upload PXRD Pattern to Well
 - **POST** `/api/v1/wells/:well_id/pxrd_patterns`
-- **Description**: Upload a new PXRD pattern to a well
+- **Description**: Upload a new PXRD pattern to a specific well
 - **Content-Type**: `multipart/form-data`
 - **Body Parameters**:
   ```
@@ -747,6 +747,39 @@ Points of Interest are markers placed on images to identify features like crysta
   curl -X POST http://localhost:3000/api/v1/wells/123/pxrd_patterns \
     -F "pxrd_pattern[title]=Crystal A1 - Day 3" \
     -F "pxrd_pattern[pxrd_data_file]=@/path/to/pattern.xrdml"
+  ```
+
+### Upload Standalone PXRD Pattern
+- **POST** `/api/v1/pxrd_patterns`
+- **Description**: Upload a new PXRD pattern not associated with a specific well
+- **Content-Type**: `multipart/form-data`
+- **Body Parameters**:
+  ```
+  pxrd_pattern[title]: (string) Title or description of the pattern
+  pxrd_pattern[pxrd_data_file]: (file) PXRD data file in XRDML format
+  ```
+- **Response**: Created PXRD pattern object (well_id will be null)
+- **Example**:
+  ```bash
+  curl -X POST http://localhost:3000/api/v1/pxrd_patterns \
+    -F "pxrd_pattern[title]=Reference Standard - Quartz" \
+    -F "pxrd_pattern[pxrd_data_file]=@/path/to/standard.xrdml"
+  ```
+- **Example Response**:
+  ```json
+  {
+    "id": 15,
+    "title": "Reference Standard - Quartz",
+    "well_id": null,
+    "well_label": null,
+    "plate_barcode": null,
+    "measured_at": "2025-07-19T14:30:00Z",
+    "file_attached": true,
+    "file_url": "http://localhost:3000/rails/active_storage/blobs/abc123.xrdml",
+    "file_size": 52341,
+    "created_at": "2025-09-25T10:15:00Z",
+    "updated_at": "2025-09-25T10:15:00Z"
+  }
   ```
 
 ### Update PXRD Pattern
@@ -884,7 +917,7 @@ Get detailed information about a specific SCXRD dataset.
 
 **POST** `/api/v1/wells/:well_id/scxrd_datasets`
 
-Create a new SCXRD dataset.
+Create a new SCXRD dataset with manual unit cell parameters.
 
 #### Parameters
 - `well_id` (path, required) - Well ID
@@ -895,16 +928,15 @@ Create a new SCXRD dataset.
   "scxrd_dataset": {
     "experiment_name": "crystal_001_scan",
     "measured_at": "2024-01-15",
-    "lattice_centring_id": 1,
     "real_world_x_mm": 1.234,
     "real_world_y_mm": 5.678,
     "real_world_z_mm": 2.100,
-    "a": 15.457,
-    "b": 15.638,
-    "c": 18.121,
-    "alpha": 89.9,
-    "beta": 90.0,
-    "gamma": 89.9
+    "niggli_a": 15.457,
+    "niggli_b": 15.638,
+    "niggli_c": 18.121,
+    "niggli_alpha": 89.9,
+    "niggli_beta": 90.0,
+    "niggli_gamma": 89.9
   }
 }
 ```
@@ -919,6 +951,14 @@ Create a new SCXRD dataset.
   }
 }
 ```
+
+**Note**: The API currently only supports manual dataset creation with individual parameters. For bulk upload of compressed archives (ZIP files containing diffraction data, logs, and structure files), use the web interface. The web interface supports automatic processing of complete experiment folders, including:
+- Automatic extraction of unit cell parameters from log files
+- Processing of diffraction images (.img files)
+- Extraction of structure files (.res files)
+- Peak table parsing
+
+This bulk upload capability is not yet available via API.
 
 ### Update SCXRD Dataset
 
@@ -1312,8 +1352,37 @@ curl -X DELETE http://localhost:3000/api/v1/wells/123/scxrd_datasets/456
 
 ### Statistics
 - **GET** `/api/v1/stats`
-- **Description**: Get system statistics
-- **Response**: Comprehensive stats about plates, locations, and wells
+- **Description**: Get comprehensive system statistics including plates, locations, wells, and occupancy data
+- **Response**: Detailed statistics object
+- **Example Response**:
+  ```json
+  {
+    "data": {
+      "overview": {
+        "total_plates": 150,
+        "total_locations": 200,
+        "total_wells": 14400,
+        "occupied_locations": 75,
+        "available_locations": 125
+      },
+      "locations": {
+        "carousel_locations": 180,
+        "special_locations": 20,
+        "occupancy_rate": 37.5
+      },
+      "plates": {
+        "plates_with_location": 75,
+        "plates_without_location": 75,
+        "recent_movements": 12
+      },
+      "wells": {
+        "wells_with_content": 3600,
+        "wells_without_content": 10800,
+        "average_wells_per_plate": 96.0
+      }
+    }
+  }
+  ```
 
 ## Example API Usage
 
@@ -1464,6 +1533,40 @@ curl -X PATCH http://localhost:3000/api/v1/wells/123/scxrd_datasets/456 \
   -H "Content-Type: application/json" \
   -d '{"scxrd_dataset": {"real_world_x_mm": 1.235}}'
 ```
+
+## API vs Web Interface Feature Differences
+
+While the API provides comprehensive access to most functionality, there are some differences compared to the web interface:
+
+### Features Available Only in Web Interface
+
+**SCXRD Bulk Upload**: The web interface supports uploading compressed archives (ZIP files) containing complete experiment folders. This includes:
+- Automatic processing of diffraction data folders
+- Extraction of unit cell parameters from log files  
+- Processing of diffraction images (.img files)
+- Automatic discovery and attachment of structure files (.res files)
+- Peak table parsing and attachment
+
+The API currently only supports manual dataset creation with individual parameters.
+
+**Advanced File Processing**: Some specialized file processing workflows are optimized for the web interface and may not be available via API.
+
+### Planned API Enhancements
+
+The following features are planned for future API versions:
+- Bulk upload support for SCXRD datasets
+- Advanced file processing endpoints
+- Batch operations for multiple records
+- Enhanced search and filtering capabilities
+
+### Non-Functional Routes
+
+Some routes may appear in the API routes but are not currently implemented:
+- Individual diffraction image access endpoints
+- Some SCXRD-specific file endpoints (crystal_image, peak_table_data)
+- Advanced processing endpoints
+
+If you encounter a 404 error on a route that appears to exist, it may be one of these non-functional routes.
 
 ## Error Codes
 
