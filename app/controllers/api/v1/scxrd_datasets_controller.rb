@@ -1,4 +1,4 @@
-class Api::V1::ScxrdDatasetsController < ApplicationController
+class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
   include ActionView::Helpers::NumberHelper
   before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
   before_action :set_scxrd_dataset, only: [ :show, :update, :destroy ]
@@ -204,7 +204,7 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
 
   # POST /api/v1/scxrd_datasets/upload_archive
   def upload_archive
-    compressed_archive = params[:archive]
+    compressed_archive = params[:archive] || params.dig(:scxrd_dataset, :archive_file)
 
     unless compressed_archive.present?
       render json: { error: "Archive file is required" }, status: :unprocessable_entity
