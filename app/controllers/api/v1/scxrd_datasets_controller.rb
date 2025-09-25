@@ -3,16 +3,24 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
   before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
   before_action :set_scxrd_dataset, only: [ :show, :update, :destroy ]
 
-  # GET /api/v1/wells/:well_id/scxrd_datasets
+  # GET /api/v1/wells/:well_id/scxrd_datasets or GET /api/v1/scxrd_datasets (standalone)
   def index
-    @scxrd_datasets = @well.scxrd_datasets.order(created_at: :desc)
-
-    render json: {
-      well_id: @well.id,
-      well_label: @well.well_label,
-      count: @scxrd_datasets.count,
-      scxrd_datasets: @scxrd_datasets.map { |dataset| dataset_json(dataset) }
-    }
+    if @well
+      @scxrd_datasets = @well.scxrd_datasets.order(created_at: :desc)
+      render json: {
+        well_id: @well.id,
+        well_label: @well.well_label,
+        count: @scxrd_datasets.count,
+        scxrd_datasets: @scxrd_datasets.map { |dataset| dataset_json(dataset) }
+      }
+    else
+      # Standalone index - all datasets
+      @scxrd_datasets = ScxrdDataset.includes(:well).order(created_at: :desc)
+      render json: {
+        count: @scxrd_datasets.count,
+        scxrd_datasets: @scxrd_datasets.map { |dataset| dataset_json(dataset) }
+      }
+    end
   end
 
   # GET /api/v1/wells/:well_id/scxrd_datasets/:id
@@ -22,10 +30,13 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
     }
   end
 
-  # POST /api/v1/wells/:well_id/scxrd_datasets
+  # POST /api/v1/wells/:well_id/scxrd_datasets or POST /api/v1/scxrd_datasets (standalone)
   def create
-    @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
-
+    if @well
+      @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
+    else
+      @scxrd_dataset = ScxrdDataset.new(scxrd_dataset_params)
+    end
 
     if @scxrd_dataset.save
       render json: {
@@ -191,6 +202,55 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
     }
   end
 
+  # POST /api/v1/scxrd_datasets/upload_archive
+  def upload_archive
+    compressed_archive = params[:archive]
+
+    unless compressed_archive.present?
+      render json: { error: "Archive file is required" }, status: :unprocessable_entity
+      return
+    end
+
+    # Create a new standalone dataset
+    @scxrd_dataset = ScxrdDataset.new(
+      experiment_name: "Processing...", # Will be updated from archive
+      measured_at: Time.current
+    )
+
+    # Save the dataset first to get an ID, then process the archive
+    if @scxrd_dataset.save
+      begin
+        # Process uploaded compressed archive after dataset is saved with an ID
+        process_compressed_archive(compressed_archive)
+
+        # Re-save with any updates from archive processing
+        if @scxrd_dataset.save
+          render json: {
+            message: "SCXRD dataset created successfully from archive",
+            scxrd_dataset: detailed_dataset_json(@scxrd_dataset)
+          }, status: :created
+        else
+          render json: {
+            error: "Failed to save SCXRD dataset after processing archive",
+            errors: @scxrd_dataset.errors.full_messages
+          }, status: :unprocessable_entity
+        end
+      rescue => e
+        Rails.logger.error "API SCXRD: Failed to process archive: #{e.message}"
+        @scxrd_dataset.destroy # Clean up the created dataset
+        render json: {
+          error: "Failed to process archive",
+          details: e.message
+        }, status: :unprocessable_entity
+      end
+    else
+      render json: {
+        error: "Failed to create SCXRD dataset",
+        errors: @scxrd_dataset.errors.full_messages
+      }, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def set_well
@@ -201,7 +261,11 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
   end
 
   def set_scxrd_dataset
-    @scxrd_dataset = @well.scxrd_datasets.find(params[:id])
+    if @well
+      @scxrd_dataset = @well.scxrd_datasets.find(params[:id])
+    else
+      @scxrd_dataset = ScxrdDataset.find(params[:id])
+    end
   rescue ActiveRecord::RecordNotFound
     render json: { error: "SCXRD dataset not found" }, status: :not_found
   end
@@ -264,5 +328,160 @@ class Api::V1::ScxrdDatasetsController < ApplicationController
           }
         end : []
     })
+  end
+
+  def process_compressed_archive(uploaded_archive)
+    return unless uploaded_archive.present?
+
+    begin
+      archive_start_time = Time.current
+      # Create a temporary directory to extract the archive
+      Dir.mktmpdir do |temp_dir|
+        # Save the uploaded archive temporarily
+        archive_path = File.join(temp_dir, "uploaded_archive.zip")
+        File.open(archive_path, "wb") { |f| f.write(uploaded_archive.read) }
+
+        # Extract the archive
+        require "zip"
+        Zip::File.open(archive_path) do |zip_file|
+          file_count = 0
+          zip_file.each do |entry|
+            next if entry.directory?
+
+            file_path = File.join(temp_dir, entry.name)
+            FileUtils.mkdir_p(File.dirname(file_path))
+            entry.extract(file_path)
+
+            file_count += 1
+          end
+        end
+
+        # Set experiment name from archive filename if not already set
+        if @scxrd_dataset.experiment_name.blank? || @scxrd_dataset.experiment_name == "Processing..."
+          base_name = File.basename(uploaded_archive.original_filename, ".*")
+          @scxrd_dataset.experiment_name = base_name
+        end
+
+        # Find the experiment folder (should be the first directory in the extracted files)
+        experiment_folder = Dir.glob("#{temp_dir}/*").find { |path| File.directory?(path) }
+        if experiment_folder
+
+          processor = ScxrdFolderProcessorService.new(experiment_folder)
+          result = processor.process
+
+          Rails.logger.info "API SCXRD: File processing completed, storing results..."
+
+          # Store extracted data as Active Storage attachments
+          if result[:peak_table]
+            @scxrd_dataset.peak_table.attach(
+              io: StringIO.new(result[:peak_table]),
+              filename: "#{@scxrd_dataset.experiment_name}_peak_table.txt",
+              content_type: "text/plain"
+            )
+            Rails.logger.info "API SCXRD: Peak table stored (#{number_to_human_size(result[:peak_table].bytesize)})"
+          end
+
+          # Store all diffraction images as DiffractionImage records
+          if result[:all_diffraction_images] && result[:all_diffraction_images].any?
+            Rails.logger.info "API SCXRD: Processing #{result[:all_diffraction_images].length} diffraction images..."
+
+            result[:all_diffraction_images].each_with_index do |image_data, index|
+              begin
+                diffraction_image = @scxrd_dataset.diffraction_images.build(
+                  run_number: image_data[:run_number],
+                  image_number: image_data[:image_number],
+                  filename: image_data[:filename],
+                  file_size: image_data[:file_size]
+                )
+
+                diffraction_image.rodhypix_file.attach(
+                  io: StringIO.new(image_data[:data]),
+                  filename: image_data[:filename],
+                  content_type: "application/octet-stream"
+                )
+
+                diffraction_image.save!
+
+                # Log progress every 100 images to avoid log spam
+                if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
+                  Rails.logger.info "API SCXRD: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
+                end
+
+              rescue => e
+                Rails.logger.error "API SCXRD: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
+              end
+            end
+
+            total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
+            Rails.logger.info "API SCXRD: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
+          end
+
+          # Store unit cell parameters from .par file if available
+          Rails.logger.info "API SCXRD: Checking for parsed .par data..."
+          if result[:par_data]
+            par_data = result[:par_data]
+            Rails.logger.info "API SCXRD: Found .par data: #{par_data.inspect}"
+
+            @scxrd_dataset.niggli_a = par_data[:a] if par_data[:a]
+            @scxrd_dataset.niggli_b = par_data[:b] if par_data[:b]
+            @scxrd_dataset.niggli_c = par_data[:c] if par_data[:c]
+            @scxrd_dataset.niggli_alpha = par_data[:alpha] if par_data[:alpha]
+            @scxrd_dataset.niggli_beta = par_data[:beta] if par_data[:beta]
+            @scxrd_dataset.niggli_gamma = par_data[:gamma] if par_data[:gamma]
+
+            Rails.logger.info "API SCXRD: Niggli unit cell parameters stored from .par file: a=#{@scxrd_dataset.niggli_a}, b=#{@scxrd_dataset.niggli_b}, c=#{@scxrd_dataset.niggli_c}, α=#{@scxrd_dataset.niggli_alpha}, β=#{@scxrd_dataset.niggli_beta}, γ=#{@scxrd_dataset.niggli_gamma}"
+
+            # Store measurement time from datacoll.ini if available (takes precedence over default)
+            if par_data[:measured_at]
+              @scxrd_dataset.measured_at = par_data[:measured_at]
+              Rails.logger.info "API SCXRD: Measurement time from datacoll.ini: #{@scxrd_dataset.measured_at}"
+            else
+              Rails.logger.info "API SCXRD: No measurement time found in datacoll.ini, using default date: #{@scxrd_dataset.measured_at}"
+            end
+          else
+            Rails.logger.warn "API SCXRD: No .par data found in processing result"
+          end
+
+          # Store crystal image if available and no image is already attached
+          if result[:crystal_image] && !@scxrd_dataset.crystal_image.attached?
+            Rails.logger.info "API SCXRD: Attaching crystal image from archive (#{number_to_human_size(result[:crystal_image][:data].bytesize)})"
+            @scxrd_dataset.crystal_image.attach(
+              io: StringIO.new(result[:crystal_image][:data]),
+              filename: result[:crystal_image][:filename],
+              content_type: result[:crystal_image][:content_type]
+            )
+          elsif result[:crystal_image]
+            Rails.logger.info "API SCXRD: Crystal image found in archive but dataset already has an image attached, skipping"
+          end
+
+          # Store structure file if available and no structure file is already attached
+          if result[:structure_file] && !@scxrd_dataset.structure_file.attached?
+            Rails.logger.info "API SCXRD: Attaching structure file from archive: #{result[:structure_file][:filename]} (#{number_to_human_size(result[:structure_file][:data].bytesize)})"
+            @scxrd_dataset.structure_file.attach(
+              io: StringIO.new(result[:structure_file][:data]),
+              filename: result[:structure_file][:filename],
+              content_type: result[:structure_file][:content_type]
+            )
+          elsif result[:structure_file]
+            Rails.logger.info "API SCXRD: Structure file found in archive but dataset already has a structure file attached, skipping"
+          end
+
+          # Store the original archive as the zip attachment
+          Rails.logger.info "API SCXRD: Attaching original compressed archive (#{number_to_human_size(uploaded_archive.size)})"
+          uploaded_archive.rewind  # Reset the file pointer
+          @scxrd_dataset.archive.attach(uploaded_archive)
+        else
+          Rails.logger.warn "API SCXRD: No experiment folder found in extracted archive"
+          @scxrd_dataset.errors.add(:base, "No experiment folder found in the uploaded archive")
+        end
+
+        archive_end_time = Time.current
+        Rails.logger.info "API SCXRD: Total archive processing completed in #{(archive_end_time - archive_start_time).round(2)} seconds"
+      end
+    rescue => e
+      Rails.logger.error "API SCXRD: Error processing compressed archive: #{e.message}"
+      Rails.logger.error "API SCXRD: Backtrace: #{e.backtrace.first(5).join("\n")}"
+      @scxrd_dataset.errors.add(:base, "Error processing compressed archive: #{e.message}")
+    end
   end
 end

@@ -952,13 +952,7 @@ Create a new SCXRD dataset with manual unit cell parameters.
 }
 ```
 
-**Note**: The API currently only supports manual dataset creation with individual parameters. For bulk upload of compressed archives (ZIP files containing diffraction data, logs, and structure files), use the web interface. The web interface supports automatic processing of complete experiment folders, including:
-- Automatic extraction of unit cell parameters from log files
-- Processing of diffraction images (.img files)
-- Extraction of structure files (.res files)
-- Peak table parsing
-
-This bulk upload capability is not yet available via API.
+**Note**: For bulk upload of compressed archives (ZIP files), see the standalone archive upload endpoint below.
 
 ### Update SCXRD Dataset
 
@@ -1534,27 +1528,136 @@ curl -X PATCH http://localhost:3000/api/v1/wells/123/scxrd_datasets/456 \
   -d '{"scxrd_dataset": {"real_world_x_mm": 1.235}}'
 ```
 
+## Standalone SCXRD Datasets API
+
+### List All SCXRD Datasets
+- **GET** `/api/v1/scxrd_datasets`
+- **Description**: Get all SCXRD datasets across the system (not limited to specific wells)
+- **Response**: Array of SCXRD dataset objects
+- **Example Response**:
+  ```json
+  {
+    "count": 25,
+    "scxrd_datasets": [
+      {
+        "id": 456,
+        "experiment_name": "crystal_001_scan",
+        "measured_at": "2024-01-15 14:30:00",
+        "lattice_centring": "primitive",
+        "unit_cell": {
+          "a": 15.457,
+          "b": 15.638,
+          "c": 18.121,
+          "alpha": 89.9,
+          "beta": 90.0,
+          "gamma": 89.9
+        },
+        "has_archive": true,
+        "has_peak_table": true,
+        "has_first_image": true,
+        "created_at": "2024-01-15T14:30:00Z",
+        "updated_at": "2024-01-15T14:30:00Z"
+      }
+    ]
+  }
+  ```
+
+### Get Standalone SCXRD Dataset Details
+- **GET** `/api/v1/scxrd_datasets/:id`
+- **Description**: Get detailed information about a specific standalone SCXRD dataset
+- **Parameters**: 
+  - `id` (integer): SCXRD dataset ID
+- **Response**: Detailed SCXRD dataset object (same format as well-associated datasets)
+
+### Create Standalone SCXRD Dataset
+- **POST** `/api/v1/scxrd_datasets`
+- **Description**: Create a new SCXRD dataset not associated with any well
+- **Request Body**: Same as well-associated datasets (without well_id)
+- **Response**: Created SCXRD dataset object
+
+### Upload SCXRD Archive (Bulk Processing)
+- **POST** `/api/v1/scxrd_datasets/upload_archive`
+- **Description**: Upload and process a complete SCXRD experiment archive (ZIP file) to create a standalone dataset with automatic data extraction
+- **Content-Type**: `multipart/form-data`
+- **Body Parameters**:
+  ```
+  archive: (file) ZIP file containing complete SCXRD experiment folder
+  ```
+- **Processing Features**:
+  - Automatic extraction of unit cell parameters from log files (.par files)
+  - Processing and storage of diffraction images (.img files)
+  - Extraction and attachment of structure files (.res files from struct/best_res/ folder)
+  - Peak table parsing and attachment
+  - Crystal image extraction (if present)
+  - Measurement timestamp extraction from datacoll.ini
+  - Experiment name extraction from archive filename
+- **Response**: Created SCXRD dataset with all processed data
+- **Example**:
+  ```bash
+  curl -X POST http://localhost:3000/api/v1/scxrd_datasets/upload_archive \
+    -F "archive=@/path/to/experiment_folder.zip"
+  ```
+- **Example Response**:
+  ```json
+  {
+    "message": "SCXRD dataset created successfully from archive",
+    "scxrd_dataset": {
+      "id": 789,
+      "experiment_name": "experiment_folder",
+      "measured_at": "2024-01-15 09:45:22",
+      "lattice_centring": "primitive",
+      "unit_cell": {
+        "a": 15.457,
+        "b": 15.638,
+        "c": 18.121,
+        "alpha": 89.9,
+        "beta": 90.0,
+        "gamma": 89.9
+      },
+      "has_archive": true,
+      "has_peak_table": true,
+      "has_first_image": true,
+      "diffraction_images_count": 720,
+      "total_diffraction_images_size": "1.2 GB",
+      "created_at": "2024-01-15T14:30:00Z",
+      "updated_at": "2024-01-15T14:30:00Z"
+    }
+  }
+  ```
+
+### Update Standalone SCXRD Dataset
+- **PUT/PATCH** `/api/v1/scxrd_datasets/:id`
+- **Description**: Update standalone SCXRD dataset information
+- **Body Parameters**: Same as well-associated datasets
+- **Response**: Updated SCXRD dataset object
+
+### Delete Standalone SCXRD Dataset
+- **DELETE** `/api/v1/scxrd_datasets/:id`
+- **Description**: Delete a standalone SCXRD dataset and all its associated files
+- **Response**: Success message
+
+### Get Standalone SCXRD Dataset Image Data
+- **GET** `/api/v1/scxrd_datasets/:id/image_data`
+- **Description**: Get parsed diffraction image data for visualization (standalone datasets)
+- **Response**: Same format as well-associated datasets
+
 ## API vs Web Interface Feature Differences
 
 While the API provides comprehensive access to most functionality, there are some differences compared to the web interface:
 
 ### Features Available Only in Web Interface
 
-**SCXRD Bulk Upload**: The web interface supports uploading compressed archives (ZIP files) containing complete experiment folders. This includes:
-- Automatic processing of diffraction data folders
-- Extraction of unit cell parameters from log files  
-- Processing of diffraction images (.img files)
-- Automatic discovery and attachment of structure files (.res files)
-- Peak table parsing and attachment
-
-The API currently only supports manual dataset creation with individual parameters.
+**Well-Associated SCXRD Bulk Upload**: While the API now supports standalone SCXRD archive uploads, the web interface still provides additional functionality for well-associated uploads:
+- Interactive well selection during upload
+- Visual feedback during processing
+- Integrated plate and well management workflow
 
 **Advanced File Processing**: Some specialized file processing workflows are optimized for the web interface and may not be available via API.
 
 ### Planned API Enhancements
 
 The following features are planned for future API versions:
-- Bulk upload support for SCXRD datasets
+- Well-associated SCXRD archive uploads via API
 - Advanced file processing endpoints
 - Batch operations for multiple records
 - Enhanced search and filtering capabilities

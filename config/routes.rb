@@ -207,6 +207,16 @@ Rails.application.routes.draw do
         end
       end
 
+      # Standalone SCXRD dataset routes
+      resources :scxrd_datasets, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          get :image_data
+        end
+        collection do
+          post :upload_archive
+        end
+      end
+
       resources :points_of_interest do
         collection do
           get :by_type
