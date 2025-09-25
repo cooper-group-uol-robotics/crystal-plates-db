@@ -12,9 +12,39 @@ class PxrdPatternsController < ApplicationController
     else
       # Global index for all PXRD patterns
       @pxrd_patterns = PxrdPattern.includes(well: :plate)
-                                  .order(created_at: :desc)
-                                  .page(params[:page])
-                                  .per(20)
+
+      # Apply search filter if provided
+      if params[:search].present?
+        search_term = "%#{params[:search]}%"
+        @pxrd_patterns = @pxrd_patterns.joins(:pxrd_data_file_attachment)
+                                       .joins("JOIN active_storage_blobs ON active_storage_attachments.blob_id = active_storage_blobs.id")
+                                       .where("LOWER(active_storage_blobs.filename) LIKE LOWER(?) OR LOWER(pxrd_patterns.title) LIKE LOWER(?)",
+                                              search_term, search_term)
+      end
+
+      # Apply sorting
+      sort_column = params[:sort] || "created_at"
+      sort_direction = params[:direction] || "desc"
+
+      case sort_column
+      when "measured_at"
+        # Sort by measured_at, falling back to created_at for patterns without measured_at
+        if sort_direction == "asc"
+          @pxrd_patterns = @pxrd_patterns.order(Arel.sql("COALESCE(measured_at, created_at) ASC"))
+        else
+          @pxrd_patterns = @pxrd_patterns.order(Arel.sql("COALESCE(measured_at, created_at) DESC"))
+        end
+      when "title"
+        @pxrd_patterns = @pxrd_patterns.order("title #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
+      when "filename"
+        @pxrd_patterns = @pxrd_patterns.joins(:pxrd_data_file_attachment)
+                                       .joins("JOIN active_storage_blobs ON active_storage_attachments.blob_id = active_storage_blobs.id")
+                                       .order("active_storage_blobs.filename #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
+      else
+        @pxrd_patterns = @pxrd_patterns.order("created_at #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
+      end
+
+      @pxrd_patterns = @pxrd_patterns.page(params[:page]).per(20)
       render "index"
     end
   end

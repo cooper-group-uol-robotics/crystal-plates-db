@@ -15,7 +15,114 @@
   </div>
 </div>
 
+<!-- Search and Sort Controls -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <%= form_with url: pxrd_patterns_path, method: :get, local: true, class: "d-flex" do |f| %>
+      <div class="input-group">
+        <%= f.text_field :search, 
+                        value: params[:search], 
+                        placeholder: "Search by filename or title...", 
+                        class: "form-control" %>
+        <button class="btn btn-outline-secondary" type="submit">
+          <i class="bi bi-search"></i>
+        </button>
+        <% if params[:search].present? %>
+          <%= link_to pxrd_patterns_path(sort: params[:sort], direction: params[:direction]), 
+                     class: "btn btn-outline-secondary" do %>
+            <i class="bi bi-x"></i>
+          <% end %>
+        <% end %>
+      </div>
+      <%= f.hidden_field :sort, value: params[:sort] %>
+      <%= f.hidden_field :direction, value: params[:direction] %>
+    <% end %>
+  </div>
+  <div class="col-md-6">
+    <div class="d-flex justify-content-end gap-2">
+      <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+          <i class="bi bi-sort-down"></i> 
+          Sort by: 
+          <% case params[:sort] %>
+          <% when 'measured_at' %>
+            Date Measured
+          <% when 'title' %>
+            Title
+          <% when 'filename' %>
+            Filename
+          <% else %>
+            Date Created
+          <% end %>
+        </button>
+        <ul class="dropdown-menu">
+          <li>
+            <%= link_to pxrd_patterns_path(sort: 'measured_at', direction: 'desc', search: params[:search]), 
+                       class: "dropdown-item #{'active' if params[:sort] == 'measured_at' && params[:direction] != 'asc'}" do %>
+              <i class="bi bi-calendar-check"></i> Date Measured (Newest)
+            <% end %>
+          </li>
+          <li>
+            <%= link_to pxrd_patterns_path(sort: 'measured_at', direction: 'asc', search: params[:search]), 
+                       class: "dropdown-item #{'active' if params[:sort] == 'measured_at' && params[:direction] == 'asc'}" do %>
+              <i class="bi bi-calendar-check"></i> Date Measured (Oldest)
+            <% end %>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <%= link_to pxrd_patterns_path(sort: 'title', direction: 'asc', search: params[:search]), 
+                       class: "dropdown-item #{'active' if params[:sort] == 'title' && params[:direction] == 'asc'}" do %>
+              <i class="bi bi-sort-alpha-down"></i> Title (A-Z)
+            <% end %>
+          </li>
+          <li>
+            <%= link_to pxrd_patterns_path(sort: 'title', direction: 'desc', search: params[:search]), 
+                       class: "dropdown-item #{'active' if params[:sort] == 'title' && params[:direction] == 'desc'}" do %>
+              <i class="bi bi-sort-alpha-up"></i> Title (Z-A)
+            <% end %>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <%= link_to pxrd_patterns_path(sort: 'filename', direction: 'asc', search: params[:search]), 
+                       class: "dropdown-item #{'active' if params[:sort] == 'filename' && params[:direction] == 'asc'}" do %>
+              <i class="bi bi-file-earmark-text"></i> Filename (A-Z)
+            <% end %>
+          </li>
+          <li>
+            <%= link_to pxrd_patterns_path(sort: 'filename', direction: 'desc', search: params[:search]), 
+                       class: "dropdown-item #{'active' if params[:sort] == 'filename' && params[:direction] == 'desc'}" do %>
+              <i class="bi bi-file-earmark-text"></i> Filename (Z-A)
+            <% end %>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <%= link_to pxrd_patterns_path(sort: 'created_at', direction: 'desc', search: params[:search]), 
+                       class: "dropdown-item #{'active' if (params[:sort].blank? || params[:sort] == 'created_at') && params[:direction] != 'asc'}" do %>
+              <i class="bi bi-clock"></i> Date Created (Newest)
+            <% end %>
+          </li>
+          <li>
+            <%= link_to pxrd_patterns_path(sort: 'created_at', direction: 'asc', search: params[:search]), 
+                       class: "dropdown-item #{'active' if params[:sort] == 'created_at' && params[:direction] == 'asc'}" do %>
+              <i class="bi bi-clock"></i> Date Created (Oldest)
+            <% end %>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
 <% if @pxrd_patterns.any? %>
+  <% if params[:search].present? %>
+    <div class="alert alert-info mb-3">
+      <i class="bi bi-search"></i> 
+      Showing <%= @pxrd_patterns.total_count %> patterns matching "<strong><%= params[:search] %></strong>"
+      <%= link_to "Clear search", pxrd_patterns_path(sort: params[:sort], direction: params[:direction]), 
+                 class: "btn btn-sm btn-outline-primary ms-2" %>
+    </div>
+  <% end %>
+  
   <div class="row">
     <% @pxrd_patterns.each do |pattern| %>
       <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
@@ -39,8 +146,13 @@
               <% end %>
               <div><strong>Measured:</strong> <%= (pattern.measured_at || pattern.created_at).strftime('%b %d, %Y at %H:%M') %></div>
               <% if pattern.pxrd_data_file.attached? %>
-                <div><strong>File:</strong> <%= pattern.pxrd_data_file.filename %></div>
+                <div><strong>File:</strong> 
+                  <span class="<%= 'fw-bold text-primary' if params[:sort] == 'filename' %>">
+                    <%= pattern.pxrd_data_file.filename %>
+                  </span>
+                </div>
               <% end %>
+              <div><strong>Created:</strong> <%= pattern.created_at.strftime('%b %d, %Y at %H:%M') %></div>
             </div>
           </div>
           
@@ -81,19 +193,28 @@
 
   <!-- Pagination -->
   <div class="d-flex justify-content-center mt-4">
-    <%= paginate @pxrd_patterns %>
+    <%= paginate @pxrd_patterns, params: { search: params[:search], sort: params[:sort], direction: params[:direction] } %>
   </div>
 
 <% else %>
   <div class="alert alert-info text-center">
-    <i class="bi bi-graph-up" style="font-size: 3rem;" class="text-muted"></i>
-    <h4>No PXRD Patterns</h4>
-    <p>No PXRD patterns have been uploaded to the system yet.</p>
-    <p class="mb-0">
-      <small class="text-muted">
-        PXRD patterns are uploaded from individual well pages.
-      </small>
-    </p>
+    <% if params[:search].present? %>
+      <i class="bi bi-search" style="font-size: 3rem;" class="text-muted"></i>
+      <h4>No Matching Patterns</h4>
+      <p>No PXRD patterns match your search for "<strong><%= params[:search] %></strong>".</p>
+      <p class="mb-0">
+        <%= link_to "Clear search", pxrd_patterns_path, class: "btn btn-outline-primary" %>
+      </p>
+    <% else %>
+      <i class="bi bi-graph-up" style="font-size: 3rem;" class="text-muted"></i>
+      <h4>No PXRD Patterns</h4>
+      <p>No PXRD patterns have been uploaded to the system yet.</p>
+      <p class="mb-0">
+        <small class="text-muted">
+          PXRD patterns are uploaded from individual well pages or as standalone patterns.
+        </small>
+      </p>
+    <% end %>
   </div>
 <% end %>
 
