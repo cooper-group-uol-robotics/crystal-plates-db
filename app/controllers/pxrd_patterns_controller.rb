@@ -30,18 +30,21 @@ class PxrdPatternsController < ApplicationController
       when "measured_at"
         # Sort by measured_at, falling back to created_at for patterns without measured_at
         if sort_direction == "asc"
-          @pxrd_patterns = @pxrd_patterns.order(Arel.sql("COALESCE(measured_at, created_at) ASC"))
+          @pxrd_patterns = @pxrd_patterns.order(Arel.sql("COALESCE(pxrd_patterns.measured_at, pxrd_patterns.created_at) ASC"))
         else
-          @pxrd_patterns = @pxrd_patterns.order(Arel.sql("COALESCE(measured_at, created_at) DESC"))
+          @pxrd_patterns = @pxrd_patterns.order(Arel.sql("COALESCE(pxrd_patterns.measured_at, pxrd_patterns.created_at) DESC"))
         end
       when "title"
-        @pxrd_patterns = @pxrd_patterns.order("title #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
+        @pxrd_patterns = @pxrd_patterns.order("pxrd_patterns.title #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
       when "filename"
-        @pxrd_patterns = @pxrd_patterns.joins(:pxrd_data_file_attachment)
-                                       .joins("JOIN active_storage_blobs ON active_storage_attachments.blob_id = active_storage_blobs.id")
-                                       .order("active_storage_blobs.filename #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
+        # Ensure we have the joins for filename sorting even if search didn't add them
+        unless @pxrd_patterns.joins_values.any? { |join| join.to_s.include?("active_storage_attachments") }
+          @pxrd_patterns = @pxrd_patterns.joins(:pxrd_data_file_attachment)
+                                         .joins("JOIN active_storage_blobs ON active_storage_attachments.blob_id = active_storage_blobs.id")
+        end
+        @pxrd_patterns = @pxrd_patterns.order("active_storage_blobs.filename #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
       else
-        @pxrd_patterns = @pxrd_patterns.order("created_at #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
+        @pxrd_patterns = @pxrd_patterns.order("pxrd_patterns.created_at #{sort_direction == 'desc' ? 'DESC' : 'ASC'}")
       end
 
       @pxrd_patterns = @pxrd_patterns.page(params[:page]).per(20)
