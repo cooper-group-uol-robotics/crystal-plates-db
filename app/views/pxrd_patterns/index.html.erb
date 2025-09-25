@@ -33,19 +33,6 @@
               <% end %>
             </div>
             
-            <!-- Pattern info -->
-            <h6 class="card-title">
-              <% if pattern.well.present? %>
-                <%= link_to(pattern.title.presence || "PXRD Pattern ##{pattern.id}", 
-                           well_pxrd_pattern_path(pattern.well, pattern), 
-                           class: "text-decoration-none") %>
-              <% else %>
-                <%= link_to(pattern.title.presence || "PXRD Pattern ##{pattern.id}", 
-                           pxrd_pattern_path(pattern), 
-                           class: "text-decoration-none") %>
-              <% end %>
-            </h6>
-            
             <div class="small text-muted mb-2">
               <% if pattern.well.present? %>
                 <div><strong>Well:</strong> <%= pattern.well.plate.barcode %>-<%= pattern.well.well_label %></div>
