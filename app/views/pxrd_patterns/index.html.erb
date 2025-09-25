@@ -36,8 +36,6 @@
             <div class="small text-muted mb-2">
               <% if pattern.well.present? %>
                 <div><strong>Well:</strong> <%= pattern.well.plate.barcode %>-<%= pattern.well.well_label %></div>
-              <% else %>
-                <div><strong>Type:</strong> <span class="badge bg-secondary">Standalone</span></div>
               <% end %>
               <div><strong>Measured:</strong> <%= (pattern.measured_at || pattern.created_at).strftime('%b %d, %Y at %H:%M') %></div>
               <% if pattern.pxrd_data_file.attached? %>
