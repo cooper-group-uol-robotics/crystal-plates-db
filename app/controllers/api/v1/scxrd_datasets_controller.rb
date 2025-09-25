@@ -482,6 +482,7 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       Rails.logger.error "API SCXRD: Error processing compressed archive: #{e.message}"
       Rails.logger.error "API SCXRD: Backtrace: #{e.backtrace.first(5).join("\n")}"
       @scxrd_dataset.errors.add(:base, "Error processing compressed archive: #{e.message}")
+      raise e # Re-raise the error so it can be caught by the calling method
     end
   end
 end
