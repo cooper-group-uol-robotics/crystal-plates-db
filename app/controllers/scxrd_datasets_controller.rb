@@ -12,9 +12,31 @@ class ScxrdDatasetsController < ApplicationController
     else
       # Global index for all SCXRD datasets
       @scxrd_datasets = ScxrdDataset.includes(well: :plate)
-                                   .order(created_at: :desc)
-                                   .page(params[:page])
-                                   .per(10)
+
+      # Apply search functionality
+      if params[:search].present?
+        search_term = params[:search].strip
+        @scxrd_datasets = @scxrd_datasets.where(
+          "LOWER(experiment_name) LIKE ?",
+          "%#{search_term.downcase}%"
+        )
+      end
+
+      # Apply sorting
+      case params[:sort]
+      when "measured_at"
+        direction = params[:direction] == "asc" ? :asc : :desc
+        @scxrd_datasets = @scxrd_datasets.order(measured_at: direction)
+      when "experiment_name"
+        direction = params[:direction] == "asc" ? :asc : :desc
+        @scxrd_datasets = @scxrd_datasets.order(experiment_name: direction)
+      else
+        # Default sort by created_at
+        direction = params[:direction] == "asc" ? :asc : :desc
+        @scxrd_datasets = @scxrd_datasets.order(created_at: direction)
+      end
+
+      @scxrd_datasets = @scxrd_datasets.page(params[:page]).per(10)
 
       respond_to do |format|
         format.html { render "index" }
