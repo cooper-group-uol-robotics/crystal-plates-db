@@ -1,4 +1,6 @@
-// Inline Reciprocal Lattice Viewer Class
+// Import Three.js directly
+import * as THREE from 'three';
+
 class ScxrdReciprocalLatticeViewer {
   constructor(containerId) {
     this.containerId = containerId;
@@ -19,98 +21,52 @@ class ScxrdReciprocalLatticeViewer {
     this.animationId = null;
     this.isAnimating = false;
 
-    // Three.js availability check
-    this.threeAvailable = false;
-    this.checkThreeJsAvailability();
+    // Three.js is now directly imported
+    this.THREE = THREE;
+    this.threeAvailable = true;
+
+    // Make Three.js globally available for CifVis compatibility
+    window.THREE = THREE;
+
+    console.log('ScxrdReciprocalLatticeViewer initialized with imported Three.js');
   }
 
-  checkThreeJsAvailability() {
-    if (typeof THREE !== 'undefined') {
-      this.threeAvailable = true;
-      console.log('Three.js is already available');
-    } else if (window.threeJsLoading) {
-      console.log('Three.js is already being loaded by another instance, waiting...');
-      // Wait for the global loading to complete
-    } else {
-      console.log('Three.js not found, loading from CDN...');
-      window.threeJsLoading = true; // Mark as loading globally
-      this.loadThreeJs();
+  
 
-      // Set a timeout for loading Three.js
-      setTimeout(() => {
-        if (!this.threeAvailable && typeof THREE === 'undefined') {
-          console.warn('Three.js loading timed out after 15 seconds, will use fallback visualization');
-          window.threeJsLoading = false; // Reset loading flag
-        }
-      }, 15000); // 15 second timeout
-    }
-  }
-
-  loadThreeJs() {
-    // Use traditional script loading approach with better CDN selection
-    console.log('Loading Three.js using traditional script approach...');
-
-    // Suppress the Multiple instances warning by temporarily removing __THREE__
-    const previousTHREE = window.__THREE__;
-    delete window.__THREE__;
-
-    // Use CDN that serves the current Three.js global build
-    const threeScript = document.createElement('script');
-    threeScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.1/three.min.js';
-    threeScript.onload = () => {
-      console.log('Three.js loaded successfully for reciprocal lattice viewer');
-      this.threeAvailable = true;
-      window.threeJsLoading = false; // Reset loading flag
-      window.threeJsLoaded = true; // Mark as globally loaded
-
-      // Restore previous __THREE__ if it existed (for CifVis)
-      if (previousTHREE) {
-        window.__THREE__ = previousTHREE;
-      }
-
-      // Notify that Three.js is ready
-      window.dispatchEvent(new CustomEvent('threeJsLoaded'));
-    };
-
-    threeScript.onerror = () => {
-      console.error('Failed to load Three.js, trying fallback...');
-
-      // Fallback to jsdelivr with alternative URL
-      const fallbackScript = document.createElement('script');
-      fallbackScript.src = 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js';
-      fallbackScript.onload = () => {
-        console.log('Three.js loaded from fallback');
+  waitForThreeJs() {
+    const checkInterval = setInterval(() => {
+      console.log('Waiting for Three.js, checking:', {
+        'window.__THREE__': typeof window.__THREE__,
+        'window.THREE': typeof window.THREE,
+        '__THREE__ has Scene': window.__THREE__ && typeof window.__THREE__.Scene,
+        'THREE has Scene': window.THREE && typeof window.THREE.Scene
+      });
+      
+      if ((window.__THREE__ && typeof window.__THREE__.Scene === 'function') || 
+          (window.THREE && typeof window.THREE.Scene === 'function')) {
+        this.THREE = (window.__THREE__ && typeof window.__THREE__.Scene === 'function') ? window.__THREE__ : window.THREE;
         this.threeAvailable = true;
-        window.threeJsLoading = false; // Reset loading flag
-        window.threeJsLoaded = true; // Mark as globally loaded
-
-        // Restore previous __THREE__ if it existed (for CifVis)
-        if (previousTHREE) {
-          window.__THREE__ = previousTHREE;
+        console.log('Three.js now available, type:', typeof this.THREE, 'Scene constructor:', typeof this.THREE.Scene);
+        clearInterval(checkInterval);
+        
+        // Trigger any pending operations that were waiting for Three.js
+        if (this.pendingOperation) {
+          this.pendingOperation();
+          this.pendingOperation = null;
         }
+      }
+    }, 100);
 
-        window.dispatchEvent(new CustomEvent('threeJsLoaded'));
-      };
-      fallbackScript.onerror = () => {
-        console.error('All Three.js loading attempts failed');
-        window.threeJsLoading = false; // Reset loading flag
-
-        // Restore previous __THREE__ if it existed (for CifVis)
-        if (previousTHREE) {
-          window.__THREE__ = previousTHREE;
-        }
-      };
-      document.head.appendChild(fallbackScript);
-    };
-
-    document.head.appendChild(threeScript);
-
-    // Listen for the Three.js loaded event
-    window.addEventListener('threeJsLoaded', () => {
-      this.threeAvailable = true;
-      console.log('Three.js is ready for use');
-    }, { once: true });
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      if (!this.threeAvailable) {
+        clearInterval(checkInterval);
+        console.error('Three.js failed to load within 10 seconds');
+      }
+    }, 10000);
   }
+
+  // Three.js is now loaded via ES modules - no dynamic loading needed
 
   async loadPeakTableData(wellId, datasetId) {
     console.log(`Loading reciprocal lattice data for well ${wellId}, dataset ${datasetId}`);
@@ -153,35 +109,7 @@ class ScxrdReciprocalLatticeViewer {
   }
 
   plotReciprocalLattice() {
-    console.log('plotReciprocalLattice() called');
-
-    if (!this.threeAvailable && typeof THREE === 'undefined') {
-      console.log('Waiting for Three.js to load...');
-
-      // Check multiple times with increasing intervals
-      let attempts = 0;
-      const checkThreeJs = () => {
-        attempts++;
-        if (typeof THREE !== 'undefined') {
-          console.log('Three.js detected, proceeding with 3D visualization');
-          this.threeAvailable = true;
-          this.plotReciprocalLattice();
-        } else if (attempts < 10) { // Try for up to 20 seconds
-          setTimeout(checkThreeJs, 2000);
-        } else {
-          console.log('Three.js loading timed out after 20 seconds');
-          this.showFallbackVisualization();
-        }
-      };
-
-      setTimeout(checkThreeJs, 1000); // Start checking after 1 second
-      return;
-    }
-
-    // If we get here, Three.js should be available
-    if (typeof THREE !== 'undefined') {
-      this.threeAvailable = true;
-    }
+    console.log('plotReciprocalLattice() called with imported Three.js');
 
     this.container = document.getElementById(this.containerId);
     if (!this.container) {
@@ -221,13 +149,13 @@ class ScxrdReciprocalLatticeViewer {
       console.log(`Canvas container dimensions: ${containerRect.width}x${containerRect.height}`);
 
       // Initialize Three.js scene
-      this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0x000011);
+      this.scene = new this.THREE.Scene();
+      this.scene.background = new this.THREE.Color(0x000011);
 
       // Setup orthographic camera for technical/scientific visualization
       const aspect = containerRect.width / containerRect.height;
       const frustumSize = 5;
-      this.camera = new THREE.OrthographicCamera(
+      this.camera = new this.THREE.OrthographicCamera(
         frustumSize * aspect / -2,
         frustumSize * aspect / 2,
         frustumSize / 2,
@@ -241,19 +169,15 @@ class ScxrdReciprocalLatticeViewer {
       this.camera.updateProjectionMatrix();
 
       // Setup renderer
-      this.renderer = new THREE.WebGLRenderer({ antialias: true });
+      this.renderer = new this.THREE.WebGLRenderer({ antialias: true });
       this.renderer.setSize(containerRect.width, containerRect.height);
       this.renderer.setPixelRatio(window.devicePixelRatio);
 
-      // Ensure renderer canvas takes full width
-      this.renderer.domElement.style.width = '100%';
-      this.renderer.domElement.style.height = '100%';
-
+      // Add renderer to container
       canvasContainer.appendChild(this.renderer.domElement);
 
-      // Continue with the rest of the setup
       this.continueSetup();
-    }, 100);
+    }, 50);
   }
 
   continueSetup() {
@@ -283,7 +207,7 @@ class ScxrdReciprocalLatticeViewer {
   }
 
   addAxes() {
-    const axesHelper = new THREE.AxesHelper(2);
+    const axesHelper = new this.THREE.AxesHelper(2);
     this.scene.add(axesHelper);
   }
 
@@ -306,7 +230,7 @@ class ScxrdReciprocalLatticeViewer {
       };
 
       // Rotate camera around the center
-      const spherical = new THREE.Spherical();
+      const spherical = new this.THREE.Spherical();
       spherical.setFromVector3(this.camera.position);
 
       spherical.theta -= deltaMove.x * 0.01;
@@ -355,7 +279,7 @@ class ScxrdReciprocalLatticeViewer {
     console.log(`R value range: ${rMin} to ${rMax}`);
 
     // Create geometry and materials
-    const geometry = new THREE.BufferGeometry();
+    const geometry = new this.THREE.BufferGeometry();
     const positions = [];
     const colors = [];
 
@@ -370,11 +294,11 @@ class ScxrdReciprocalLatticeViewer {
       colors.push(color.r, color.g, color.b);
     });
 
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute('position', new this.THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new this.THREE.Float32BufferAttribute(colors, 3));
 
     // Create point material
-    const material = new THREE.PointsMaterial({
+    const material = new this.THREE.PointsMaterial({
       size: this.pointSize,
       vertexColors: true,
       transparent: true,
@@ -383,7 +307,7 @@ class ScxrdReciprocalLatticeViewer {
     });
 
     // Create points mesh
-    this.points = new THREE.Points(geometry, material);
+    this.points = new this.THREE.Points(geometry, material);
     this.scene.add(this.points);
 
     console.log(`Created point cloud with ${positions.length / 3} points`);
@@ -593,6 +517,7 @@ class ScxrdReciprocalLatticeViewer {
   }
 }
 
-// Make available globally
+// Export the class and make it globally available
+export { ScxrdReciprocalLatticeViewer };
 window.ScxrdReciprocalLatticeViewer = ScxrdReciprocalLatticeViewer;
-console.log('ScxrdReciprocalLatticeViewer defined');
+console.log('ScxrdReciprocalLatticeViewer defined with imported Three.js');

@@ -50337,6 +50337,7 @@ const rk = {
     color: #333;
     font-size: 14px;
     line-height: 1.5;
+    height: 50px;
   }
 
   cifview-widget .button-container {

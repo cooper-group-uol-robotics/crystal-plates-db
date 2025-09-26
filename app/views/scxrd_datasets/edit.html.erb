@@ -11,7 +11,9 @@
         <div class="card-header">
           <% if @scxrd_dataset.well.present? %>
             <h4 class="mb-0">Edit SCXRD Dataset for Well <%= @scxrd_dataset.well.well_label %></h4>
-            <small class="text-muted">Plate: <%= @scxrd_dataset.well.plate.barcode %></small>
+            <% if @scxrd_dataset.well.plate.present? %>
+              <small class="text-muted">Plate: <%= @scxrd_dataset.well.plate.barcode %></small>
+            <% end %>
           <% else %>
             <h4 class="mb-0">Edit SCXRD Dataset</h4>
             <small class="text-muted">

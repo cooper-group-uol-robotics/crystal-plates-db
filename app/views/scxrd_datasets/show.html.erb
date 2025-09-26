@@ -1,4 +1,9 @@
 <% content_for :title, "SCXRD Dataset: #{@scxrd_dataset.experiment_name}" %>
+<% content_for :head do %>
+  <script type="module">
+    import "cifvis";
+  </script>
+<% end %>
 
 <div class="container">
   <div class="row justify-content-center">
@@ -8,7 +13,7 @@
           <div>
             <h4 class="mb-0">SCXRD Dataset: <%= @scxrd_dataset.experiment_name %></h4>
             <% if @scxrd_dataset.well.present? %>
-              <small class="text-muted">Well: <%= @scxrd_dataset.well.well_label %> | Plate: <%= @scxrd_dataset.well.plate.barcode %></small>
+              <small class="text-muted">Well: <%= @scxrd_dataset.well.well_label %><% if @scxrd_dataset.well.plate.present? %> | Plate: <%= @scxrd_dataset.well.plate.barcode %><% end %></small>
             <% else %>
               <small class="text-muted"><span class="badge bg-secondary">Standalone Dataset</span></small>
             <% end %>

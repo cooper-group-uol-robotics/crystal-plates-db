@@ -35,8 +35,15 @@
     <!-- Rails JavaScript -->
     <%= javascript_importmap_tags %>
     
-    <!-- CifVis for 3D crystal structure visualization (loaded as ES module) -->
-    <script type="module" src="<%= asset_path('cifvis.alldeps.js') %>" defer></script>
+    <!-- Pre-load Three.js before CifVis to prevent multiple instances -->
+    <script type="module">
+      import * as THREE from "three";
+      window.THREE = THREE;
+      window.__THREE__ = THREE;
+      console.log("Three.js pre-loaded globally");
+    </script>
+    
+
     
     <!-- Additional head content from views -->
     <%= yield :head %>

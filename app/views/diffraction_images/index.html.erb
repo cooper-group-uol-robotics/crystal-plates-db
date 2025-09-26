@@ -5,7 +5,7 @@
     <h2>Diffraction Images</h2>
     <div class="text-muted">
       <strong>Dataset:</strong> <%= @scxrd_dataset.experiment_name %>
-      <% if @scxrd_dataset.well %>
+      <% if @scxrd_dataset.well && @scxrd_dataset.well.plate %>
         | <strong>Well:</strong> <%= @scxrd_dataset.well.plate.barcode %>-<%= @scxrd_dataset.well.well_label %>
       <% else %>
         | <strong>Type:</strong> <span class="badge bg-secondary">Standalone</span>

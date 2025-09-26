@@ -7,7 +7,12 @@ class ScxrdCardToggler {
   }
 
   initializeToggleHandlers() {
-    // Wait for DOM to be ready
+    // Wait for DOM to be ready (Turbo compatible)
+    document.addEventListener('turbo:load', () => {
+      this.setupCardToggles();
+    });
+    
+    // Fallback for direct page loads
     document.addEventListener('DOMContentLoaded', () => {
       this.setupCardToggles();
     });

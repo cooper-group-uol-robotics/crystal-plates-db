@@ -141,7 +141,7 @@
             </div>
             
             <div class="small text-muted mb-2">
-              <% if pattern.well.present? %>
+              <% if pattern.well.present? && pattern.well.plate.present? %>
                 <div><strong>Well:</strong> <%= pattern.well.plate.barcode %>-<%= pattern.well.well_label %></div>
               <% end %>
               <div><strong>Measured:</strong> <%= (pattern.measured_at || pattern.created_at).strftime('%b %d, %Y at %H:%M') %></div>
@@ -220,10 +220,14 @@
 
 <script>
   // Initialize pattern visualizations with Chart.js
-  document.addEventListener('DOMContentLoaded', function() {
-    // Small delay to ensure Chart.js is fully loaded
-    setTimeout(function() {
-      console.log('Chart.js available:', !!window.Chart);
+  function initializePxrdCharts() {
+    // Prevent duplicate initialization
+    if (window.pxrdChartsInitialized) {
+      return;
+    }
+    window.pxrdChartsInitialized = true;
+    
+    console.log('Chart.js available:', !!window.Chart);
       
       <% @pxrd_patterns.each do |pattern| %>
       <% if pattern.pxrd_data_file.attached? %>
@@ -299,6 +303,21 @@
         <% end %>
       <% end %>
     <% end %>
-    }, 100); // 100ms delay to ensure Chart.js is loaded
+  }
+
+  // Initialize on Turbo navigation
+  document.addEventListener('turbo:load', function() {
+    // Small delay to ensure Chart.js is fully loaded and DOM is ready
+    setTimeout(initializePxrdCharts, 100);
+  });
+
+  // Fallback for direct page loads (non-Turbo)
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initializePxrdCharts, 100);
+  });
+
+  // Reset flag when leaving page
+  document.addEventListener('turbo:before-cache', function() {
+    window.pxrdChartsInitialized = false;
   });
 </script>

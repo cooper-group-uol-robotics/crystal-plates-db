@@ -50,9 +50,9 @@
 
 <script type="module">
   import 'rod_image_parser';
-  import 'scxrd_diffraction_viewer';
+  import 'scxrd/diffraction_viewer';
 
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('turbo:load', function() {
     // Construct URL for image data endpoint
     const baseUrl = '<% if @scxrd_dataset.well %>
       <%= image_data_well_scxrd_dataset_diffraction_image_path(@scxrd_dataset.well, @scxrd_dataset, @diffraction_image) %>

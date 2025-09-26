@@ -880,6 +880,128 @@ class ScxrdDiffractionViewer {
 
   }
 
+  async navigateToImage(diffractionImageId) {
+    if (!diffractionImageId) return false;
+
+    const success = await this.loadImageData(this.wellId, this.datasetId, diffractionImageId);
+    if (success) {
+      this.plotImage();
+      this.updateNavigationControls();
+    }
+    return success;
+  }
+
+  async navigateNext() {
+    const nextImage = this.getNextImage();
+    if (nextImage) {
+      return await this.navigateToImage(nextImage.id);
+    }
+    return false;
+  }
+
+  async navigatePrevious() {
+    const previousImage = this.getPreviousImage();
+    if (previousImage) {
+      return await this.navigateToImage(previousImage.id);
+    }
+    return false;
+  }
+
+  updateNavigationControls() {
+    const prevButton = document.getElementById(`${this.containerId}-prev`);
+    const nextButton = document.getElementById(`${this.containerId}-next`);
+    const playButton = document.getElementById(`${this.containerId}-play`);
+
+    if (prevButton && nextButton) {
+      const currentIndex = this.getCurrentImageIndex();
+      const currentImage = this.diffractionImages[currentIndex];
+
+      prevButton.disabled = currentIndex <= 0;
+      nextButton.disabled = currentIndex >= this.totalImagesCount - 1;
+
+      // Disable play button if there's only one image
+      if (playButton) {
+        playButton.disabled = this.totalImagesCount <= 1;
+      }
+
+      // Update the image info display
+      const imageInfo = currentImage ? `${currentImage.display_name}` : 'Legacy Image';
+      const infoSpan = prevButton.parentElement.querySelector('.mx-2');
+      if (infoSpan) {
+        infoSpan.textContent = `${imageInfo} (${currentIndex + 1}/${this.totalImagesCount})`;
+      }
+    }
+  }
+
+  togglePlay() {
+    if (this.isPlaying) {
+      this.stopPlay();
+    } else {
+      this.startPlay();
+    }
+  }
+
+  startPlay() {
+    if (this.totalImagesCount <= 1) return; // Can't play with only one image
+
+    this.isPlaying = true;
+    this.updatePlayButton();
+
+    // Start the play timer
+    this.playTimer = setInterval(async () => {
+      const currentIndex = this.getCurrentImageIndex();
+
+      // If we're at the last image, loop back to the first
+      if (currentIndex >= this.totalImagesCount - 1) {
+        await this.navigateToImage(this.diffractionImages[0].id);
+      } else {
+        await this.navigateNext();
+      }
+    }, this.playSpeed);
+  }
+
+  stopPlay() {
+    this.isPlaying = false;
+    this.updatePlayButton();
+
+    // Clear the play timer
+    if (this.playTimer) {
+      clearInterval(this.playTimer);
+      this.playTimer = null;
+    }
+  }
+
+  updatePlayButton() {
+    const playButton = document.getElementById(`${this.containerId}-play`);
+    if (playButton) {
+      const icon = playButton.querySelector('i');
+      if (this.isPlaying) {
+        icon.className = 'bi bi-pause-fill';
+        icon.style.fontSize = '16px';
+        playButton.title = 'Pause sequence';
+        playButton.classList.remove('btn-outline-primary');
+        playButton.classList.add('btn-primary');
+      } else {
+        icon.className = 'bi bi-play-fill';
+        icon.style.fontSize = '16px';
+        playButton.title = 'Play sequence';
+        playButton.classList.remove('btn-primary');
+        playButton.classList.add('btn-outline-primary');
+      }
+    }
+  }
+
+  resetIntensityScale() {
+    // Reset intensity scale to allow recalculation from next first image
+    this.intensityScaleSet = false;
+    this.defaultIntensity = null;
+    this.maxSliderValue = null;
+    this.maxIntensity = null;
+    this.averageIntensity = null;
+    this.currentSliderValue = null; // Reset slider value when switching datasets
+    this.currentIntensityRange = [0, 1000];
+  }
+
   destroy() {
     // Stop playing and clean up timer
     if (this.isPlaying) {

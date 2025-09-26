@@ -121,7 +121,13 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
           // Now create viewer and load data
           setTimeout(() => {
             const viewer = new window.ScxrdReciprocalLatticeViewer(latticeId);
-            viewer.showLoading();
+            console.log('Created viewer:', viewer);
+            console.log('Viewer showLoading method:', typeof viewer.showLoading);
+            if (typeof viewer.showLoading === 'function') {
+              viewer.showLoading();
+            } else {
+              console.error('showLoading is not a function on viewer:', viewer);
+            }
             viewer.loadPeakTableData(wellId, datasetId).then(success => {
               if (success) {
                 viewer.plotReciprocalLattice();

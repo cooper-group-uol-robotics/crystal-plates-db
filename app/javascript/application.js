@@ -1,14 +1,14 @@
-// Simple application JavaScript - no frameworks needed
-console.log("Application.js loaded");
+// Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
 
-// Import Turbo for handling data-method attributes (DELETE, etc.)
 import "@hotwired/turbo-rails"
+import "controllers"
 
-// ActionCable integration commented out to avoid asset compilation issues
-// Will use polling for auto-segmentation status instead
+// Three.js is now pre-loaded in the HTML head
 
-// Import SCXRD Diffraction Viewer
-import "./scxrd_diffraction_viewer"
-
-// Note: Reciprocal Lattice Viewer is loaded via assets pipeline to avoid conflicts
-// Note: CifVis is loaded via script tag to avoid module format conflicts
+// Import SCXRD viewers and other modules
+import "rod_image_parser"
+import "plates_show"
+import "scxrd/diffraction_viewer"
+import "scxrd/card_toggler"
+import "scxrd/reciprocal_lattice_viewer"
+import "scxrd/gallery"

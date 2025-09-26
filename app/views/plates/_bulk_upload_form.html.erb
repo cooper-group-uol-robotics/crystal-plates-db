@@ -69,7 +69,7 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+function initializeBulkUpload() {
   const form = document.getElementById('bulkUploadForm');
   const fileInput = document.getElementById('csvFileInput');
   const uploadButton = document.getElementById('uploadButton');
@@ -103,5 +103,9 @@ document.addEventListener('DOMContentLoaded', function() {
     uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
     progressDiv.classList.remove('d-none');
   });
-});
+}
+
+// Initialize on page load (Turbo compatible)
+document.addEventListener('turbo:load', initializeBulkUpload);
+document.addEventListener('DOMContentLoaded', initializeBulkUpload);
 </script>

@@ -53,12 +53,12 @@ class RodImageParser {
         console.log('ROD Parser: Dynamically loading WebAssembly script (first time)...');
 
         // Check if script is already loaded to avoid duplicate loading
-        const existingScript = document.querySelector('script[src="/assets/wasm/rod_decoder.js"]');
+        const existingScript = document.querySelector('script[src="/wasm/rod_decoder.js"]');
         if (!existingScript) {
           // Create and load the script dynamically
           await new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = '/assets/wasm/rod_decoder.js';
+            script.src = '/wasm/rod_decoder.js';
             script.onload = resolve;
             script.onerror = () => reject(new Error('Failed to load WebAssembly script'));
             document.head.appendChild(script);

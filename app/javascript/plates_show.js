@@ -3,6 +3,8 @@
 
 'use strict';
 
+console.log('plates_show.js is loading...');
+
 // Constants
 const CONSTANTS = {
   SEARCH_DEBOUNCE_DELAY: 300,
@@ -556,7 +558,11 @@ class WellModal {
     this.currentWellId = null;
     this.pxrdLoaded = false;
     this.scxrdLoaded = false;
-    this.init();
+    
+    // Only initialize if modal exists
+    if (this.modal && this.contentContainer) {
+      this.init();
+    }
   }
 
   init() {
@@ -564,6 +570,8 @@ class WellModal {
 
     this.modal.addEventListener('show.bs.modal', (event) => {
       this.handleModalShow(event);
+      // Bind tab listeners when modal is shown (tabs are now in DOM)
+      this.bindTabListeners();
     });
 
     this.modal.addEventListener('hidden.bs.modal', () => {
@@ -573,29 +581,33 @@ class WellModal {
       window.location.reload();
     });
 
-    // Add tab click listeners for lazy loading
+    if (this.contentContainer) {
+      this.bindContentEvents();
+    }
+  }
+
+  bindTabListeners() {
+    // Add tab click listeners for lazy loading - only when modal is shown
     const pxrdTab = document.getElementById('pxrd-tab');
-    if (pxrdTab) {
+    if (pxrdTab && !pxrdTab.hasAttribute('data-listener-bound')) {
       pxrdTab.addEventListener('click', () => {
         if (this.currentWellId && !this.pxrdLoaded) {
           this.loadPxrdTab(this.currentWellId);
           this.pxrdLoaded = true;
         }
       });
+      pxrdTab.setAttribute('data-listener-bound', 'true');
     }
 
     const scxrdTab = document.getElementById('scxrd-tab');
-    if (scxrdTab) {
+    if (scxrdTab && !scxrdTab.hasAttribute('data-listener-bound')) {
       scxrdTab.addEventListener('click', () => {
         if (this.currentWellId && !this.scxrdLoaded) {
           this.loadScxrdTab(this.currentWellId);
           this.scxrdLoaded = true;
         }
       });
-    }
-
-    if (this.contentContainer) {
-      this.bindContentEvents();
+      scxrdTab.setAttribute('data-listener-bound', 'true');
     }
   }
 
@@ -1156,7 +1168,14 @@ class KeyboardShortcuts {
   }
 
   init() {
-    document.addEventListener('keydown', (e) => this.handleKeydown(e));
+    this.boundHandleKeydown = (e) => this.handleKeydown(e);
+    document.addEventListener('keydown', this.boundHandleKeydown);
+  }
+
+  destroy() {
+    if (this.boundHandleKeydown) {
+      document.removeEventListener('keydown', this.boundHandleKeydown);
+    }
   }
 
   handleKeydown(e) {
@@ -1250,13 +1269,55 @@ class KeyboardShortcuts {
   }
 }
 
-// Initialize keyboard shortcuts
-window.addEventListener('DOMContentLoaded', () => {
-  new KeyboardShortcuts();
+// Initialize everything when page loads (including Turbo navigation)
+document.addEventListener('turbo:load', () => {
+  // Only initialize if we're on the plates show page and not already initialized
+  if (document.querySelector('#well-grid-container') && !window.wellSelector) {
+    console.log('Initializing plates_show components...');
+    
+    try {
+      window.keyboardShortcuts = new KeyboardShortcuts();
+      console.log('KeyboardShortcuts initialized');
+      
+      window.wellSelector = new WellSelector();
+      console.log('WellSelector initialized');
+      
+      window.wellModal = new WellModal();
+      console.log('WellModal initialized');
+    } catch (error) {
+      console.error('Error initializing plates_show components:', error);
+    }
+  }
 });
 
-// Initialize everything when DOM is ready
+// Clean up before page is cached by Turbo
+document.addEventListener('turbo:before-cache', () => {
+  // Clean up global references and document-level event listeners
+  if (window.keyboardShortcuts && window.keyboardShortcuts.destroy) {
+    window.keyboardShortcuts.destroy();
+  }
+  window.keyboardShortcuts = null;
+  window.wellSelector = null;
+  window.wellModal = null;
+});
+
+// Fallback for direct page loads (non-Turbo)
 document.addEventListener('DOMContentLoaded', () => {
-  window.wellSelector = new WellSelector();
-  window.wellModal = new WellModal();
+  // Only initialize if not already done by turbo:load
+  if (document.querySelector('#well-grid-container') && !window.wellSelector) {
+    console.log('Initializing plates_show components via DOMContentLoaded...');
+    
+    try {
+      window.keyboardShortcuts = new KeyboardShortcuts();
+      console.log('KeyboardShortcuts initialized');
+      
+      window.wellSelector = new WellSelector();
+      console.log('WellSelector initialized');
+      
+      window.wellModal = new WellModal();
+      console.log('WellModal initialized');
+    } catch (error) {
+      console.error('Error initializing plates_show components:', error);
+    }
+  }
 });

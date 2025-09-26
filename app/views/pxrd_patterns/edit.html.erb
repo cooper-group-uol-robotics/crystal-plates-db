@@ -21,7 +21,7 @@
         <h5 class="card-title mb-0">
           <i class="bi bi-pencil"></i> Pattern Details
         </h5>
-        <% if @pxrd_pattern.well.present? %>
+        <% if @pxrd_pattern.well.present? && @pxrd_pattern.well.plate.present? %>
           <small class="text-muted">Plate: <%= @pxrd_pattern.well.plate.barcode %></small>
         <% end %>
       </div>

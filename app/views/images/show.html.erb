@@ -698,8 +698,8 @@ class InteractiveImageViewer {
   }
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize when page is loaded (Turbo compatible)
+document.addEventListener('turbo:load', function() {
   const clickableImage = document.getElementById('clickable-image');
   if (clickableImage) {
     window.viewer = new InteractiveImageViewer(clickableImage);

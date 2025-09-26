@@ -24,7 +24,9 @@
         <div class="card-header">
           <% if @pxrd_pattern.well.present? %>
             <h4 class="mb-0">PXRD Pattern Details for Well <%= @pxrd_pattern.well.well_label_with_subwell %></h4>
-            <small class="text-muted">Plate: <%= @pxrd_pattern.well.plate.barcode %></small>
+            <% if @pxrd_pattern.well.plate.present? %>
+              <small class="text-muted">Plate: <%= @pxrd_pattern.well.plate.barcode %></small>
+            <% end %>
           <% else %>
             <h4 class="mb-0"><%= @pxrd_pattern.title.presence || "PXRD Pattern ##{@pxrd_pattern.id}" %></h4>
             <small class="text-muted">Standalone Pattern</small>
@@ -35,7 +37,7 @@
             <dt class="col-sm-3">Title</dt>
             <dd class="col-sm-9"><%= @pxrd_pattern.title.presence || "No title" %></dd>
 
-            <% if @pxrd_pattern.well.present? %>
+            <% if @pxrd_pattern.well.present? && @pxrd_pattern.well.plate.present? %>
               <dt class="col-sm-3">Well</dt>
               <dd class="col-sm-9">
                 <%= link_to "#{@pxrd_pattern.well.plate.barcode}-#{@pxrd_pattern.well.well_label}", 

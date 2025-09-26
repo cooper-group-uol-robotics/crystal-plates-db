@@ -305,16 +305,13 @@ function initializeThumbnails() {
   console.log('showImageInMain function available:', !!window.showImageInMain);
 }
 
-// Initialize on DOM load and make it available globally
+// Initialize on page load (Turbo compatible) and make it available globally
+document.addEventListener('turbo:load', initializeThumbnails);
 document.addEventListener('DOMContentLoaded', initializeThumbnails);
 window.initializeThumbnails = initializeThumbnails;
 
 // Call it immediately in case DOM is already loaded
-if (document.readyState === 'loading') {
-  // Document still loading
-  console.log('Document still loading, waiting for DOMContentLoaded');
-} else {
-  // Document already loaded
+if (document.readyState !== 'loading') {
   console.log('Document already loaded, calling initializeThumbnails in 100ms');
   setTimeout(initializeThumbnails, 100);
 }
