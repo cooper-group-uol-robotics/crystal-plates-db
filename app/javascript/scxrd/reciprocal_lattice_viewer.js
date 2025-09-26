@@ -1,5 +1,6 @@
 // Import Three.js directly
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 class ScxrdReciprocalLatticeViewer {
   constructor(containerId) {
@@ -181,9 +182,9 @@ class ScxrdReciprocalLatticeViewer {
   }
 
   continueSetup() {
-    // Setup basic mouse controls for camera interaction
-    console.log('Using basic mouse interaction for reciprocal lattice viewer');
-    this.addBasicMouseControls();
+    // Setup OrbitControls for camera interaction
+    console.log('Using OrbitControls for reciprocal lattice viewer');
+    this.setupOrbitControls();
 
     // Add coordinate axes
     this.addAxes();
@@ -211,63 +212,97 @@ class ScxrdReciprocalLatticeViewer {
     this.scene.add(axesHelper);
   }
 
-  addBasicMouseControls() {
-    // Basic mouse rotation controls as fallback
+  setupOrbitControls() {
+    // Use custom trackball-style controls for unlimited rotation
+    this.setupCustomControls();
+    console.log('Custom trackball controls initialized');
+  }
+
+  setupCustomControls() {
+    // Custom rotation system using quaternions for unlimited rotation
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
-
-    this.renderer.domElement.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      previousMousePosition = { x: e.clientX, y: e.clientY };
+    let rotationSpeed = 0.005;
+    
+    // Store initial camera position
+    this.initialCameraPosition = this.camera.position.clone();
+    this.cameraTarget = new THREE.Vector3(0, 0, 0);
+    
+    const canvas = this.renderer.domElement;
+    
+    // Mouse down
+    canvas.addEventListener('mousedown', (event) => {
+      if (event.button === 0) { // Left mouse button
+        isDragging = true;
+        previousMousePosition = { x: event.clientX, y: event.clientY };
+        canvas.style.cursor = 'grabbing';
+      }
     });
-
-    this.renderer.domElement.addEventListener('mousemove', (e) => {
+    
+    // Mouse move - trackball rotation
+    canvas.addEventListener('mousemove', (event) => {
       if (!isDragging) return;
-
-      const deltaMove = {
-        x: e.clientX - previousMousePosition.x,
-        y: e.clientY - previousMousePosition.y
-      };
-
-      // Rotate camera around the center
-      const spherical = new this.THREE.Spherical();
-      spherical.setFromVector3(this.camera.position);
-
-      spherical.theta -= deltaMove.x * 0.01;
-      spherical.phi += deltaMove.y * 0.01;
-      spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
-
-      this.camera.position.setFromSpherical(spherical);
-      this.camera.lookAt(0, 0, 0);
-
-      previousMousePosition = { x: e.clientX, y: e.clientY };
+      
+      const deltaX = event.clientX - previousMousePosition.x;
+      const deltaY = event.clientY - previousMousePosition.y;
+      
+      // Create rotation quaternions for X and Y axis rotations
+      const quaternionX = new THREE.Quaternion();
+      const quaternionY = new THREE.Quaternion();
+      
+      // Rotate around camera's local Y axis (horizontal mouse movement)
+      quaternionY.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -deltaX * rotationSpeed);
+      
+      // Rotate around camera's local X axis (vertical mouse movement)  
+      const cameraDirection = new THREE.Vector3();
+      this.camera.getWorldDirection(cameraDirection);
+      const rightVector = new THREE.Vector3();
+      rightVector.crossVectors(cameraDirection, this.camera.up).normalize();
+      quaternionX.setFromAxisAngle(rightVector, -deltaY * rotationSpeed);
+      
+      // Apply rotations to camera position relative to target
+      const offset = this.camera.position.clone().sub(this.cameraTarget);
+      offset.applyQuaternion(quaternionY);
+      offset.applyQuaternion(quaternionX);
+      this.camera.position.copy(this.cameraTarget).add(offset);
+      
+      // Update camera up vector to prevent gimbal lock
+      this.camera.up.applyQuaternion(quaternionY);
+      this.camera.up.applyQuaternion(quaternionX);
+      
+      this.camera.lookAt(this.cameraTarget);
+      
+      previousMousePosition = { x: event.clientX, y: event.clientY };
     });
-
-    this.renderer.domElement.addEventListener('mouseup', () => {
+    
+    // Mouse up
+    canvas.addEventListener('mouseup', () => {
       isDragging = false;
+      canvas.style.cursor = 'grab';
     });
-
-    // Mouse wheel for zoom - adjust orthographic camera zoom
-    this.renderer.domElement.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const scale = e.deltaY > 0 ? 1.1 : 0.9;
-
-      // For orthographic camera, adjust the frustum size instead of position
-      const aspect = this.renderer.domElement.width / this.renderer.domElement.height;
+    
+    // Mouse wheel for zoom
+    canvas.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      const scale = event.deltaY > 0 ? 1.1 : 0.9;
+      
+      // For orthographic camera, adjust the frustum size
+      const aspect = canvas.width / canvas.height;
       let frustumSize = (this.camera.right - this.camera.left) / aspect;
       frustumSize *= scale;
-
+      
       // Limit zoom
-      frustumSize = Math.max(0.5, Math.min(20, frustumSize));
-
+      frustumSize = Math.max(0.1, Math.min(50, frustumSize));
+      
       this.camera.left = frustumSize * aspect / -2;
       this.camera.right = frustumSize * aspect / 2;
       this.camera.top = frustumSize / 2;
       this.camera.bottom = frustumSize / -2;
       this.camera.updateProjectionMatrix();
     });
-
-    console.log('Basic mouse controls added');
+    
+    // Set initial cursor
+    canvas.style.cursor = 'grab';
   }
 
   createPointCloud() {
@@ -327,13 +362,19 @@ class ScxrdReciprocalLatticeViewer {
 
       this.camera.position.set(centerX + 2, centerY + 2, centerZ + 2);
       this.camera.lookAt(centerX, centerY, centerZ);
-
-      if (this.controls) {
-        this.controls.target.set(centerX, centerY, centerZ);
+      
+      // Update custom controls target
+      if (this.cameraTarget) {
+        this.cameraTarget.set(centerX, centerY, centerZ);
       }
     } else {
       this.camera.position.set(2, 2, 2);
       this.camera.lookAt(0, 0, 0);
+      
+      // Update custom controls target
+      if (this.cameraTarget) {
+        this.cameraTarget.set(0, 0, 0);
+      }
     }
   }
 
@@ -366,10 +407,11 @@ class ScxrdReciprocalLatticeViewer {
     const resetButton = document.getElementById(`${this.containerId}-reset`);
     if (resetButton) {
       resetButton.addEventListener('click', () => {
+        // Reset camera to initial position
         this.positionCamera();
-        if (this.controls) {
-          this.controls.reset();
-        }
+        // Reset camera up vector to default
+        this.camera.up.set(0, 1, 0);
+        this.camera.updateMatrixWorld();
       });
     }
   }
@@ -384,11 +426,8 @@ class ScxrdReciprocalLatticeViewer {
 
     this.animationId = requestAnimationFrame(() => this.animate());
 
-    // Update controls
-    if (this.controls) {
-      this.controls.update();
-    }
-
+    // No controls update needed for custom trackball controls
+    
     // Render scene
     this.renderer.render(this.scene, this.camera);
   }
@@ -498,6 +537,8 @@ class ScxrdReciprocalLatticeViewer {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }
+
+    // No controls to dispose of (using custom mouse controls)
 
     // Dispose of Three.js objects
     if (this.points) {
