@@ -8,13 +8,13 @@ pin "three", to: "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.
 # Stimulus controllers - these are served directly from app/javascript/controllers
 pin_all_from "app/javascript/controllers", under: "controllers"
 
-# Main application modules - these are served directly from app/javascript  
+# Main application modules - these are served directly from app/javascript
 pin "rod_image_parser"
 pin "plates_show"
 
 # SCXRD related modules - these are served directly from app/javascript/scxrd
 pin "scxrd/diffraction_viewer"
-pin "scxrd/card_toggler" 
+pin "scxrd/card_toggler"
 pin "scxrd/reciprocal_lattice_viewer"
 pin "scxrd/gallery"
 
