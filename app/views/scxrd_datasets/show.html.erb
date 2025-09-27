@@ -49,13 +49,6 @@
               <% if @scxrd_dataset.has_peak_table? %>
                 <span class="badge bg-success me-2">Available</span>
                 Size: <%= number_to_human_size(@scxrd_dataset.peak_table_size) %> (.tabbin)
-                <% if @scxrd_dataset.well.present? %>
-                  <%= link_to "Download", download_peak_table_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
-                      class: "btn btn-primary btn-sm ms-2" %>
-                <% else %>
-                  <%= link_to "Download", download_peak_table_scxrd_dataset_path(@scxrd_dataset), 
-                      class: "btn btn-primary btn-sm ms-2" %>
-                <% end %>
               <% else %>
                 <span class="text-muted">Not available</span>
               <% end %>
@@ -81,13 +74,6 @@
                   Size: <%= number_to_human_size(@scxrd_dataset.structure_file.byte_size) %>
                   • Automatically extracted from struct/best_res/
                 </small>
-                <% if @scxrd_dataset.well.present? %>
-                  <%= link_to "Download Structure File", structure_file_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
-                      class: "btn btn-info btn-sm ms-2" %>
-                <% else %>
-                  <%= link_to "Download Structure File", structure_file_scxrd_dataset_path(@scxrd_dataset), 
-                      class: "btn btn-info btn-sm ms-2" %>
-                <% end %>
               <% else %>
                 <span class="text-muted">No structure file found in struct/best_res/</span>
               <% end %>
@@ -102,13 +88,6 @@
                   Size: <%= number_to_human_size(@scxrd_dataset.archive.byte_size) %>
                   • <%= @scxrd_dataset.archive.content_type %>
                 </small>
-                <% if @scxrd_dataset.well.present? %>
-                  <%= link_to "Download Complete Archive", download_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
-                      class: "btn btn-success btn-sm ms-2" %>
-                <% else %>
-                  <%= link_to "Download Complete Archive", download_scxrd_dataset_path(@scxrd_dataset), 
-                      class: "btn btn-success btn-sm ms-2" %>
-                <% end %>
                 <br><small class="text-muted mt-1 d-block">
                   Contains all experiment files to recreate the original folder structure
                 </small>

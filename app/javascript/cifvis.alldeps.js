@@ -47500,9 +47500,9 @@ const Ft = {
     Li: { radius: 1.28, atomColor: "#cc80ff", ringColor: "#000000" },
     Be: { radius: 0.96, atomColor: "#c2ff00", ringColor: "#000000" },
     B: { radius: 0.85, atomColor: "#ffb5b5", ringColor: "#000000" },
-    C: { radius: 0.76, atomColor: "#000000", ringColor: "#ffffff" },
-    N: { radius: 0.71, atomColor: "#3050f8", ringColor: "#ffffff" },
-    O: { radius: 0.66, atomColor: "#ff0d0d", ringColor: "#ffffff" },
+    C: { radius: 0.76, atomColor: "#000000ff", ringColor: "#ffffff" },
+    N: { radius: 0.71, atomColor: "#657efaff", ringColor: "#ffffff" },
+    O: { radius: 0.66, atomColor: "#d10a0aff", ringColor: "#ffffff" },
     F: { radius: 0.57, atomColor: "#90e050", ringColor: "#000000" },
     Ne: { radius: 0.58, atomColor: "#b3e3f5", ringColor: "#000000" },
     Na: { radius: 1.66, atomColor: "#ab5cf2", ringColor: "#ffffff" },
@@ -50319,7 +50319,7 @@ const rk = {
     font-family: system-ui, -apple-system, sans-serif;
     height: 100%;
     position: relative;
-    background: #fafafa;
+    background: #ffffff;
     border-radius: 8px;
     overflow: hidden;
   }
@@ -50332,7 +50332,7 @@ const rk = {
   
   cifview-widget .crystal-caption {
     padding: 12px 16px;
-    background: #ffffff;
+    background: #fafafa;
     border-top: 1px solid #eaeaea;
     color: #333;
     font-size: 14px;

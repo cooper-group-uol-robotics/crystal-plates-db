@@ -39,7 +39,7 @@ gem "faraday-multipart"
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"
-gem "turbo-rails"
+# gem "turbo-rails"
 gem "stimulus-rails"
 # Use Propshaft for asset pipeline (Rails 8 default)
 gem "propshaft"
