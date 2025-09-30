@@ -41,7 +41,6 @@ gem "faraday-multipart"
 # gem "rack-cors"
 gem "turbo-rails"
 gem "stimulus-rails"
-# gem "sass-rails", "~> 6"
 gem "dartsass-rails"
 gem "jbuilder"
 gem "sprockets-rails"
@@ -56,10 +55,6 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
 
   gem "rubocop", require: false
-
-  # System testing
-  gem "capybara"
-  gem "selenium-webdriver"
 end
 
 gem "active_storage_validations", "~> 3.0"

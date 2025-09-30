@@ -386,60 +386,18 @@ class WellSelector {
 
   openBulkEditModal() {
     const wellIds = Array.from(this.selectedWells);
-    const modalHtml = `
-      <div class="modal fade" id="editMultipleWellsModal" tabindex="-1" aria-labelledby="editMultipleWellsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="editMultipleWellsModalLabel">Edit Multiple Wells</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
-              <div class="tab-content mt-3" id="bulkWellTabContent">
-                <div class="tab-pane fade show active" id="bulk-content" role="tabpanel" aria-labelledby="bulk-content-tab">
-                  <form id="bulkStockSolutionForm">
-                    <div class="mb-3">
-                      <h6>Add Stock Solution</h6>
-                      <div class="row">
-                        <div class="col-md-8">
-                          <label for="bulkStockSolutionSearch" class="form-label">Stock Solution</label>
-                          <input type="text" class="form-control" id="bulkStockSolutionSearch" placeholder="Search stock solution..." autocomplete="off">
-                          <input type="hidden" id="bulkStockSolutionId">
-                          <div id="bulkStockSolutionResults" class="dropdown-menu" style="max-height: 200px;overflow-y: auto;"></div>
-                        </div>
-                        <div class="col-md-4">
-                          <label for="bulkVolumeAmountInput" class="form-label">Volume with unit</label>
-                          <input type="text" class="form-control" id="bulkVolumeAmountInput" placeholder="e.g. 50 μL">
-                        </div>
-                      </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Add to selected wells</button>
-                  </form>
-                  <div id="bulkContentMessages" class="mt-2"></div>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Remove any existing modal
-    const existingModal = document.getElementById('editMultipleWellsModal');
-    if (existingModal) existingModal.remove();
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modalEl = document.getElementById('editMultipleWellsModal');
+    if (!modalEl) {
+      console.error('Bulk edit modal not found in DOM. Please add it to your view template.');
+      return;
+    }
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 
-    // Wait for modal to be fully shown before attaching event listeners
+    // Attach event listeners when modal is shown
     modalEl.addEventListener('shown.bs.modal', () => {
       this.setupBulkEditModal(wellIds);
-    });
+    }, { once: true });
   }
 
   setupBulkEditModal(wellIds) {
@@ -564,13 +522,6 @@ class WellModal {
 
     this.modal.addEventListener('show.bs.modal', (event) => {
       this.handleModalShow(event);
-    });
-
-    this.modal.addEventListener('hidden.bs.modal', () => {
-      console.log('Modal closed, refreshing page to update well colors...');
-      this.pxrdLoaded = false; // Reset for next time
-      this.scxrdLoaded = false; // Reset for next time
-      window.location.reload();
     });
 
     // Add tab click listeners for lazy loading
@@ -1148,112 +1099,6 @@ class WellModal {
     }, 3000);
   }
 }
-
-// Keyboard shortcut management
-class KeyboardShortcuts {
-  constructor() {
-    this.init();
-  }
-
-  init() {
-    document.addEventListener('keydown', (e) => this.handleKeydown(e));
-  }
-
-  handleKeydown(e) {
-    // Don't trigger shortcuts when typing in input fields
-    if (e.target.matches('input, textarea, select')) {
-      return;
-    }
-
-    // Handle shortcuts based on key pressed
-    switch (e.key.toLowerCase()) {
-      case CONSTANTS.SHORTCUTS.TOGGLE_SELECT_MODE:
-        e.preventDefault();
-        this.toggleSelectMode();
-        break;
-
-      case CONSTANTS.SHORTCUTS.EDIT_SELECTED:
-        if (window.wellSelector?.selectedWells?.size > 0) {
-          e.preventDefault();
-          window.wellSelector.openBulkEditModal();
-        }
-        break;
-
-      case CONSTANTS.SHORTCUTS.CLEAR_SELECTION:
-        if (window.wellSelector?.selectMode) {
-          e.preventDefault();
-          this.clearSelection();
-        }
-        break;
-
-      case CONSTANTS.SHORTCUTS.ESCAPE:
-        this.handleEscape();
-        break;
-    }
-  }
-
-  toggleSelectMode() {
-    const selectSwitch = document.getElementById('selectModeSwitch');
-    if (selectSwitch) {
-      selectSwitch.checked = !selectSwitch.checked;
-      selectSwitch.dispatchEvent(new Event('change'));
-
-      // Show user feedback
-      const mode = selectSwitch.checked ? 'enabled' : 'disabled';
-      this.showShortcutFeedback(`Multi-select mode ${mode}`);
-    }
-  }
-
-  clearSelection() {
-    if (window.wellSelector) {
-      window.wellSelector.selectedWells.clear();
-      document.querySelectorAll('.well-select-btn.border-info').forEach(btn => {
-        btn.classList.remove('border-info', 'shadow');
-      });
-      window.wellSelector.updateEditButton();
-      this.showShortcutFeedback('Selection cleared');
-    }
-  }
-
-  handleEscape() {
-    // Close any open modals
-    const modals = document.querySelectorAll('.modal.show');
-    modals.forEach(modal => {
-      const bsModal = bootstrap.Modal.getInstance(modal);
-      if (bsModal) {
-        bsModal.hide();
-      }
-    });
-
-    // Clear selection if in select mode
-    if (window.wellSelector?.selectMode) {
-      this.clearSelection();
-    }
-  }
-
-  showShortcutFeedback(message) {
-    // Create temporary toast for shortcut feedback
-    const toast = document.createElement('div');
-    toast.className = 'toast show position-fixed top-0 start-50 translate-middle-x mt-3';
-    toast.style.zIndex = '1060';
-    toast.innerHTML = `
-      <div class="toast-body bg-dark text-white rounded">
-        <small>${message}</small>
-      </div>
-    `;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.remove();
-    }, 1500);
-  }
-}
-
-// Initialize keyboard shortcuts
-window.addEventListener('DOMContentLoaded', () => {
-  new KeyboardShortcuts();
-});
 
 // Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
