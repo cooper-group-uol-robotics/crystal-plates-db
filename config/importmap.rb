@@ -1,11 +1,16 @@
 # Pin npm packages by running ./bin/importmap
 
-pin "application", preload: true
+pin "application"
 pin "@hotwired/turbo-rails", to: "turbo.min.js"
+pin "@hotwired/stimulus", to: "stimulus.min.js"
+pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
+pin_all_from "app/javascript/controllers", under: "controllers"
 
-# Scientific visualization modules (served by Propshaft from app/assets/javascripts/)
-pin "scxrd_diffraction_viewer", to: "scxrd_diffraction_viewer.js"
-pin "reciprocal_lattice_viewer", to: "reciprocal_lattice_viewer.js"
-pin "rod_image_parser", to: "rod_image_parser.js"
+# Custom JavaScript modules
+pin "plates_show"
+pin "cifvis.alldeps"
+pin_all_from "app/javascript/scxrd", under: "scxrd"
 
-# Note: CifVis is loaded via javascript_include_tag as a regular script
+# Bootstrap and Popper.js
+pin "@popperjs/core", to: "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/esm/index.js"
+pin "bootstrap", to: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.esm.min.js"

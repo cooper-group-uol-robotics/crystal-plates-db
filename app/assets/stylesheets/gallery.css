@@ -1,0 +1,104 @@
+/* Card toggle animations and styles */
+.scxrd-card-container {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  align-self: flex-start;
+}
+
+.scxrd-card-container.minimized {
+  flex: 0 0 60px !important;
+  max-width: 60px !important;
+  height: 400px !important;
+}
+
+.scxrd-card-container.minimized .card {
+  height: 400px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.scxrd-card-container.minimized .card-header {
+  height: 100% !important;
+  flex: 1 1 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 4px !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+.scxrd-card-container.minimized .card-body {
+  display: none !important;
+}
+
+.minimized-text {
+  writing-mode: vertical-rl !important;
+  text-orientation: mixed !important;
+  font-size: 0.75em !important;
+  padding: 8px 0 !important;
+  transition: all 0.3s ease !important;
+}
+
+.scxrd-card-container:not(.minimized) {
+  flex: 0 0 340px;
+  width: 340px;
+  height: 400px;
+}
+
+.card-header:hover {
+  background-color: #e9ecef !important;
+}
+
+.toggle-icon {
+  transition: transform 0.3s ease;
+}
+
+/* Ensure smooth flex transitions */
+.scxrd-main-row {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 410px;
+  gap: 6px;
+}
+
+/* Make cards stack vertically on small screens */
+@media (max-width: 768px) {
+  .scxrd-main-row {
+    flex-direction: column;
+    align-items: center;
+    min-height: auto;
+  }
+
+  .scxrd-card-container:not(.minimized) {
+    width: 100%;
+    max-width: 340px;
+    margin-bottom: 1rem;
+  }
+
+  .scxrd-card-container.minimized {
+    width: 100%;
+    max-width: 340px;
+    height: 60px !important;
+    max-height: 60px !important;
+  }
+
+  .scxrd-card-container.minimized .card {
+    height: 60px !important;
+    flex-direction: row !important;
+  }
+
+  .scxrd-card-container.minimized .card-header {
+    height: 60px !important;
+    width: 100% !important;
+    flex-direction: row !important;
+  }
+
+  .minimized-text {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+  }
+}

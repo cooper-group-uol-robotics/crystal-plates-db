@@ -14,9 +14,14 @@
   { name: "milliliter", symbol: "ml", conversion_to_base: 1000.0 },
   { name: "gram", symbol: "g", conversion_to_base: 1000.0 }
 ].each do |attrs|
-  Unit.find_or_create_by!(name: attrs[:name]) do |unit|
-    unit.symbol = attrs[:symbol]
-    unit.conversion_to_base = attrs[:conversion_to_base]
+  unit = Unit.find_or_create_by!(symbol: attrs[:symbol]) do |u|
+    u.name = attrs[:name]
+    u.conversion_to_base = attrs[:conversion_to_base]
+  end
+
+  # Update existing units if they differ from the expected values
+  if unit.name != attrs[:name] || unit.conversion_to_base != attrs[:conversion_to_base]
+    unit.update!(name: attrs[:name], conversion_to_base: attrs[:conversion_to_base])
   end
 end
 
@@ -34,18 +39,20 @@ unless PlatePrototype.exists?(name: prototype_name)
   wells = []
   (1..8).each do |row|
     (1..12).each do |col|
-      wells << PrototypeWell.new(
-        plate_prototype: prototype,
+      wells << {
+        plate_prototype_id: prototype.id,
         well_row: row,
         well_column: col,
         subwell: 1,
         x_mm: (col - 1) * 9.0,
         y_mm: (row - 1) * 9.0,
-        z_mm: 0.0
-      )
+        z_mm: 0.0,
+        created_at: Time.current,
+        updated_at: Time.current
+      }
     end
   end
-  PrototypeWell.import wells
+  PrototypeWell.insert_all(wells)
   puts "Seeded #{wells.size} wells for prototype '#{prototype_name}'"
 end
 

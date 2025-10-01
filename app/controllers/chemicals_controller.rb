@@ -120,7 +120,7 @@ class ChemicalsController < ApplicationController
     session[:return_after_auth] = chemicals_path
 
     # Redirect to Sciformation login
-    redirect_to "https://jfb.liverpool.ac.uk/login", allow_other_host: true
+    redirect_to "https://sciformation.liverpool.ac.uk/login", allow_other_host: true
   end
 
   # GET /chemicals/auth_callback

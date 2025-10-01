@@ -180,7 +180,7 @@ class ScxrdFolderProcessorService
     temp_zip.binmode
 
     begin
-      Zip::File.open(temp_zip.path, Zip::File::CREATE) do |zipfile|
+      Zip::File.open(temp_zip.path, create: true) do |zipfile|
         @file_count = 0
         add_directory_to_zip(zipfile, @folder_path, File.basename(@folder_path), total_files)
       end

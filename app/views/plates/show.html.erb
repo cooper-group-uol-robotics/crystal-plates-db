@@ -4,7 +4,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
   <%= stylesheet_link_tag 'plates_show' %>
   <%= stylesheet_link_tag 'scxrd/gallery' %>
-  <%= javascript_include_tag 'rod_image_parser' %>
+  <%= javascript_include_tag 'scxrd/rod_image_parser' %>
   <%= javascript_include_tag 'scxrd/diffraction_viewer' %>
   <%= javascript_include_tag 'scxrd/card_toggler' %>
   <%= javascript_include_tag 'scxrd/reciprocal_lattice_viewer' %>
@@ -117,4 +117,7 @@
 <%= render 'well_modal' %>
 <%= render 'edit_multiple_wells_modal' %>
 
-<%= javascript_include_tag "plates_show" %>
+<script type="module">
+  import initializePlatesShow from 'plates_show';
+  initializePlatesShow();
+</script>

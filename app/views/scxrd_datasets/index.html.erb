@@ -1,7 +1,7 @@
 <% content_for :title, "All SCXRD Datasets" %>
 <% content_for :head do %>
   <%= stylesheet_link_tag 'scxrd/gallery' %>
-  <%= javascript_include_tag 'rod_image_parser' %>
+  <%= javascript_include_tag 'scxrd/rod_image_parser' %>
   <%= javascript_include_tag 'scxrd/diffraction_viewer' %>
   <%= javascript_include_tag 'scxrd/card_toggler' %>
   <%= javascript_include_tag 'scxrd/reciprocal_lattice_viewer' %>
@@ -198,11 +198,6 @@
       <i class="bi bi-box" style="font-size: 3rem;" class="text-muted"></i>
       <h4>No SCXRD Datasets</h4>
       <p>No single crystal X-ray diffraction datasets have been uploaded to the system yet.</p>
-      <div class="mt-3">
-        <%= link_to new_scxrd_dataset_path, class: "btn btn-primary" do %>
-          <i class="bi bi-upload"></i> Upload Your First Dataset
-        <% end %>
-      </div>
       <p class="mt-2 mb-0">
         <small class="text-muted">
           You can also upload SCXRD datasets from individual well pages if associating with a specific well.

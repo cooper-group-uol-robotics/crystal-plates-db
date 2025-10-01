@@ -66,7 +66,6 @@ aliases:
 # Recommended to change this to a mounted volume path that is backed up off server.
 volumes:
   - "crystal_plates_db_storage:/rails/storage"
-  - "crystal_plates_db_database:/rails/db"
 
 
 # Bridge fingerprinted assets, like JS and CSS, between versions to avoid
@@ -83,7 +82,7 @@ builder:
   #
   # # Pass arguments and secrets to the Docker build process
   # args:
-  #   RUBY_VERSION: 3.3.0
+  #   RUBY_VERSION: system
   # secrets:
   #   - GITHUB_TOKEN
   #   - RAILS_MASTER_KEY
