@@ -9,7 +9,7 @@ This is a **Rails 8.0 laboratory plate and data management system** with dual in
 
 ### Modern Rails 8 Stack
 
-- **Asset Pipeline**: Currently Sprockets (migrating to Propshaft)
+- **Asset Pipeline**: Propshaft (Rails 8 default, migrated from Sprockets)
 - **JavaScript**: Importmap + ES6 modules, no build step required
 - **Turbo Integration**: Partially implemented (causes issues, needs gradual adoption)
 - **CSS**: Dartsass-rails for modern SCSS compilation
@@ -135,8 +135,8 @@ class Plate < ApplicationRecord
 ### JavaScript Module System
 
 - **Importmap**: Pin dependencies in `config/importmap.rb` (no bundling required)
-- **ES6 Modules**: Use `import/export` syntax consistently
-- **Module Structure**: Place modules in `app/javascript/` with importmap pins
+- **ES6 Modules**: Use `import/export` syntax consistently  
+- **Module Structure**: Place modules in `app/assets/javascripts/` and pin via importmap
 
 ### Turbo Adoption Strategy
 
@@ -145,12 +145,12 @@ class Plate < ApplicationRecord
 - **Known Issues**: Form submissions and dynamic content updates conflict
 - **Goal**: Full Turbo Drive + Frames integration for SPA-like experience
 
-### Asset Pipeline Migration
+### Asset Pipeline (Propshaft)
 
-- **Current**: Sprockets-rails (legacy)
-- **Target**: Propshaft (Rails 8 default)
-- **JavaScript Assets**: Keep in `app/assets/javascripts/` during transition
-- **Import Strategy**: Gradually move JS to `app/javascript/` with proper ES6 modules
+- **Asset Location**: All assets in `app/assets/` (javascripts, stylesheets, images)
+- **ES6 Modules**: Use import/export in JavaScript files, served directly by Propshaft
+- **No Compilation**: Assets served as-is, no manifest or digest generation needed
+- **WASM Support**: WebAssembly files configured with proper MIME types
 
 ### Scientific Visualization
 
