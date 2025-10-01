@@ -578,6 +578,9 @@ class ScxrdDiffractionViewer {
         infoSpan.textContent = `${imageInfo} (${currentIndex + 1}/${this.totalImagesCount})`;
       }
     }
+
+    // Update play button state to ensure correct icon is shown
+    this.updatePlayButton();
   }
 
   loadVisualHeatmapFallback() {
@@ -853,13 +856,13 @@ class ScxrdDiffractionViewer {
     if (playButton) {
       const icon = playButton.querySelector('i');
       if (this.isPlaying) {
-        icon.className = 'fas fa-pause-circle';
+        icon.className = 'bi bi-pause-fill';
         icon.style.fontSize = '16px';
         playButton.title = 'Pause sequence';
         playButton.classList.remove('btn-outline-primary');
         playButton.classList.add('btn-primary');
       } else {
-        icon.className = 'fas fa-play-circle';
+        icon.className = 'bi bi-play-fill';
         icon.style.fontSize = '16px';
         playButton.title = 'Play sequence';
         playButton.classList.remove('btn-primary');
