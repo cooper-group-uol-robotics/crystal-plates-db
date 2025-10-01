@@ -2,6 +2,7 @@
 import "@hotwired/turbo-rails"
 import "controllers"
 import * as bootstrap from "bootstrap"
+import "turbo_cleanup"
 
 // Make Bootstrap available globally for inline scripts
 window.bootstrap = bootstrap

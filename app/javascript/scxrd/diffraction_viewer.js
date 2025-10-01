@@ -17,6 +17,18 @@ class ScxrdDiffractionViewer {
     this.isPlaying = false; // Track if movie is playing
     this.playTimer = null; // Store the play timer
     this.playSpeed = 100; // Default play speed in milliseconds
+
+    // Register with cleanup manager for Turbo navigation
+    this.registerWithCleanupManager();
+  }
+
+  registerWithCleanupManager() {
+    // Register this viewer instance for cleanup when navigating away
+    if (window.turboCleanupManager) {
+      // Add a custom cleanup method that will be called by the cleanup manager
+      const cleanup = () => this.destroy();
+      window.turboCleanupManager.registerCifVis({ destroy: cleanup });
+    }
   }
 
   getVisualHeatmap() {
@@ -479,27 +491,33 @@ class ScxrdDiffractionViewer {
         const newMax = sliderValue;
         this.currentIntensityRange[1] = newMax;
 
-        // Update the heatmap's max value and re-render
-        if (this.heatmapInstance) {
+        // Update the heatmap's max value and re-render with defensive checks
+        if (this.heatmapInstance && !this._destroyed) {
+          try {
+            // Try different API methods for updating max value
+            if (typeof this.heatmapInstance.setMax === 'function') {
+              this.heatmapInstance.setMax(newMax);
+            } else if (typeof this.heatmapInstance.configure === 'function') {
+              this.heatmapInstance.configure({ max: newMax });
+            } else if (typeof this.heatmapInstance.setConfig === 'function') {
+              this.heatmapInstance.setConfig({ max: newMax });
+            }
 
+            // Force re-render
+            if (typeof this.heatmapInstance.render === 'function') {
+              this.heatmapInstance.render();
+            } else if (typeof this.heatmapInstance.repaint === 'function') {
+              this.heatmapInstance.repaint();
+            }
 
-          // Try different API methods for updating max value
-          if (typeof this.heatmapInstance.setMax === 'function') {
-            this.heatmapInstance.setMax(newMax);
-          } else if (typeof this.heatmapInstance.configure === 'function') {
-            this.heatmapInstance.configure({ max: newMax });
-          } else if (typeof this.heatmapInstance.setConfig === 'function') {
-            this.heatmapInstance.setConfig({ max: newMax });
+            console.log(`Intensity threshold updated to: ${newMax}`);
+          } catch (error) {
+            console.warn('Error updating heatmap intensity:', error);
+            // If the heatmap instance is corrupted, mark as destroyed
+            if (error.message && error.message.includes('null')) {
+              this._destroyed = true;
+            }
           }
-
-          // Force re-render
-          if (typeof this.heatmapInstance.render === 'function') {
-            this.heatmapInstance.render();
-          } else if (typeof this.heatmapInstance.repaint === 'function') {
-            this.heatmapInstance.repaint();
-          }
-
-          console.log(`Intensity threshold updated to: ${newMax}`);
         }
       });
     }
@@ -682,12 +700,15 @@ class ScxrdDiffractionViewer {
       window.removeEventListener('resize', this.resizeHandler);
     }
 
-    // Create a debounced resize handler
+    // Create a debounced resize handler with defensive checks
     let resizeTimeout;
     this.resizeHandler = () => {
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
-        this.handleResize();
+        // Only resize if the viewer hasn't been destroyed
+        if (this.containerId && document.getElementById(this.containerId)) {
+          this.handleResize();
+        }
       }, 250); // Debounce for 250ms
     };
 
@@ -884,6 +905,8 @@ class ScxrdDiffractionViewer {
   }
 
   destroy() {
+    console.log(`Destroying SCXRD diffraction viewer: ${this.containerId}`);
+    
     // Stop playing and clean up timer
     if (this.isPlaying) {
       this.stopPlay();
@@ -894,6 +917,41 @@ class ScxrdDiffractionViewer {
       window.removeEventListener('resize', this.resizeHandler);
       this.resizeHandler = null;
     }
+
+    // Clean up heatmap instance
+    if (this.heatmapInstance) {
+      try {
+        if (typeof this.heatmapInstance.destroy === 'function') {
+          this.heatmapInstance.destroy();
+        } else if (typeof this.heatmapInstance.clear === 'function') {
+          this.heatmapInstance.clear();
+        }
+      } catch (error) {
+        console.warn('Error destroying heatmap instance:', error);
+      }
+      this.heatmapInstance = null;
+    }
+
+    // Clear the container
+    const container = document.getElementById(this.containerId);
+    if (container) {
+      container.innerHTML = '';
+    }
+
+    // Clean up global reference
+    const globalRef = `scxrdViewer_${this.containerId.replace('-', '_')}`;
+    if (window[globalRef]) {
+      delete window[globalRef];
+    }
+
+    // Reset all instance variables
+    this.plotDiv = null;
+    this.imageData = null;
+    this.dimensions = null;
+    this.metadata = null;
+    this.diffractionImages = null;
+    this.availableRuns = null;
+    this.currentDiffractionImageId = null;
   }
 }
 

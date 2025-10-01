@@ -10,6 +10,7 @@ pin_all_from "app/javascript/controllers", under: "controllers"
 pin "plates_show"
 pin "cifvis.alldeps"
 pin "pxrd_chart"
+pin "turbo_cleanup"
 pin_all_from "app/javascript/scxrd", under: "scxrd"
 pin_all_from "app/javascript/wasm", under: "wasm"
 

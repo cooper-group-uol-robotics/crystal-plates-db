@@ -632,12 +632,18 @@ class WellModal {
     `;
 
     // Load other tabs in background with staggered delays
+    // Note: SCXRD is NOT loaded in background to prevent CifVis animation issues
     setTimeout(() => this.loadContentTabInBackground(wellId), 200);
     setTimeout(() => this.loadPxrdTabInBackground(wellId), 400);
-    setTimeout(() => this.loadScxrdTabInBackground(wellId), 600);
+    // SCXRD will be loaded only when the tab is clicked
   }
 
   handleModalHidden() {
+    console.log('Well modal hidden - cleaning up visualizations');
+    
+    // Clean up any CifVis instances within the modal
+    this.cleanupModalVisualizations();
+    
     // Reset tab indicators when modal is closed
     const contentTab = document.getElementById('content-tab');
     const pxrdTab = document.getElementById('pxrd-tab');
@@ -647,11 +653,84 @@ class WellModal {
     if (pxrdTab) pxrdTab.innerHTML = 'PXRD';
     if (scxrdTab) scxrdTab.innerHTML = 'SCXRD';
 
+    // Clear content containers to stop any running visualizations
+    const containers = [
+      'wellImagesContent',
+      'wellContentForm', 
+      'wellPxrdContent',
+      'wellScxrdContent'
+    ];
+    
+    containers.forEach(containerId => {
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.innerHTML = '';
+      }
+    });
+
     // Reset loaded flags for next modal opening
     this.currentWellId = null;
     this.contentLoaded = false;
     this.pxrdLoaded = false;
     this.scxrdLoaded = false;
+  }
+
+  cleanupModalVisualizations() {
+    // Clean up CifVis widgets specifically within the modal
+    const modalElement = document.getElementById('wellImagesModal');
+    if (modalElement) {
+      const cifWidgets = modalElement.querySelectorAll('cifview-widget');
+      cifWidgets.forEach((widget, index) => {
+        try {
+          console.log(`Cleaning up modal cifview-widget ${index + 1}`);
+          
+          if (widget._cifvis) {
+            if (typeof widget._cifvis.destroy === 'function') {
+              widget._cifvis.destroy();
+            } else if (typeof widget._cifvis.dispose === 'function') {
+              widget._cifvis.dispose();
+            }
+          }
+
+          // Clear any animation references
+          if (widget._animation) {
+            widget._animation = null;
+          }
+          
+          if (widget.parentNode) {
+            widget.parentNode.removeChild(widget);
+          }
+        } catch (error) {
+          console.warn(`Error cleaning up modal cifview-widget ${index + 1}:`, error);
+        }
+      });
+    }
+
+    // Clean up SCXRD diffraction viewers within the modal
+    Object.keys(window).forEach(key => {
+      if (key.startsWith('scxrdViewer_') && window[key]) {
+        try {
+          const viewer = window[key];
+          // Check if this viewer's container is within the modal
+          const container = document.getElementById(viewer.containerId);
+          if (container && modalElement && modalElement.contains(container)) {
+            console.log(`Cleaning up modal SCXRD viewer: ${key}`);
+            if (typeof viewer.destroy === 'function') {
+              viewer.destroy();
+            }
+            delete window[key];
+          }
+        } catch (error) {
+          console.warn(`Error cleaning up modal SCXRD viewer ${key}:`, error);
+        }
+      }
+    });
+
+    // Use the global cleanup manager if available
+    if (window.turboCleanupManager) {
+      window.turboCleanupManager.cleanupCifVisWidgets();
+      window.turboCleanupManager.cleanupScxrdViewers();
+    }
   }
 
   activateImagesTab() {
