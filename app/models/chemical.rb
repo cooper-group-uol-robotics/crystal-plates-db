@@ -47,14 +47,14 @@ class Chemical < ApplicationRecord
   end
 
   # Class method to fetch and import data from Sciformation
-  def self.fetch_from_sciformation(department_id: "124", cookie: "36832ceedab974a8f4fa24b50d33")
+  def self.fetch_from_sciformation(department_id: "124", cookie: "f8afbe9ee73920eac572ed78f0b4")
     require "net/http"
     require "uri"
     require "json"
 
     # Default cookie - you should pass the current one as a parameter
 
-    uri = URI("https://jfb.liverpool.ac.uk/performSearch")
+    uri = URI("https://sciformation.liverpool.ac.uk/performSearch")
 
     # Prepare the request
     http = Net::HTTP.new(uri.host, uri.port)

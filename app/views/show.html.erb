@@ -1,0 +1,155 @@
+<% content_for :title, @chemical.name %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="mb-1"><%= @chemical.name %></h1>
+    <% if @chemical.cas.present? %>
+      <small class="text-muted">CAS: <%= @chemical.cas %></small>
+    <% end %>
+  </div>
+  <div>
+    <%= link_to "Edit", edit_chemical_path(@chemical), class: "btn btn-outline-primary me-2" %>
+    <%= link_to "Back to Chemicals", chemicals_path, class: "btn btn-outline-secondary" %>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Chemical Information</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted">Name</label>
+            <div class="fw-medium"><%= @chemical.name %></div>
+          </div>
+          
+          <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted">CAS Number</label>
+            <div>
+              <% if @chemical.cas.present? %>
+                <code><%= @chemical.cas %></code>
+              <% else %>
+                <span class="text-muted">Not specified</span>
+              <% end %>
+            </div>
+          </div>
+          
+          <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted">Barcode</label>
+            <div>
+              <% if @chemical.barcode.present? %>
+                <code><%= @chemical.barcode %></code>
+              <% else %>
+                <span class="text-muted">Not specified</span>
+              <% end %>
+            </div>
+          </div>
+          
+          <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted">Sciformation ID</label>
+            <div>
+              <% if @chemical.sciformation_id.present? %>
+                <code><%= @chemical.sciformation_id %></code>
+              <% else %>
+                <span class="text-muted">Not specified</span>
+              <% end %>
+            </div>
+          </div>
+          
+          <div class="col-12 mb-3">
+            <label class="form-label text-muted">Amount</label>
+            <div>
+              <% if @chemical.amount.present? %>
+                <%= @chemical.amount %>
+              <% else %>
+                <span class="text-muted">Not specified</span>
+              <% end %>
+            </div>
+          </div>
+          
+          <div class="col-12 mb-3">
+            <label class="form-label text-muted">Storage Location</label>
+            <div>
+              <% if @chemical.storage.present? %>
+                <% if @chemical.full_storage_path? %>
+                  <div class="fw-medium"><%= @chemical.short_storage %></div>
+                  <small class="text-muted">Full path: <%= @chemical.storage %></small>
+                <% else %>
+                  <%= @chemical.storage %>
+                <% end %>
+              <% else %>
+                <span class="text-muted">Not specified</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-4">
+    <% if @chemical.has_structure? %>
+      <div class="card mb-3">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Chemical Structure</h5>
+        </div>
+        <div class="card-body text-center">
+          <div class="mb-3">
+            <%= image_tag @chemical.structure_image_url(width: 280, height: 280), 
+                          alt: "Structure of #{@chemical.name}",
+                          class: "img-fluid border rounded",
+                          style: "max-width: 280px; max-height: 280px;",
+                          onerror: "this.parentElement.innerHTML='<div class=\"text-muted\">Structure could not be loaded</div>'" %>
+          </div>
+          <div class="mt-2">
+            <small class="text-muted">SMILES: <code class="text-break"><%= @chemical.smiles %></code></small>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Usage in Stock Solutions</h5>
+      </div>
+      <div class="card-body">
+        <% if @chemical.stock_solution_components.any? %>
+          <% @chemical.stock_solution_components.includes(:stock_solution, :unit).each do |component| %>
+            <div class="border-bottom pb-2 mb-2">
+              <div class="fw-medium">
+                <%= link_to component.stock_solution.name, stock_solution_path(component.stock_solution), class: "text-decoration-none" %>
+              </div>
+              <small class="text-muted">
+                Amount: <%= component.amount %> 
+                <% if component.unit %>
+                  <%= component.unit.name %>
+                <% end %>
+              </small>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-muted mb-0">This chemical is not used in any stock solutions yet.</p>
+        <% end %>
+      </div>
+    </div>
+    
+    <div class="card mt-3">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Record Information</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-2">
+          <label class="form-label text-muted small">Created</label>
+          <div class="small"><%= @chemical.created_at.strftime("%B %d, %Y at %I:%M %p") %></div>
+        </div>
+        <div>
+          <label class="form-label text-muted small">Last Updated</label>
+          <div class="small"><%= @chemical.updated_at.strftime("%B %d, %Y at %I:%M %p") %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

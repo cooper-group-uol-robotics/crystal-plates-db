@@ -169,13 +169,19 @@
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    // Use turbo:load instead of DOMContentLoaded for Turbo compatibility
+    document.addEventListener('turbo:load', function() {
       // Location logic
       const carouselRadio = document.getElementById('carousel_location');
       const specialRadio = document.getElementById('special_location');
       const unassignedRadio = document.getElementById('unassigned_location');
       const carouselFields = document.getElementById('carousel_fields');
       const specialFields = document.getElementById('special_fields');
+
+      if (!carouselRadio || !specialRadio || !unassignedRadio || !carouselFields || !specialFields) {
+        return; // Elements not found, exit early
+      }
+
       const carouselInputs = carouselFields.querySelectorAll('input');
       const specialInputs = specialFields.querySelectorAll('select');
 
@@ -206,6 +212,11 @@
       // Prototype logic
       const prototypeSelect = document.getElementById('plate_prototype_id');
       const dimensionsSection = document.getElementById('dimensions_section');
+
+      if (!prototypeSelect || !dimensionsSection) {
+        return; // Elements not found, exit early
+      }
+
       const dimensionInputs = dimensionsSection.querySelectorAll('input');
 
       function toggleDimensions() {

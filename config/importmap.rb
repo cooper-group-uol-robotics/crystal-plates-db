@@ -1,18 +1,23 @@
 # Pin npm packages by running ./bin/importmap
 
-pin "application", preload: true
+pin "application"
 pin "@hotwired/turbo-rails", to: "turbo.min.js"
-# ActionCable and channels removed - using polling instead
-# pin "@rails/actioncable", to: "actioncable.esm.js"
-# pin_all_from "app/javascript/channels", under: "channels"
+pin "@hotwired/stimulus", to: "stimulus.min.js"
+pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
+pin_all_from "app/javascript/controllers", under: "controllers"
 
-# SCXRD Diffraction Viewer using Visual Heatmap
-pin "scxrd_diffraction_viewer", to: "scxrd_diffraction_viewer.js"
+# Custom JavaScript modules
+pin "plates_show"
+pin "cifvis.alldeps"
+pin "pxrd_chart"
+pin "turbo_cleanup"
+pin_all_from "app/javascript/scxrd", under: "scxrd"
+pin_all_from "app/javascript/wasm", under: "wasm"
 
-# ROD Image Parser for client-side decompression
-pin "rod_image_parser", to: "rod_image_parser.js"
+# Bootstrap and Popper.js
+pin "@popperjs/core", to: "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/esm/index.js"
+pin "bootstrap", to: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.esm.min.js"
 
-# SCXRD Reciprocal Lattice Viewer using Three.js
-pin "reciprocal_lattice_viewer", to: "reciprocal_lattice_viewer.js"
-
-# Note: CifVis is loaded via javascript_include_tag as a regular script
+# Chart.js and plugins (ESM versions from esm.sh)
+pin "chart.js", to: "https://esm.sh/chart.js@4.4.0"
+pin "chartjs-plugin-zoom", to: "https://esm.sh/chartjs-plugin-zoom@2.0.1"

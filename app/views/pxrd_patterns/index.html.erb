@@ -1,7 +1,4 @@
 <% content_for :title, "All PXRD Patterns" %>
-<% content_for :head do %>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<% end %>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2>All PXRD Patterns</h2>
@@ -128,10 +125,10 @@
       <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
         <div class="card h-100">
           <div class="card-body">
-            <!-- Pattern visualization placeholder -->
+            <!-- Pattern visualization -->
             <div style="height: 120px; position: relative;" class="mb-3 bg-light border rounded d-flex align-items-center justify-content-center">
               <% if pattern.pxrd_data_file.attached? %>
-                <canvas id="pattern-<%= pattern.id %>" style="width: 100%; height: 100%; max-width: 200px; max-height: 120px;"></canvas>
+                <%= render 'plot', pxrd_pattern: pattern, canvas_id: "pattern-#{pattern.id}", mini_chart: true %>
               <% else %>
                 <div class="text-muted">
                   <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
@@ -218,87 +215,4 @@
   </div>
 <% end %>
 
-<script>
-  // Initialize pattern visualizations with Chart.js
-  document.addEventListener('DOMContentLoaded', function() {
-    // Small delay to ensure Chart.js is fully loaded
-    setTimeout(function() {
-      console.log('Chart.js available:', !!window.Chart);
-      
-      <% @pxrd_patterns.each do |pattern| %>
-      <% if pattern.pxrd_data_file.attached? %>
-        <% 
-          begin
-            data = pattern.parse_diffraction_data
-            two_theta = data[:two_theta]
-            intensities = data[:intensities]
-        %>
-          <% if two_theta.any? && intensities.any? %>
-            (function() {
-              const canvas = document.getElementById('pattern-<%= pattern.id %>');
-              console.log('Canvas found for pattern <%= pattern.id %>:', !!canvas);
-              
-              if (canvas && window.Chart) {
-                try {
-                  // Set canvas dimensions explicitly
-                  canvas.width = 200;
-                  canvas.height = 120;
-                  
-                  const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
-                  console.log('Creating chart for pattern <%= pattern.id %> with', scatterData.length, 'data points');
-                  
-                  new Chart(canvas.getContext('2d'), {
-                  type: 'scatter',
-                  data: {
-                    datasets: [{
-                      data: scatterData,
-                      backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                      borderColor: 'rgba(13, 110, 253, 0.8)',
-                      borderWidth: 1,
-                      pointRadius: 0,
-                      showLine: true,
-                      tension: 0
-                    }]
-                  },
-                  options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                      tooltip: { enabled: false }
-                    },
-                    scales: {
-                      x: {
-                        display: false,
-                        type: 'linear'
-                      },
-                      y: {
-                        display: false,
-                        type: 'linear'
-                      }
-                    },
-                    elements: {
-                      line: {
-                        tension: 0
-                      }
-                    },
-                    animation: false
-                  }
-                  });
-                  console.log('Chart created successfully for pattern <%= pattern.id %>');
-                } catch (error) {
-                  console.error('Error creating chart for pattern <%= pattern.id %>:', error);
-                }
-              } else {
-                console.warn('Canvas or Chart.js not available for pattern <%= pattern.id %>');
-              }
-            })();
-          <% end %>
-        <% rescue => e %>
-          <!-- Error parsing data for pattern <%= pattern.id %> -->
-        <% end %>
-      <% end %>
-    <% end %>
-    }, 100); // 100ms delay to ensure Chart.js is loaded
-  });
-</script>
+

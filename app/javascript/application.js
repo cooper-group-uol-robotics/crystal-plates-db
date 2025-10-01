@@ -1,14 +1,8 @@
-// Simple application JavaScript - no frameworks needed
-console.log("Application.js loaded");
-
-// Import Turbo for handling data-method attributes (DELETE, etc.)
+// Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
 import "@hotwired/turbo-rails"
+import "controllers"
+import * as bootstrap from "bootstrap"
+import "turbo_cleanup"
 
-// ActionCable integration commented out to avoid asset compilation issues
-// Will use polling for auto-segmentation status instead
-
-// Import SCXRD Diffraction Viewer
-import "./scxrd_diffraction_viewer"
-
-// Note: Reciprocal Lattice Viewer is loaded via assets pipeline to avoid conflicts
-// Note: CifVis is loaded via script tag to avoid module format conflicts
+// Make Bootstrap available globally for inline scripts
+window.bootstrap = bootstrap

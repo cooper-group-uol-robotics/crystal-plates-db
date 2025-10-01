@@ -31,7 +31,7 @@
               <th>
                 <%= link_to plates_path(sort: 'created_at', direction: @sort_column == 'created_at' && @sort_direction == 'asc' ? 'desc' : 'asc', page: params[:page]), 
                             class: "text-decoration-none text-dark" do %>
-                  Created At At
+                  Created At
                   <% if @sort_column == 'created_at' %>
                     <i class="bi bi-arrow-<%= @sort_direction == 'asc' ? 'up' : 'down' %>"></i>
                   <% else %>

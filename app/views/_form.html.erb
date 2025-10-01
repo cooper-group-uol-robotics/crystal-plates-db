@@ -1,0 +1,96 @@
+<%= form_with(model: chemical, local: true, class: "row g-3") do |form| %>
+  <% if chemical.errors.any? %>
+    <div class="col-12">
+      <div class="alert alert-danger">
+        <h6>Please fix the following errors:</h6>
+        <ul class="mb-0">
+          <% chemical.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="col-md-6">
+    <%= form.label :name, class: "form-label" %>
+    <%= form.text_field :name, class: "form-control #{'is-invalid' if chemical.errors[:name].any?}" %>
+    <% if chemical.errors[:name].any? %>
+      <div class="invalid-feedback">
+        <%= chemical.errors[:name].first %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="col-md-6">
+    <%= form.label :cas, "CAS Number", class: "form-label" %>
+    <%= form.text_field :cas, class: "form-control #{'is-invalid' if chemical.errors[:cas].any?}" %>
+    <% if chemical.errors[:cas].any? %>
+      <div class="invalid-feedback">
+        <%= chemical.errors[:cas].first %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="col-md-6">
+    <%= form.label :barcode, class: "form-label" %>
+    <%= form.text_field :barcode, class: "form-control #{'is-invalid' if chemical.errors[:barcode].any?}" %>
+    <% if chemical.errors[:barcode].any? %>
+      <div class="invalid-feedback">
+        <%= chemical.errors[:barcode].first %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="col-md-6">
+    <%= form.label :sciformation_id, "Sciformation ID", class: "form-label" %>
+    <%= form.number_field :sciformation_id, class: "form-control #{'is-invalid' if chemical.errors[:sciformation_id].any?}" %>
+    <% if chemical.errors[:sciformation_id].any? %>
+      <div class="invalid-feedback">
+        <%= chemical.errors[:sciformation_id].first %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="col-md-6">
+    <%= form.label :amount, class: "form-label" %>
+    <%= form.text_field :amount, class: "form-control #{'is-invalid' if chemical.errors[:amount].any?}" %>
+    <% if chemical.errors[:amount].any? %>
+      <div class="invalid-feedback">
+        <%= chemical.errors[:amount].first %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="col-12">
+    <%= form.label :storage, "Storage Location", class: "form-label" %>
+    <%= form.text_area :storage, rows: 3, class: "form-control #{'is-invalid' if chemical.errors[:storage].any?}" %>
+    <% if chemical.errors[:storage].any? %>
+      <div class="invalid-feedback">
+        <%= chemical.errors[:storage].first %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="col-12">
+    <%= form.label :smiles, "SMILES", class: "form-label" %>
+    <%= form.text_area :smiles, rows: 3, class: "form-control #{'is-invalid' if chemical.errors[:smiles].any?}" %>
+    <% if chemical.errors[:smiles].any? %>
+      <div class="invalid-feedback">
+        <%= chemical.errors[:smiles].first %>
+      </div>
+    <% end %>
+    <div class="form-text">Chemical structure representation in SMILES format</div>
+  </div>
+
+  <div class="col-12">
+    <div class="d-flex gap-2">
+      <%= form.submit "Save Chemical", class: "btn btn-primary" %>
+      <% if chemical.persisted? %>
+        <%= link_to "Cancel", chemical_path(chemical), class: "btn btn-outline-secondary" %>
+      <% else %>
+        <%= link_to "Cancel", chemicals_path, class: "btn btn-outline-secondary" %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
