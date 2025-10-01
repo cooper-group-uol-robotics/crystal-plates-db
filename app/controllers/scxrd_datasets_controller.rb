@@ -340,26 +340,30 @@ class ScxrdDatasetsController < ApplicationController
       archive_start_time = Time.current
       # Create a temporary directory to extract the archive
       Dir.mktmpdir do |temp_dir|
-        # Save the uploaded archive temporarily
-        archive_path = File.join(temp_dir, "uploaded_archive.zip")
+        # Detect archive type from filename or content type
+        original_filename = uploaded_archive.original_filename || ""
+        content_type = uploaded_archive.content_type || ""
+
+        is_tar = original_filename.end_with?(".tar") || content_type == "application/x-tar"
+
+        # Save the uploaded archive temporarily with correct extension
+        archive_extension = is_tar ? ".tar" : ".zip"
+        archive_path = File.join(temp_dir, "uploaded_archive#{archive_extension}")
         File.open(archive_path, "wb") { |f| f.write(uploaded_archive.read) }
 
         # Extract the archive
         extract_start_time = Time.current
+        file_count = 0
 
-        require "zip"
-        Zip::File.open(archive_path) do |zip_file|
-          file_count = 0
-          zip_file.each do |entry|
-            next if entry.directory?
-
-            file_path = File.join(temp_dir, entry.name)
-            FileUtils.mkdir_p(File.dirname(file_path))
-            entry.extract(file_path)
-
-            file_count += 1
-          end
+        if is_tar
+          Rails.logger.info "SCXRD: Extracting TAR archive..."
+          file_count = extract_tar_archive(archive_path, temp_dir)
+        else
+          Rails.logger.info "SCXRD: Extracting ZIP archive..."
+          file_count = extract_zip_archive(archive_path, temp_dir)
         end
+
+        Rails.logger.info "SCXRD: Extracted #{file_count} files in #{(Time.current - extract_start_time).round(2)}s"
 
         # Set experiment name from archive filename if not already set
         if @scxrd_dataset.experiment_name.blank?
@@ -516,6 +520,74 @@ class ScxrdDatasetsController < ApplicationController
       Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(5).join("\n")}"
       @scxrd_dataset.errors.add(:base, "Error processing compressed archive: #{e.message}")
     end
+  end
+
+  # Extract ZIP archive using rubyzip gem
+  def extract_zip_archive(archive_path, temp_dir)
+    require "zip"
+    file_count = 0
+
+    Zip::File.open(archive_path) do |zip_file|
+      zip_file.each do |entry|
+        next if entry.directory?
+
+        file_path = File.join(temp_dir, entry.name)
+        FileUtils.mkdir_p(File.dirname(file_path))
+        entry.extract(file_path)
+
+        file_count += 1
+      end
+    end
+
+    file_count
+  end
+
+  # Ruby-based TAR extraction as fallback
+  def extract_tar_archive(archive_path, temp_dir)
+    file_count = 0
+
+    File.open(archive_path, "rb") do |tar_file|
+      while !tar_file.eof?
+        # Read TAR header (512 bytes)
+        header = tar_file.read(512)
+        break if header.nil? || header.length < 512
+
+        # Check if this is the end of the archive (all zeros)
+        break if header.unpack("C*").all?(&:zero?)
+
+        # Parse TAR header
+        filename = header[0, 100].unpack("Z*")[0]
+        size_octal = header[124, 12].unpack("Z*")[0]
+
+        next if filename.empty?
+
+        file_size = size_octal.to_i(8)
+
+        # Skip directories
+        unless filename.end_with?("/")
+          # Create directory path
+          file_path = File.join(temp_dir, filename)
+          FileUtils.mkdir_p(File.dirname(file_path))
+
+          # Read and write file content
+          if file_size > 0
+            content = tar_file.read(file_size)
+            File.open(file_path, "wb") { |f| f.write(content) }
+            file_count += 1
+          end
+
+          # Skip to next 512-byte boundary
+          remainder = file_size % 512
+          tar_file.read(512 - remainder) if remainder > 0
+        else
+          # Skip directory content (should be 0)
+          remainder = file_size % 512
+          tar_file.read(file_size + (remainder > 0 ? 512 - remainder : 0))
+        end
+      end
+    end
+
+    file_count
   end
 
   def scxrd_dataset_params
