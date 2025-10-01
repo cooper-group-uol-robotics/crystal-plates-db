@@ -135,7 +135,7 @@ class Plate < ApplicationRecord
 ### JavaScript Module System
 
 - **Importmap**: Pin dependencies in `config/importmap.rb` (no bundling required)
-- **ES6 Modules**: Use `import/export` syntax consistently  
+- **ES6 Modules**: Use `import/export` syntax consistently
 - **Module Structure**: Place modules in `app/assets/javascripts/` and pin via importmap
 
 ### Turbo Adoption Strategy
