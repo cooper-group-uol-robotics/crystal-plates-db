@@ -11,6 +11,7 @@ pin "plates_show"
 pin "cifvis.alldeps"
 pin "pxrd_chart"
 pin_all_from "app/javascript/scxrd", under: "scxrd"
+pin_all_from "app/javascript/wasm", under: "wasm"
 
 # Bootstrap and Popper.js
 pin "@popperjs/core", to: "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/esm/index.js"

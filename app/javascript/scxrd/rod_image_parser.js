@@ -48,32 +48,19 @@ class RodImageParser {
     try {
       console.log('ROD Parser: Loading WebAssembly module (global cache)...');
 
-      // Dynamically load the WebAssembly module if not already available
-      if (typeof RodDecoderModule === 'undefined') {
-        console.log('ROD Parser: Dynamically loading WebAssembly script (first time)...');
-
-        // Check if script is already loaded to avoid duplicate loading
-        const existingScript = document.querySelector('script[src="/assets/wasm/rod_decoder.js"]');
-        if (!existingScript) {
-          // Create and load the script dynamically
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = '/assets/wasm/rod_decoder.js';
-            script.onload = resolve;
-            script.onerror = () => reject(new Error('Failed to load WebAssembly script'));
-            document.head.appendChild(script);
-          });
-
-          // Wait a bit for the module to initialize
-          await new Promise(resolve => setTimeout(resolve, 100));
+      // Dynamically import the WebAssembly module
+      const { default: RodDecoderModule } = await import('wasm/rod_decoder');
+      
+      // Provide custom locateFile function to find WASM file in assets
+      const wasmModule = await RodDecoderModule({
+        locateFile: (path, prefix) => {
+          if (path.endsWith('.wasm')) {
+            return '/assets/wasm/' + path;
+          }
+          return prefix + path;
         }
-
-        if (typeof RodDecoderModule === 'undefined') {
-          throw new Error('RodDecoderModule still not available after dynamic loading');
-        }
-      }
-
-      const wasmModule = await RodDecoderModule();
+      });
+      
       console.log('ROD Parser: WebAssembly module loaded successfully (cached for future use)');
       return wasmModule;
     } catch (error) {
@@ -252,6 +239,10 @@ class RodImageParser {
   }
 }
 
-// Export to global scope
+// Export to global scope for backward compatibility
 window.RodImageParser = RodImageParser;
+
+// Export as ES6 module
+export default RodImageParser;
+
 console.log('RodImageParser: WebAssembly implementation loaded');

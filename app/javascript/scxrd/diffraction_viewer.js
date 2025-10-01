@@ -439,10 +439,10 @@ class ScxrdDiffractionViewer {
           <button id="${this.containerId}-prev" class="btn btn-outline-secondary me-1" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Previous frame" ${currentIndex <= 0 ? 'disabled' : ''}>
             <i class="bi bi-arrow-left-short" style="font-size: 16px;"></i>
           </button>
-          <button id="${this.containerId}-play" class="btn btn-outline-primary me-1" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Play/Pause sequence">
+          <button id="${this.containerId}-play" class="btn btn-outline-primary me-1" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; transition: none;" title="Play/Pause sequence">
             <i class="bi bi-play-fill" style="font-size: 16px;"></i>
           </button>          
-          <span class="mx-2 fw-medium text-nowrap" style="font-size: 0.85rem;">${imageInfo} (${currentIndex + 1}/${this.totalImagesCount})</span>
+          <span class="mx-2 text-nowrap " style="font-size: 11px;">${imageInfo} (${currentIndex + 1}/${this.totalImagesCount})</span>
           <button id="${this.containerId}-next" class="btn btn-outline-secondary ms-1" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Next frame" ${currentIndex >= this.totalImagesCount - 1 ? 'disabled' : ''}>
             <i class="bi bi-arrow-right-short" style="font-size: 16px;"></i>
           </button>
