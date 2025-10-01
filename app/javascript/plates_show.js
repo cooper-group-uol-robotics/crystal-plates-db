@@ -514,6 +514,7 @@ class WellModal {
     this.modal = document.getElementById('wellImagesModal');
     this.contentContainer = document.getElementById('wellContentForm');
     this.currentWellId = null;
+    this.contentLoaded = false;
     this.pxrdLoaded = false;
     this.scxrdLoaded = false;
     this.init();
@@ -526,13 +527,25 @@ class WellModal {
       this.handleModalShow(event);
     });
 
-    // Add tab click listeners for lazy loading
+    this.modal.addEventListener('hidden.bs.modal', () => {
+      this.handleModalHidden();
+    });
+
+    // Add tab click listeners for lazy loading (fallback if background loading fails)
+    const contentTab = document.getElementById('content-tab');
+    if (contentTab) {
+      contentTab.addEventListener('click', () => {
+        if (this.currentWellId && !this.contentLoaded) {
+          this.loadContentTab(this.currentWellId);
+        }
+      });
+    }
+
     const pxrdTab = document.getElementById('pxrd-tab');
     if (pxrdTab) {
       pxrdTab.addEventListener('click', () => {
         if (this.currentWellId && !this.pxrdLoaded) {
           this.loadPxrdTab(this.currentWellId);
-          this.pxrdLoaded = true;
         }
       });
     }
@@ -542,7 +555,6 @@ class WellModal {
       scxrdTab.addEventListener('click', () => {
         if (this.currentWellId && !this.scxrdLoaded) {
           this.loadScxrdTab(this.currentWellId);
-          this.scxrdLoaded = true;
         }
       });
     }
@@ -573,11 +585,15 @@ class WellModal {
     this.currentWellId = wellId;
     this.pxrdLoaded = false;
     this.scxrdLoaded = false;
+    this.contentLoaded = false;
 
     // Update modal title immediately
     document.getElementById('wellImagesModalLabel').textContent = `Well ${wellLabel} Details`;
 
-    // Show immediate loading states for all tabs
+    // Ensure Images tab is active when modal opens
+    this.activateImagesTab();
+
+    // Show immediate loading state for images tab only
     document.getElementById('wellImagesContent').innerHTML = `
       <div class="text-center py-3">
         <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
@@ -587,38 +603,191 @@ class WellModal {
       </div>
     `;
 
+    // Load images tab immediately (priority)
+    setTimeout(() => this.loadImagesTab(wellId), 0);
+
+    // Show ready-to-load placeholders for other tabs
     document.getElementById('wellContentForm').innerHTML = `
-      <div class="text-center py-3">
-        <div class="spinner-border spinner-border-sm text-secondary mb-2" role="status">
-          <span class="visually-hidden">Loading content...</span>
-        </div>
-        <div class="text-muted small">Loading content...</div>
+      <div class="text-center py-4 text-muted">
+        <i class="fas fa-flask fa-2x mb-2"></i>
+        <div>Stock Solutions</div>
+        <small class="text-muted">Loading in background...</small>
       </div>
     `;
 
-    // Load images tab with priority
-    setTimeout(() => this.loadImagesTab(wellId), 0);
-
-    // Load content tab with slight delay
-    setTimeout(() => this.loadContentTab(wellId), 50);
-
-    // Show placeholder in PXRD tab for lazy loading
     document.getElementById('wellPxrdContent').innerHTML = `
       <div class="text-center py-4 text-muted">
         <i class="fas fa-chart-line fa-2x mb-2"></i>
-        <div>Click to load PXRD patterns</div>
-        <small>PXRD data will be loaded when you view this tab</small>
+        <div>PXRD Patterns</div>
+        <small class="text-muted">Loading in background...</small>
       </div>
     `;
 
-    // Show placeholder in SCXRD tab for lazy loading
     document.getElementById('wellScxrdContent').innerHTML = `
       <div class="text-center py-4 text-muted">
         <i class="fas fa-cube fa-2x mb-2"></i>
-        <div>Click to load SCXRD datasets</div>
-        <small>SCXRD data will be loaded when you view this tab</small>
+        <div>SCXRD Datasets</div>
+        <small class="text-muted">Loading in background...</small>
       </div>
     `;
+
+    // Load other tabs in background with staggered delays
+    setTimeout(() => this.loadContentTabInBackground(wellId), 200);
+    setTimeout(() => this.loadPxrdTabInBackground(wellId), 400);
+    setTimeout(() => this.loadScxrdTabInBackground(wellId), 600);
+  }
+
+  handleModalHidden() {
+    // Reset tab indicators when modal is closed
+    const contentTab = document.getElementById('content-tab');
+    const pxrdTab = document.getElementById('pxrd-tab');
+    const scxrdTab = document.getElementById('scxrd-tab');
+
+    if (contentTab) contentTab.innerHTML = 'Stock Solutions';
+    if (pxrdTab) pxrdTab.innerHTML = 'PXRD';
+    if (scxrdTab) scxrdTab.innerHTML = 'SCXRD';
+
+    // Reset loaded flags for next modal opening
+    this.currentWellId = null;
+    this.contentLoaded = false;
+    this.pxrdLoaded = false;
+    this.scxrdLoaded = false;
+  }
+
+  activateImagesTab() {
+    // Ensure Images tab is active
+    const imagesTab = document.getElementById('images-tab');
+    const imagesPane = document.getElementById('images');
+    const allTabs = document.querySelectorAll('#wellTabs .nav-link');
+    const allPanes = document.querySelectorAll('#wellTabContent .tab-pane');
+
+    // Remove active class from all tabs and panes
+    allTabs.forEach(tab => {
+      tab.classList.remove('active');
+      tab.setAttribute('aria-selected', 'false');
+    });
+    allPanes.forEach(pane => {
+      pane.classList.remove('show', 'active');
+    });
+
+    // Activate images tab
+    if (imagesTab && imagesPane) {
+      imagesTab.classList.add('active');
+      imagesTab.setAttribute('aria-selected', 'true');
+      imagesPane.classList.add('show', 'active');
+    }
+  }
+
+  loadContentTabInBackground(wellId) {
+    if (this.contentLoaded) return;
+    
+    fetch(`/wells/${wellId}/content_form`)
+      .then(response => response.text())
+      .then(html => {
+        document.getElementById('wellContentForm').innerHTML = html;
+        this.contentLoaded = true;
+        
+        // Content loaded in background - no visual indicator needed
+      })
+      .catch(() => {
+        document.getElementById('wellContentForm').innerHTML = `
+          <div class="text-center py-4 text-muted">
+            <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
+            <div>Error loading stock solutions</div>
+            <button class="btn btn-link btn-sm" onclick="window.wellModal.loadContentTab('${wellId}')">
+              Try again
+            </button>
+          </div>
+        `;
+      });
+  }
+
+  loadPxrdTabInBackground(wellId) {
+    if (this.pxrdLoaded) return;
+    
+    fetch(`/wells/${wellId}/pxrd_patterns`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.text();
+      })
+      .then(html => {
+        document.getElementById('wellPxrdContent').innerHTML = html;
+        this.pxrdLoaded = true;
+        
+        // Execute any scripts that were injected
+        const scripts = document.querySelectorAll('#wellPxrdContent script');
+        scripts.forEach(script => {
+          try {
+            if (script.type === 'module') {
+              const moduleScript = document.createElement('script');
+              moduleScript.type = 'module';
+              moduleScript.textContent = script.innerHTML;
+              document.head.appendChild(moduleScript);
+              setTimeout(() => moduleScript.remove(), 100);
+            } else {
+              new Function(script.innerHTML)();
+            }
+          } catch (e) {
+            console.error('Error executing PXRD script:', e);
+          }
+        });
+        
+        // PXRD loaded in background - no visual indicator needed
+      })
+      .catch((error) => {
+        console.error('Error loading PXRD patterns:', error);
+        document.getElementById('wellPxrdContent').innerHTML = `
+          <div class="text-center py-4 text-muted">
+            <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
+            <div>Error loading PXRD patterns</div>
+            <button class="btn btn-link btn-sm" onclick="window.wellModal.loadPxrdTab('${wellId}')">
+              Try again
+            </button>
+          </div>
+        `;
+      });
+  }
+
+  loadScxrdTabInBackground(wellId) {
+    if (this.scxrdLoaded) return;
+    
+    fetch(`/wells/${wellId}/scxrd_datasets`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.text();
+      })
+      .then(html => {
+        document.getElementById('wellScxrdContent').innerHTML = html;
+        this.scxrdLoaded = true;
+        
+        // Execute any scripts that were injected
+        const scripts = document.querySelectorAll('#wellScxrdContent script');
+        scripts.forEach(script => {
+          try {
+            new Function(script.innerHTML)();
+          } catch (e) {
+            console.error('Error executing SCXRD script:', e);
+          }
+        });
+        
+        // SCXRD loaded in background - no visual indicator needed
+      })
+      .catch((error) => {
+        console.error('Error loading SCXRD datasets:', error);
+        document.getElementById('wellScxrdContent').innerHTML = `
+          <div class="text-center py-4 text-muted">
+            <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
+            <div>Error loading SCXRD datasets</div>
+            <button class="btn btn-link btn-sm" onclick="window.wellModal.loadScxrdTab('${wellId}')">
+              Try again
+            </button>
+          </div>
+        `;
+      });
   }
 
   loadImagesTab(wellId) {
@@ -699,13 +868,24 @@ class WellModal {
       })
       .then(html => {
         container.innerHTML = html;
+        this.pxrdLoaded = true;
 
         // Execute any scripts that were injected
         const scripts = container.querySelectorAll('script');
         scripts.forEach(script => {
           try {
-            // Use Function constructor instead of eval for better security
-            new Function(script.innerHTML)();
+            if (script.type === 'module') {
+              // Handle ES module scripts by creating a new script element
+              const moduleScript = document.createElement('script');
+              moduleScript.type = 'module';
+              moduleScript.textContent = script.innerHTML;
+              document.head.appendChild(moduleScript);
+              // Clean up after execution
+              setTimeout(() => moduleScript.remove(), 100);
+            } else {
+              // Use Function constructor for regular scripts
+              new Function(script.innerHTML)();
+            }
           } catch (e) {
             console.error('Error executing PXRD script:', e);
           }
@@ -750,6 +930,7 @@ class WellModal {
       .then(html => {
         console.log('SCXRD: Received HTML response:', html.substring(0, 200) + '...');
         container.innerHTML = html;
+        this.scxrdLoaded = true;
 
         // Execute any scripts that were injected
         const scripts = container.querySelectorAll('script');
@@ -780,13 +961,34 @@ class WellModal {
   }
 
   loadContentTab(wellId) {
+    const container = document.getElementById('wellContentForm');
+    
+    // Show loading indicator
+    container.innerHTML = `
+      <div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm text-secondary mb-2" role="status">
+          <span class="visually-hidden">Loading content...</span>
+        </div>
+        <div class="text-muted small">Loading content...</div>
+      </div>
+    `;
+    
     fetch(`/wells/${wellId}/content_form`)
       .then(response => response.text())
       .then(html => {
-        document.getElementById('wellContentForm').innerHTML = html;
+        container.innerHTML = html;
+        this.contentLoaded = true;
       })
       .catch(() => {
-        document.getElementById('wellContentForm').innerHTML = '<p>Error loading content form.</p>';
+        container.innerHTML = `
+          <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Unable to load content form. 
+            <button class="btn btn-link p-0 ms-2" onclick="window.wellModal.loadContentTab('${wellId}')">
+              Try again
+            </button>
+          </div>
+        `;
       });
   }
 

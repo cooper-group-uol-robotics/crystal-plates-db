@@ -1,5 +1,5 @@
 <%# app/views/pxrd_patterns/_gallery.html.erb %>
-<script>
+<script type="module">
 // Define function in global scope for PXRD pattern switching
 window.showPxrdPatternInMain = function(patternId, patternTitle, patternUrl) {
   console.log('showPxrdPatternInMain called with:', patternId, patternTitle, patternUrl);
@@ -15,7 +15,18 @@ window.showPxrdPatternInMain = function(patternId, patternTitle, patternUrl) {
       const scripts = container.querySelectorAll('script');
       scripts.forEach(script => {
         try {
-          eval(script.innerHTML);
+          if (script.type === 'module') {
+            // Handle ES module scripts by creating a new script element
+            const moduleScript = document.createElement('script');
+            moduleScript.type = 'module';
+            moduleScript.textContent = script.innerHTML;
+            document.head.appendChild(moduleScript);
+            // Clean up after execution
+            setTimeout(() => moduleScript.remove(), 100);
+          } else {
+            // Use Function constructor for regular scripts
+            new Function(script.innerHTML)();
+          }
         } catch(e) {
           console.error('Error executing plot script:', e);
         }
@@ -181,54 +192,40 @@ window.showPxrdPatternInMain = function(patternId, patternTitle, patternUrl) {
   </div>
 <% end %>
 
-<script>
-  setTimeout(function() {
-    // Initialize thumbnails with Chart.js
-    <% @well.pxrd_patterns.order(created_at: :desc).each do |pattern| %>
-      <% if pattern.pxrd_data_file.attached? %>
-        <% 
-          data = pattern.parse_diffraction_data
-          two_theta = data[:two_theta]
-          intensities = data[:intensities]
-        %>
-        <% if two_theta.any? && intensities.any? %>
-          (function() {
-            const canvas = document.getElementById('thumb-<%= pattern.id %>');
-            if (canvas && window.Chart) {
-              const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
-              new Chart(canvas.getContext('2d'), {
-                type: 'scatter',
-                data: {
-                  datasets: [{
-                    data: scatterData,
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                    showLine: true,
-                    pointRadius: 0,
-                    borderWidth: 1,
-                    fill: false
-                  }]
-                },
-                options: {
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { 
-                    legend: { display: false },
-                    tooltip: { enabled: false }
-                  },
-                  scales: {
-                    x: { display: false },
-                    y: { display: false, beginAtZero: true }
-                  },
-                  elements: { point: { radius: 0 } },
-                  animation: false
-                }
-              });
-            }
-          })();
+<script type="module">
+  setTimeout(async function() {
+    try {
+      // Import the modern PXRD chart renderer
+      const { renderPxrdChart } = await import("pxrd_chart");
+      
+      // Initialize thumbnails with modern ES6 module approach
+      <% @well.pxrd_patterns.order(created_at: :desc).each do |pattern| %>
+        <% if pattern.pxrd_data_file.attached? %>
+          <% 
+            data = pattern.parse_diffraction_data
+            two_theta = data[:two_theta]
+            intensities = data[:intensities]
+          %>
+          <% if two_theta.any? && intensities.any? %>
+            (function() {
+              const canvas = document.getElementById('thumb-<%= pattern.id %>');
+              if (canvas) {
+                const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
+                const title = '<%= j(pattern.title.presence || "Pattern ##{pattern.id}") %>';
+                const format = '<%= j data[:format] %>';
+                
+                // Render mini chart using the modern approach
+                renderPxrdChart('thumb-<%= pattern.id %>', scatterData, title, format, true);
+              }
+            })();
+          <% end %>
         <% end %>
       <% end %>
-    <% end %>
+    } catch (error) {
+      console.error('Error loading PXRD chart module:', error);
+      // Fallback to basic display if module loading fails
+      console.log('PXRD chart thumbnails could not be rendered');
+    }
     
     // Initialize thumbnail click handlers
     document.querySelectorAll('.pxrd-thumbnail').forEach(function(thumb) {

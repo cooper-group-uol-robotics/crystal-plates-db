@@ -1,10 +1,5 @@
 <%# app/views/pxrd_patterns/_plot.html.erb %>
 
-<% if local_assigns[:include_chartjs] %>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-<% end %>
-
 <% if pxrd_pattern.pxrd_data_file.attached? %>
   <% 
     # Parse diffraction data using the model method
@@ -17,68 +12,32 @@
   %>
   
   <% if parsing_success %>
-    <div class="py-4" style="position: relative; height: 400px;">
-      <canvas id="pxrd-main-plot"></canvas>
+    <%
+      canvas_id = local_assigns[:canvas_id] || 'pxrd-main-plot'
+      is_mini_chart = local_assigns[:mini_chart] || false
+      container_height = is_mini_chart ? '120px' : '400px'
+      container_classes = is_mini_chart ? '' : 'py-4'
+    %>
+    
+    <div class="<%= container_classes %>" style="position: relative; height: <%= container_height %>; width: 100%;">
+      <canvas id="<%= canvas_id %>"></canvas>
     </div>
-    <script>
-      (function() {
-        function renderPxrdChart() {
-          const ctx = document.getElementById('pxrd-main-plot');
-          if (!ctx || !window.Chart) return;
-          
-          // Destroy existing chart if it exists
-          if (window.currentPxrdChart) {
-            window.currentPxrdChart.destroy();
-          }
-          
-          const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
-          window.currentPxrdChart = new window.Chart(ctx.getContext('2d'), {
-            type: 'scatter',
-            data: {
-              datasets: [{
-                label: '<%= pxrd_pattern.title %> (<%= file_format&.upcase %>)',
-                data: scatterData,
-                borderColor: 'rgba(54, 162, 235, 1)',
-                backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                showLine: true,
-                pointRadius: 0,
-                borderWidth: 2,
-                fill: false,
-                tension: 0.1
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                title: { display: false },
-                zoom: {
-                  pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
-                  zoom: { drag: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
-                }
-              },
-              scales: {
-                x: {
-                  type: 'linear',
-                  title: { display: true, text: '2θ (degrees)' },
-                  ticks: {
-                    maxTicksLimit: 10,
-                    callback: function(value) { return parseFloat(value).toFixed(2); }
-                  }
-                },
-                y: {
-                  title: { display: true, text: 'Intensity (counts)' },
-                  beginAtZero: true
-                }
-              }
-            }
-          });
-        }
+    
+    <script type="module">
+      try {
+        const { renderPxrdChart } = await import("pxrd_chart");
         
-        // Render immediately since Chart.js should be available
-        renderPxrdChart();
-      })();
+        // Convert Ruby data to JavaScript format
+        const scatterData = <%= raw two_theta.each_with_index.map { |t, i| { x: t, y: intensities[i] } }.to_json %>;
+        const title = '<%= j pxrd_pattern.title %>';
+        const format = '<%= j file_format %>';
+        const isMini = <%= is_mini_chart %>;
+        
+        // Render the chart
+        renderPxrdChart('<%= canvas_id %>', scatterData, title, format, isMini);
+      } catch (error) {
+        console.error('Error loading or rendering PXRD chart:', error);
+      }
     </script>
   <% else %>
     <div class="alert alert-warning">
