@@ -48,17 +48,13 @@ class ScxrdReciprocalLatticeViewer {
       deltaPosition: null // Will be initialized as THREE.Vector2
     };
 
-    // Camera state for quaternion-based orbit navigation (initialized after Three.js loads)
+    // Camera state for CifVis-style navigation (initialized after Three.js loads)
     this.cameraState = {
-      quaternion: null, // Will be initialized as THREE.Quaternion for rotation
-      quaternionStart: null, // Starting quaternion for drag operations
       position: null, // Will be initialized as THREE.Vector3 for camera position
       positionStart: null, // Starting position for drag operations
       scale: 1,
       panOffset: null, // Will be initialized as THREE.Vector3
-      zoomChanged: false,
-      distance: 5, // Distance from target
-      distanceStart: 5 // Starting distance for zoom operations
+      zoomChanged: false
     };
 
     // Three.js availability check
@@ -310,7 +306,7 @@ class ScxrdReciprocalLatticeViewer {
     this.setupOrbitNavigation();
 
     // Add coordinate axes
-    this.addAxes();
+    // this.addAxes();
 
     // Create point cloud from reciprocal lattice data
     this.createPointCloud();
@@ -335,14 +331,12 @@ class ScxrdReciprocalLatticeViewer {
     this.mouseState.currentPosition = new THREE.Vector2();
     this.mouseState.deltaPosition = new THREE.Vector2();
     
-    // Initialize quaternion-based camera state
-    this.cameraState.quaternion = new THREE.Quaternion();
-    this.cameraState.quaternionStart = new THREE.Quaternion();
+    // Initialize simple camera state (CifVis approach)
     this.cameraState.position = new THREE.Vector3();
     this.cameraState.positionStart = new THREE.Vector3();
     this.cameraState.panOffset = new THREE.Vector3();
     
-    console.log('Three.js objects initialized for quaternion-based orbit navigation');
+    console.log('Three.js objects initialized for CifVis-style rotation');
   }
 
   addAxes() {
@@ -353,23 +347,11 @@ class ScxrdReciprocalLatticeViewer {
   setupOrbitNavigation() {
     const canvas = this.renderer.domElement;
     
-    // Initialize camera state with quaternion
-    if (this.cameraState.quaternion) {
-      // Initialize quaternion from current camera position
-      const direction = this.camera.position.clone().sub(this.orbitControls.target).normalize();
-      this.cameraState.distance = this.camera.position.distanceTo(this.orbitControls.target);
-      
-      // Create quaternion from look direction
-      const up = new THREE.Vector3(0, 1, 0);
-      const matrix = new THREE.Matrix4();
-      matrix.lookAt(new THREE.Vector3(0, 0, 0), direction.clone().negate(), up);
-      this.cameraState.quaternion.setFromRotationMatrix(matrix);
-    }
-
     // Mouse event handlers
     canvas.addEventListener('mousedown', (event) => this.onMouseDown(event));
     canvas.addEventListener('mousemove', (event) => this.onMouseMove(event));
     canvas.addEventListener('mouseup', (event) => this.onMouseUp(event));
+    canvas.addEventListener('mouseleave', (event) => this.onMouseUp(event)); // Treat mouse leaving canvas as mouseup
     canvas.addEventListener('wheel', (event) => this.onMouseWheel(event));
     canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 
@@ -381,7 +363,7 @@ class ScxrdReciprocalLatticeViewer {
     // Keyboard handlers for additional controls
     window.addEventListener('keydown', (event) => this.onKeyDown(event));
 
-    console.log('Orbit navigation controls initialized');
+    console.log('CifVis-style navigation controls initialized');
   }
 
   onMouseDown(event) {
@@ -409,10 +391,10 @@ class ScxrdReciprocalLatticeViewer {
     switch (this.mouseState.button) {
       case 0: // Left mouse button - rotate
         if (this.orbitControls.enableRotate) {
-          this.rotateCamera(
-            2 * Math.PI * this.mouseState.deltaPosition.x / rect.width * this.orbitControls.rotateSpeed,
-            2 * Math.PI * this.mouseState.deltaPosition.y / rect.height * this.orbitControls.rotateSpeed
-          );
+          // Convert to normalized device coordinates like CifVis
+          const deltaX = this.mouseState.deltaPosition.x / rect.width * 2;
+          const deltaY = this.mouseState.deltaPosition.y / rect.height * 2;
+          this.rotateStructure(deltaX, deltaY);
         }
         break;
       
@@ -493,10 +475,10 @@ class ScxrdReciprocalLatticeViewer {
         const touchElement = this.renderer.domElement;
         const touchRect = touchElement.getBoundingClientRect();
         
-        this.rotateCamera(
-          2 * Math.PI * this.mouseState.deltaPosition.x / touchRect.width * this.orbitControls.rotateSpeed,
-          2 * Math.PI * this.mouseState.deltaPosition.y / touchRect.height * this.orbitControls.rotateSpeed
-        );
+        // Convert to normalized device coordinates like CifVis
+        const deltaX = this.mouseState.deltaPosition.x / touchRect.width * 2;
+        const deltaY = this.mouseState.deltaPosition.y / touchRect.height * 2;
+        this.rotateStructure(deltaX, deltaY);
         
         this.mouseState.startPosition.copy(this.mouseState.currentPosition);
         break;
@@ -555,38 +537,24 @@ class ScxrdReciprocalLatticeViewer {
     }
   }
 
-  rotateCamera(deltaX, deltaY) {
-    if (!this.cameraState.quaternion) return;
+  rotateStructure(deltaX, deltaY) {
+    if (!this.points) return;
 
-    // Trackball-style rotation for intuitive movement
-    // Get current camera position relative to target
-    const position = new THREE.Vector3(0, 0, this.cameraState.distance);
-    position.applyQuaternion(this.cameraState.quaternion);
-    
-    // Calculate screen-aligned axes for rotation
-    const up = new THREE.Vector3(0, 1, 0);
-    const right = new THREE.Vector3().crossVectors(up, position).normalize();
-    const screenUp = new THREE.Vector3().crossVectors(position, right).normalize();
-    
-    // Create rotation quaternions based on screen-aligned axes
-    const horizontalRotation = new THREE.Quaternion().setFromAxisAngle(
-      screenUp, 
-      deltaX * this.orbitControls.rotateSpeed
-    );
-    
-    const verticalRotation = new THREE.Quaternion().setFromAxisAngle(
-      right, 
-      deltaY * this.orbitControls.rotateSpeed
-    );
+    // Use CifVis approach: rotate the object, not the camera
+    const rotationSpeed = this.orbitControls.rotateSpeed;
+    const xAxis = new THREE.Vector3(-1, 0, 0);
+    const yAxis = new THREE.Vector3(0, 1, 0);
 
-    // Combine rotations - apply in order for natural feel
-    const combinedRotation = new THREE.Quaternion()
-      .multiplyQuaternions(verticalRotation, horizontalRotation);
-    
-    // Apply the combined rotation to the camera quaternion
-    this.cameraState.quaternion.multiplyQuaternions(combinedRotation, this.cameraState.quaternion);
-    this.cameraState.quaternion.normalize();
+    // Apply rotations to the point cloud using makeRotationAxis
+    this.points.applyMatrix4(
+      new THREE.Matrix4().makeRotationAxis(yAxis, deltaX * rotationSpeed)
+    );
+    this.points.applyMatrix4(
+      new THREE.Matrix4().makeRotationAxis(xAxis, -deltaY * rotationSpeed)
+    );
   }
+
+
 
   zoomCamera(zoomDelta) {
     if (this.camera.isPerspectiveCamera) {
@@ -653,28 +621,24 @@ class ScxrdReciprocalLatticeViewer {
       const centerY = this.statistics.y.mean * 0.1;
       const centerZ = this.statistics.z.mean * 0.1;
       this.orbitControls.target.set(centerX, centerY, centerZ);
+      
+      // Reset camera to look directly down Z axis
+      this.camera.position.set(centerX, centerY, centerZ + 10);
     } else {
       this.orbitControls.target.set(0, 0, 0);
+      
+      // Reset camera to look directly down Z axis
+      this.camera.position.set(0, 0, 10);
     }
     
     // Reset camera state
     this.cameraState.panOffset.set(0, 0, 0);
     this.cameraState.scale = 1;
-    this.cameraState.distance = 5;
     
-    // Reset quaternion to default viewing angle
-    if (this.cameraState.quaternion) {
-      const lookDirection = new THREE.Vector3(1, 1, 1).normalize();
-      const up = new THREE.Vector3(0, 1, 0);
-      
-      const matrix = new THREE.Matrix4();
-      matrix.lookAt(
-        new THREE.Vector3(0, 0, 0),
-        lookDirection.clone().negate(),
-        up
-      );
-      
-      this.cameraState.quaternion.setFromRotationMatrix(matrix);
+    // Reset structure rotation to identity (CifVis approach)
+    if (this.points) {
+      this.points.matrix.identity();
+      this.points.matrixAutoUpdate = false;
     }
     
     if (this.camera.isOrthographicCamera) {
@@ -682,71 +646,37 @@ class ScxrdReciprocalLatticeViewer {
       this.camera.updateProjectionMatrix();
     }
     
-    console.log('View reset - Target:', this.orbitControls.target, 'Distance:', this.cameraState.distance);
+    this.camera.lookAt(this.orbitControls.target);
+    
+    console.log('View reset - Target:', this.orbitControls.target);
   }
 
   updateOrbitNavigation() {
-    // Skip update if objects aren't initialized yet
-    if (!this.cameraState.quaternion || !this.orbitControls.target) {
-      return;
-    }
-
-    // Apply distance constraints
-    this.cameraState.distance = Math.max(this.orbitControls.minDistance, 
-                                        Math.min(this.orbitControls.maxDistance, this.cameraState.distance));
-
-    // Calculate camera position using quaternion rotation
-    const offset = new THREE.Vector3(0, 0, this.cameraState.distance);
-    offset.applyQuaternion(this.cameraState.quaternion);
+    // CifVis approach: Keep camera fixed, rotate the structure
+    // Camera simply looks at the target
+    this.camera.lookAt(this.orbitControls.target);
     
-    // Update camera position
-    this.camera.position.copy(this.orbitControls.target).add(offset);
-    
-    // Apply panning
+    // Apply panning by moving the target
     if (this.cameraState.panOffset.length() > 0) {
       this.orbitControls.target.add(this.cameraState.panOffset);
-      this.camera.position.add(this.cameraState.panOffset);
+      this.camera.lookAt(this.orbitControls.target);
     }
-    
-    // Pure quaternion-based camera orientation (no lookAt singularities)
-    // Create a rotation matrix from the quaternion and apply it directly to the camera
-    const rotationMatrix = new THREE.Matrix4().makeRotationFromQuaternion(this.cameraState.quaternion);
-    
-    // Extract the forward, up, and right vectors from the rotation matrix
-    const forward = new THREE.Vector3(0, 0, -1).applyMatrix4(rotationMatrix); // -Z is forward in Three.js
-    const up = new THREE.Vector3(0, 1, 0).applyMatrix4(rotationMatrix);
-    const right = new THREE.Vector3(1, 0, 0).applyMatrix4(rotationMatrix);
-    
-    // Set camera orientation directly using the matrix
-    this.camera.matrix.makeBasis(right, up, forward.negate());
-    this.camera.matrix.setPosition(this.camera.position);
-    
-    // Update camera's matrix world and extract the quaternion
-    this.camera.matrixAutoUpdate = false;
-    this.camera.matrixWorldNeedsUpdate = true;
     
     // Apply damping
     if (this.orbitControls.enableDamping) {
       // Apply damping to pan offset
       this.cameraState.panOffset.multiplyScalar(1 - this.orbitControls.dampingFactor);
-      
-      // Apply damping to scale
-      if (this.camera.isPerspectiveCamera) {
-        this.cameraState.scale = 1 + (this.cameraState.scale - 1) * (1 - this.orbitControls.dampingFactor);
-      }
     } else {
       this.cameraState.panOffset.set(0, 0, 0);
-      this.cameraState.scale = 1;
     }
     
-    // Auto-rotate feature
-    if (this.orbitControls.autoRotate && this.mouseState.button === -1) {
+    // Auto-rotate feature - rotate the structure
+    if (this.orbitControls.autoRotate && this.mouseState.button === -1 && this.points) {
       const autoRotationSpeed = 2 * Math.PI / 60 / 60 * this.orbitControls.autoRotateSpeed;
-      const autoRotationQuaternion = new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 1, 0), 
-        autoRotationSpeed
+      const yAxis = new THREE.Vector3(0, 1, 0);
+      this.points.applyMatrix4(
+        new THREE.Matrix4().makeRotationAxis(yAxis, autoRotationSpeed)
       );
-      this.cameraState.quaternion.premultiply(autoRotationQuaternion);
     }
   }
 
@@ -805,7 +735,7 @@ class ScxrdReciprocalLatticeViewer {
   }
 
   positionCamera() {
-    // Position camera for good view of the data
+    // Position camera looking directly down the world Z axis
     if (this.statistics.x && this.statistics.y && this.statistics.z) {
       const centerX = this.statistics.x.mean * 0.1;
       const centerY = this.statistics.y.mean * 0.1;
@@ -814,22 +744,16 @@ class ScxrdReciprocalLatticeViewer {
       // Set orbit target to data center
       this.orbitControls.target.set(centerX, centerY, centerZ);
       
-      // Position camera at a good viewing angle
-      this.camera.position.set(centerX + 3, centerY + 3, centerZ + 3);
+      // Position camera directly above the target, looking down Z axis
+      this.camera.position.set(centerX, centerY, centerZ + 10);
       this.camera.lookAt(this.orbitControls.target);
-      
-      // Set initial distance from target
-      this.cameraState.distance = this.camera.position.distanceTo(this.orbitControls.target);
       
       console.log('Camera positioned at:', this.camera.position, 'looking at:', this.orbitControls.target);
     } else {
-      // Default positioning
+      // Default positioning - looking down Z axis
       this.orbitControls.target.set(0, 0, 0);
-      this.camera.position.set(3, 3, 3);
+      this.camera.position.set(0, 0, 10);
       this.camera.lookAt(this.orbitControls.target);
-      
-      // Set initial distance from target
-      this.cameraState.distance = this.camera.position.distanceTo(this.orbitControls.target);
       
       console.log('Default camera positioning at:', this.camera.position, 'looking at:', this.orbitControls.target);
     }
@@ -1003,17 +927,13 @@ class ScxrdReciprocalLatticeViewer {
       cancelAnimationFrame(this.animationId);
     }
 
-    // Restore camera automatic matrix updates
-    if (this.camera) {
-      this.camera.matrixAutoUpdate = true;
-    }
-
     // Remove event listeners
     if (this.renderer && this.renderer.domElement) {
       const canvas = this.renderer.domElement;
       canvas.removeEventListener('mousedown', this.onMouseDown);
       canvas.removeEventListener('mousemove', this.onMouseMove);
       canvas.removeEventListener('mouseup', this.onMouseUp);
+      canvas.removeEventListener('mouseleave', this.onMouseUp);
       canvas.removeEventListener('wheel', this.onMouseWheel);
       canvas.removeEventListener('contextmenu', (event) => event.preventDefault());
       canvas.removeEventListener('touchstart', this.onTouchStart);
