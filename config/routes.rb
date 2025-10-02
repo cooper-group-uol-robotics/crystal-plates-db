@@ -3,6 +3,7 @@ Rails.application.routes.draw do
   get "/settings", to: "settings#index"
   patch "/settings", to: "settings#update"
   post "/settings/test_connection", to: "settings#test_connection"
+  post "/settings/test_conventional_cell_api", to: "settings#test_conventional_cell_api"
 
   resources :stock_solutions do
     collection do

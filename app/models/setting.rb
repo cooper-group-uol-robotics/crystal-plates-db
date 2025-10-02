@@ -28,6 +28,19 @@ class Setting < ApplicationRecord
     def auto_segment_point_type
       get("auto_segment_point_type", "other")
     end
+
+    # Unit cell conversion API settings
+    def conventional_cell_api_endpoint
+      get("conventional_cell_api_endpoint", "http://localhost:3001/api/v1/lepage")
+    end
+
+    def conventional_cell_api_timeout
+      get("conventional_cell_api_timeout", "5").to_i
+    end
+
+    def conventional_cell_max_delta
+      get("conventional_cell_max_delta", "1.0").to_f
+    end
   end
 
   # Initialize default settings
@@ -47,6 +60,21 @@ class Setting < ApplicationRecord
         key: "auto_segment_point_type",
         value: "other",
         description: "Default point type for auto-segmented points (crystal, particle, droplet, other)"
+      },
+      {
+        key: "conventional_cell_api_endpoint",
+        value: "http://localhost:3001/api/v1/lepage",
+        description: "URL endpoint for the unit cell conversion API"
+      },
+      {
+        key: "conventional_cell_api_timeout",
+        value: "5",
+        description: "Timeout in seconds for unit cell conversion API requests"
+      },
+      {
+        key: "conventional_cell_max_delta",
+        value: "1.0",
+        description: "Maximum delta parameter for unit cell conversion tolerance"
       }
     ].each do |setting_data|
       setting = find_or_initialize_by(key: setting_data[:key])

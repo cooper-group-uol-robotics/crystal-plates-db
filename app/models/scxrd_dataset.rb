@@ -8,7 +8,7 @@ class ScxrdDataset < ApplicationRecord
 
 
   validates :experiment_name, :measured_at, presence: true
-  validates :niggli_a, :niggli_b, :niggli_c, :niggli_alpha, :niggli_beta, :niggli_gamma, numericality: { greater_than: 0 }, allow_nil: true
+  validates :primitive_a, :primitive_b, :primitive_c, :primitive_alpha, :primitive_beta, :primitive_gamma, numericality: { greater_than: 0 }, allow_nil: true
   validates :real_world_x_mm, :real_world_y_mm, :real_world_z_mm, numericality: true, allow_nil: true
 
   # Scopes
@@ -251,5 +251,49 @@ class ScxrdDataset < ApplicationRecord
     return false unless has_peak_table?
     parsed_data = parsed_peak_table_data
     parsed_data[:success] && !parsed_data[:data_points].empty?
+  end
+
+  # Unit cell conversion methods
+  def has_primitive_cell?
+    primitive_a.present? && primitive_b.present? && primitive_c.present? &&
+    primitive_alpha.present? && primitive_beta.present? && primitive_gamma.present?
+  end
+
+  def conventional_cells
+    return [] unless has_primitive_cell?
+
+    @conventional_cells ||= ConventionalCellService.convert_to_conventional(
+      primitive_a, primitive_b, primitive_c,
+      primitive_alpha, primitive_beta, primitive_gamma
+    ) || []
+  end
+
+  def best_conventional_cell
+    return nil unless has_primitive_cell?
+
+    @best_conventional_cell ||= ConventionalCellService.best_conventional_cell(
+      primitive_a, primitive_b, primitive_c,
+      primitive_alpha, primitive_beta, primitive_gamma
+    )
+  end
+
+  # Get conventional cell for display (falls back to primitive if conversion fails)
+  def display_cell
+    conventional = best_conventional_cell
+    return conventional if conventional
+
+    # Fallback to primitive cell
+    return nil unless has_primitive_cell?
+
+    {
+      bravais: "aP",  # Primitive triclinic as fallback
+      a: primitive_a,
+      b: primitive_b,
+      c: primitive_c,
+      alpha: primitive_alpha,
+      beta: primitive_beta,
+      gamma: primitive_gamma,
+      distance: 0
+    }
   end
 end

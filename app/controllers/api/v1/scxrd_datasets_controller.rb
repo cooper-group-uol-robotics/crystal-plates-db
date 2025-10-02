@@ -161,7 +161,7 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       datasets = datasets.where("measured_at <= ?", Date.parse(params[:date_to]))
     end
 
-    # Note: Lattice centering filtering removed as Niggli reduced cells are always primitive
+    # Note: Lattice centering filtering removed as primitive cells are always primitive
 
     # Filter by coordinate proximity
     if params[:near_x].present? && params[:near_y].present?
@@ -178,8 +178,8 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       cell_params = params[:unit_cell]
       tolerance_percent = params[:cell_tolerance_percent]&.to_f || 5.0
 
-      %w[niggli_a niggli_b niggli_c niggli_alpha niggli_beta niggli_gamma].each do |param|
-        old_param = param.sub("niggli_", "")
+      %w[primitive_a primitive_b primitive_c primitive_alpha primitive_beta primitive_gamma].each do |param|
+        old_param = param.sub("primitive_", "")
         if cell_params[old_param].present?
           value = cell_params[old_param].to_f
           tolerance_abs = value * (tolerance_percent / 100.0)
@@ -260,7 +260,7 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
     params.require(:scxrd_dataset).permit(
       :experiment_name, :measured_at,
       :real_world_x_mm, :real_world_y_mm, :real_world_z_mm,
-      :niggli_a, :niggli_b, :niggli_c, :niggli_alpha, :niggli_beta, :niggli_gamma
+      :primitive_a, :primitive_b, :primitive_c, :primitive_alpha, :primitive_beta, :primitive_gamma
     )
   end
 
@@ -270,19 +270,29 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       experiment_name: dataset.experiment_name,
       measured_at: dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
 
-      lattice_centring: "primitive",  # Niggli reduced cells are always primitive
+      lattice_centring: dataset.display_cell&.dig(:bravais) || "primitive",
       real_world_coordinates: (dataset.real_world_x_mm || dataset.real_world_y_mm || dataset.real_world_z_mm) ? {
         x_mm: dataset.real_world_x_mm,
         y_mm: dataset.real_world_y_mm,
         z_mm: dataset.real_world_z_mm
       } : nil,
-      unit_cell: dataset.niggli_a.present? ? {
-        a: number_with_precision(dataset.niggli_a, precision: 3),
-        b: number_with_precision(dataset.niggli_b, precision: 3),
-        c: number_with_precision(dataset.niggli_c, precision: 3),
-        alpha: number_with_precision(dataset.niggli_alpha, precision: 1),
-        beta: number_with_precision(dataset.niggli_beta, precision: 1),
-        gamma: number_with_precision(dataset.niggli_gamma, precision: 1)
+      primitive_unit_cell: dataset.has_primitive_cell? ? {
+        a: number_with_precision(dataset.primitive_a, precision: 3),
+        b: number_with_precision(dataset.primitive_b, precision: 3),
+        c: number_with_precision(dataset.primitive_c, precision: 3),
+        alpha: number_with_precision(dataset.primitive_alpha, precision: 1),
+        beta: number_with_precision(dataset.primitive_beta, precision: 1),
+        gamma: number_with_precision(dataset.primitive_gamma, precision: 1)
+      } : nil,
+      unit_cell: dataset.display_cell ? {
+        a: number_with_precision(dataset.display_cell[:a], precision: 3),
+        b: number_with_precision(dataset.display_cell[:b], precision: 3),
+        c: number_with_precision(dataset.display_cell[:c], precision: 3),
+        alpha: number_with_precision(dataset.display_cell[:alpha], precision: 1),
+        beta: number_with_precision(dataset.display_cell[:beta], precision: 1),
+        gamma: number_with_precision(dataset.display_cell[:gamma], precision: 1),
+        bravais: dataset.display_cell[:bravais],
+        conversion_distance: dataset.display_cell[:distance]
       } : nil,
       has_archive: dataset.archive.attached?,
       has_peak_table: dataset.has_peak_table?,
@@ -408,14 +418,14 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
             par_data = result[:par_data]
             Rails.logger.info "API SCXRD: Found .par data: #{par_data.inspect}"
 
-            @scxrd_dataset.niggli_a = par_data[:a] if par_data[:a]
-            @scxrd_dataset.niggli_b = par_data[:b] if par_data[:b]
-            @scxrd_dataset.niggli_c = par_data[:c] if par_data[:c]
-            @scxrd_dataset.niggli_alpha = par_data[:alpha] if par_data[:alpha]
-            @scxrd_dataset.niggli_beta = par_data[:beta] if par_data[:beta]
-            @scxrd_dataset.niggli_gamma = par_data[:gamma] if par_data[:gamma]
+            @scxrd_dataset.primitive_a = par_data[:a] if par_data[:a]
+            @scxrd_dataset.primitive_b = par_data[:b] if par_data[:b]
+            @scxrd_dataset.primitive_c = par_data[:c] if par_data[:c]
+            @scxrd_dataset.primitive_alpha = par_data[:alpha] if par_data[:alpha]
+            @scxrd_dataset.primitive_beta = par_data[:beta] if par_data[:beta]
+            @scxrd_dataset.primitive_gamma = par_data[:gamma] if par_data[:gamma]
 
-            Rails.logger.info "API SCXRD: Niggli unit cell parameters stored from .par file: a=#{@scxrd_dataset.niggli_a}, b=#{@scxrd_dataset.niggli_b}, c=#{@scxrd_dataset.niggli_c}, α=#{@scxrd_dataset.niggli_alpha}, β=#{@scxrd_dataset.niggli_beta}, γ=#{@scxrd_dataset.niggli_gamma}"
+            Rails.logger.info "API SCXRD: Primitive unit cell parameters stored from .par file: a=#{@scxrd_dataset.primitive_a}, b=#{@scxrd_dataset.primitive_b}, c=#{@scxrd_dataset.primitive_c}, α=#{@scxrd_dataset.primitive_alpha}, β=#{@scxrd_dataset.primitive_beta}, γ=#{@scxrd_dataset.primitive_gamma}"
 
             # Store measurement time from datacoll.ini if available (takes precedence over default)
             if par_data[:measured_at]

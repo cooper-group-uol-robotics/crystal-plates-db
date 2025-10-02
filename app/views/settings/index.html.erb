@@ -84,6 +84,79 @@
               </div>
             </div>
 
+                        <!-- Unit Cell Conversion API Settings -->
+            <h4 class="mt-4 mb-3">
+              <i class="bi bi-diagram-3"></i> Unit Cell Conversion
+            </h4>
+            
+            
+
+            <div id="conventional-cell-api-settings" 
+                 style="<%= 'display: none;' if @settings['conventional_cell_api_enabled']&.value != 'true' %>">
+            
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <label for="conventional_cell_api_endpoint" class="form-label">
+                    API Endpoint
+                    <small class="text-muted">*</small>
+                  </label>
+                  <div class="input-group">
+                    <%= form.url_field "settings[conventional_cell_api_endpoint]", 
+                        value: @settings['conventional_cell_api_endpoint']&.value,
+                        class: "form-control",
+                        id: "conventional_cell_api_endpoint",
+                        placeholder: "http://localhost:8000/api/v1/lepage",
+                        required: true %>
+                    <button type="button" id="test-conventional-cell-connection" class="btn btn-outline-secondary">
+                      <i class="bi bi-wifi"></i> Test Connection
+                    </button>
+                  </div>
+                  <div class="form-text">
+                    <%= @settings['conventional_cell_api_endpoint']&.description %>
+                  </div>
+                  <div id="conventional-cell-connection-status" class="mt-2"></div>
+                </div>
+              </div>
+
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="conventional_cell_api_timeout" class="form-label">
+                    Request Timeout (seconds)
+                    <small class="text-muted">*</small>
+                  </label>
+                  <%= form.number_field "settings[conventional_cell_api_timeout]", 
+                      value: @settings['conventional_cell_api_timeout']&.value,
+                      class: "form-control",
+                      id: "conventional_cell_api_timeout",
+                      min: 1,
+                      max: 60,
+                      step: 1,
+                      required: true %>
+                  <div class="form-text">
+                    <%= @settings['conventional_cell_api_timeout']&.description %>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <label for="conventional_cell_max_delta" class="form-label">
+                    Conversion Tolerance (Max Delta)
+                    <small class="text-muted">*</small>
+                  </label>
+                  <%= form.number_field "settings[conventional_cell_max_delta]", 
+                      value: @settings['conventional_cell_max_delta']&.value,
+                      class: "form-control",
+                      id: "conventional_cell_max_delta",
+                      min: 0.1,
+                      max: 5.0,
+                      step: 0.1,
+                      required: true %>
+                  <div class="form-text">
+                    <%= @settings['conventional_cell_max_delta']&.description %>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Action Buttons -->
             <div class="row mt-4">
               <div class="col-12">
@@ -124,6 +197,13 @@
           <p class="small text-muted">
             If running in Docker/containers, you may need to use internal IP addresses 
             instead of external hostnames to avoid NAT routing issues.
+          </p>
+
+          <h6>Unit Cell Conversion</h6>
+          <p class="small text-muted">
+            The unit cell conversion API converts primitive unit cells to conventional unit cells using 
+            crystallographic symmetry analysis. This provides better visualization of 
+            crystal structures by showing the most symmetric representation.
           </p>
 
           <h6>Testing Connection</h6>
@@ -195,12 +275,76 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>`;
   }
 
+
+
+  // Unit cell conversion API test connection button
+  const testConventionalCellButton = document.getElementById('test-conventional-cell-connection');
+  const conventionalCellEndpointInput = document.getElementById('conventional_cell_api_endpoint');
+  const conventionalCellTimeoutInput = document.getElementById('conventional_cell_api_timeout');
+  const conventionalCellStatusDiv = document.getElementById('conventional-cell-connection-status');
+
+  if (testConventionalCellButton) {
+    testConventionalCellButton.addEventListener('click', function() {
+      const endpoint = conventionalCellEndpointInput.value;
+      const timeout = conventionalCellTimeoutInput.value;
+
+      if (!endpoint) {
+        showConventionalCellStatus('Please enter an endpoint URL first', 'danger');
+        return;
+      }
+
+      // Show loading state
+      testConventionalCellButton.disabled = true;
+      testConventionalCellButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Testing...';
+      conventionalCellStatusDiv.innerHTML = '<div class="alert alert-info">Testing connection...</div>';
+
+      // Make test request
+      fetch('/settings/test_conventional_cell_api', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+          endpoint: endpoint,
+          timeout: parseInt(timeout) || 5
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showConventionalCellStatus(data.message, 'success');
+        } else {
+          showConventionalCellStatus(data.message, 'danger');
+        }
+      })
+      .catch(error => {
+        showConventionalCellStatus('Test request failed: ' + error.message, 'danger');
+      })
+      .finally(() => {
+        // Restore button state
+        testConventionalCellButton.disabled = false;
+        testConventionalCellButton.innerHTML = '<i class="bi bi-wifi"></i> Test Connection';
+      });
+    });
+  }
+
+  function showConventionalCellStatus(message, type) {
+    conventionalCellStatusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+  }
+
   // Reset defaults functionality
   document.getElementById('reset-defaults').addEventListener('click', function() {
     if (confirm('Are you sure you want to reset all settings to their default values?')) {
       document.getElementById('segmentation_api_endpoint').value = 'http://aicdocker.liv.ac.uk:8000/segment/opencv';
       document.getElementById('segmentation_api_timeout').value = '30';
       document.getElementById('auto_segment_point_type').value = 'other';
+      document.getElementById('conventional_cell_api_endpoint').value = 'http://localhost:8000/api/v1/lepage';
+      document.getElementById('conventional_cell_api_timeout').value = '5';
+      document.getElementById('conventional_cell_max_delta').value = '1.0';
     }
   });
 });

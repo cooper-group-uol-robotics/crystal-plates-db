@@ -146,14 +146,9 @@
                     <strong>Type:</strong> <span class="badge bg-secondary">Standalone</span> | 
                   <% end %>
                   <strong>Measured:</strong> <%= (dataset.measured_at || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
-                  <% if dataset.niggli_a.present? %>
-                    | <strong>Reduced (Niggli) Cell:</strong> 
-                        a=<%= number_with_precision(dataset.niggli_a, precision: 3) %>Å 
-                        b=<%= number_with_precision(dataset.niggli_b, precision: 3) %>Å 
-                        c=<%= number_with_precision(dataset.niggli_c, precision: 3) %>Å
-                        α=<%= number_with_precision(dataset.niggli_alpha, precision: 2) %>°
-                        β=<%= number_with_precision(dataset.niggli_beta, precision: 2) %>°
-                        γ=<%= number_with_precision(dataset.niggli_gamma, precision: 2) %>°
+                  <% if dataset.has_primitive_cell? %>
+                    | <strong>Unit Cell:</strong> 
+                    <%= format_unit_cell(dataset) %>
                   <% end %>
                 </div>
               </div>

@@ -74,7 +74,7 @@ class ScxrdDatasetsController < ApplicationController
           id: @scxrd_dataset.id,
           experiment_name: @scxrd_dataset.experiment_name,
           measured_at: @scxrd_dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
-          lattice_centring: "primitive",  # Niggli reduced cells are always primitive
+          lattice_centring: "primitive",  # Primitive cells are always primitive
           has_peak_table: @scxrd_dataset.has_peak_table?,
 
           has_diffraction_images: @scxrd_dataset.has_diffraction_images?,
@@ -83,13 +83,13 @@ class ScxrdDatasetsController < ApplicationController
           has_crystal_image: @scxrd_dataset.has_crystal_image?,
           peak_table_size: @scxrd_dataset.has_peak_table? ? number_to_human_size(@scxrd_dataset.peak_table_size) : nil,
 
-          niggli_unit_cell: @scxrd_dataset.niggli_a.present? ? {
-            a: number_with_precision(@scxrd_dataset.niggli_a, precision: 3),
-            b: number_with_precision(@scxrd_dataset.niggli_b, precision: 3),
-            c: number_with_precision(@scxrd_dataset.niggli_c, precision: 3),
-            alpha: number_with_precision(@scxrd_dataset.niggli_alpha, precision: 1),
-            beta: number_with_precision(@scxrd_dataset.niggli_beta, precision: 1),
-            gamma: number_with_precision(@scxrd_dataset.niggli_gamma, precision: 1)
+          primitive_unit_cell: @scxrd_dataset.primitive_a.present? ? {
+            a: number_with_precision(@scxrd_dataset.primitive_a, precision: 3),
+            b: number_with_precision(@scxrd_dataset.primitive_b, precision: 3),
+            c: number_with_precision(@scxrd_dataset.primitive_c, precision: 3),
+            alpha: number_with_precision(@scxrd_dataset.primitive_alpha, precision: 1),
+            beta: number_with_precision(@scxrd_dataset.primitive_beta, precision: 1),
+            gamma: number_with_precision(@scxrd_dataset.primitive_gamma, precision: 1)
           } : nil,
           real_world_coordinates: (@scxrd_dataset.real_world_x_mm || @scxrd_dataset.real_world_y_mm || @scxrd_dataset.real_world_z_mm) ? {
             x_mm: @scxrd_dataset.real_world_x_mm,
@@ -107,7 +107,7 @@ class ScxrdDatasetsController < ApplicationController
     else
       @scxrd_dataset = ScxrdDataset.new
     end
-    # Note: Lattice centrings removed - Niggli reduced cells are always primitive
+    # Note: Lattice centrings removed - primitive cells are always primitive
   end
 
   def create
@@ -149,13 +149,13 @@ class ScxrdDatasetsController < ApplicationController
       end
     else
       Rails.logger.error "SCXRD: Failed to save dataset. Errors: #{@scxrd_dataset.errors.full_messages.join(', ')}"
-      # Note: Lattice centrings removed - Niggli reduced cells are always primitive
+      # Note: Lattice centrings removed - primitive cells are always primitive
       render :new
     end
   end
 
   def edit
-    # Note: Lattice centrings removed - Niggli reduced cells are always primitive
+    # Note: Lattice centrings removed - primitive cells are always primitive
   end
 
   def update
@@ -168,7 +168,7 @@ class ScxrdDatasetsController < ApplicationController
       redirect_path = @well ? [ @well, @scxrd_dataset ] : @scxrd_dataset
       redirect_to redirect_path, notice: "SCXRD dataset was successfully updated."
     else
-      # Note: Lattice centrings removed - Niggli reduced cells are always primitive
+      # Note: Lattice centrings removed - primitive cells are always primitive
       render :edit
     end
   end
@@ -433,14 +433,14 @@ class ScxrdDatasetsController < ApplicationController
             par_data = result[:par_data]
             Rails.logger.info "SCXRD: Found .par data: #{par_data.inspect}"
 
-            @scxrd_dataset.niggli_a = par_data[:a] if par_data[:a]
-            @scxrd_dataset.niggli_b = par_data[:b] if par_data[:b]
-            @scxrd_dataset.niggli_c = par_data[:c] if par_data[:c]
-            @scxrd_dataset.niggli_alpha = par_data[:alpha] if par_data[:alpha]
-            @scxrd_dataset.niggli_beta = par_data[:beta] if par_data[:beta]
-            @scxrd_dataset.niggli_gamma = par_data[:gamma] if par_data[:gamma]
+            @scxrd_dataset.primitive_a = par_data[:a] if par_data[:a]
+            @scxrd_dataset.primitive_b = par_data[:b] if par_data[:b]
+            @scxrd_dataset.primitive_c = par_data[:c] if par_data[:c]
+            @scxrd_dataset.primitive_alpha = par_data[:alpha] if par_data[:alpha]
+            @scxrd_dataset.primitive_beta = par_data[:beta] if par_data[:beta]
+            @scxrd_dataset.primitive_gamma = par_data[:gamma] if par_data[:gamma]
 
-            Rails.logger.info "SCXRD: Niggli unit cell parameters stored from .par file: a=#{@scxrd_dataset.niggli_a}, b=#{@scxrd_dataset.niggli_b}, c=#{@scxrd_dataset.niggli_c}, α=#{@scxrd_dataset.niggli_alpha}, β=#{@scxrd_dataset.niggli_beta}, γ=#{@scxrd_dataset.niggli_gamma}"
+            Rails.logger.info "SCXRD: Primitive unit cell parameters stored from .par file: a=#{@scxrd_dataset.primitive_a}, b=#{@scxrd_dataset.primitive_b}, c=#{@scxrd_dataset.primitive_c}, α=#{@scxrd_dataset.primitive_alpha}, β=#{@scxrd_dataset.primitive_beta}, γ=#{@scxrd_dataset.primitive_gamma}"
 
             # Store real world coordinates if parsed from cmdscript.mac, but only if not already provided by user
             parsed_coords_used = false

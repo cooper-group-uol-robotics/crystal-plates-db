@@ -931,12 +931,12 @@ Create a new SCXRD dataset with manual unit cell parameters.
     "real_world_x_mm": 1.234,
     "real_world_y_mm": 5.678,
     "real_world_z_mm": 2.100,
-    "niggli_a": 15.457,
-    "niggli_b": 15.638,
-    "niggli_c": 18.121,
-    "niggli_alpha": 89.9,
-    "niggli_beta": 90.0,
-    "niggli_gamma": 89.9
+    "primitive_a": 15.457,
+    "primitive_b": 15.638,
+    "primitive_c": 18.121,
+    "primitive_alpha": 89.9,
+    "primitive_beta": 90.0,
+    "primitive_gamma": 89.9
   }
 }
 ```

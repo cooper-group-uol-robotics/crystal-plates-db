@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_23_143312) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_02_200646) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -177,12 +177,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_143312) do
   create_table "scxrd_datasets", force: :cascade do |t|
     t.integer "well_id"
     t.string "experiment_name", null: false
-    t.float "niggli_a"
-    t.float "niggli_b"
-    t.float "niggli_c"
-    t.float "niggli_alpha"
-    t.float "niggli_beta"
-    t.float "niggli_gamma"
+    t.float "primitive_a"
+    t.float "primitive_b"
+    t.float "primitive_c"
+    t.float "primitive_alpha"
+    t.float "primitive_beta"
+    t.float "primitive_gamma"
     t.datetime "measured_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false

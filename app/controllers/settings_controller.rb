@@ -29,6 +29,16 @@ class SettingsController < ApplicationController
     end
   end
 
+  def test_conventional_cell_api
+    if ConventionalCellService.api_available?
+      render json: { success: true, message: "Unit cell conversion API is available" }
+    else
+      render json: { success: false, message: "Unit cell conversion API is not available" }
+    end
+  rescue StandardError => e
+    render json: { success: false, message: "Error testing unit cell conversion API: #{e.message}" }
+  end
+
   def test_connection
     endpoint = params[:endpoint] || Setting.segmentation_api_endpoint
     timeout = params[:timeout]&.to_i || Setting.segmentation_api_timeout
@@ -90,7 +100,10 @@ class SettingsController < ApplicationController
     params.require(:settings).permit(
       :segmentation_api_endpoint,
       :segmentation_api_timeout,
-      :auto_segment_point_type
+      :auto_segment_point_type,
+      :conventional_cell_api_endpoint,
+      :conventional_cell_api_timeout,
+      :conventional_cell_max_delta
     )
   end
 end
