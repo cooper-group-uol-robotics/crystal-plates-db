@@ -59,3 +59,28 @@ jobs:
         run: |
           ruby bin/rails db:prepare
           ruby bin/rails test
+
+  assets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Precompile assets for production
+        env:
+          RAILS_ENV: production
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+        run: |
+          ruby bin/rails assets:precompile
+
+      - name: Verify assets were created
+        run: |
+          ls -la public/assets/
+          test -f public/assets/.manifest.json || (echo "Assets manifest not found!" && exit 1)
