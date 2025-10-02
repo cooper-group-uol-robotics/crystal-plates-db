@@ -1,6 +1,6 @@
 class SegmentationApiService
   require "faraday"
-  require "faraday-multipart"
+  require "faraday/multipart"
 
   class << self
     def segment_image(image_file)
