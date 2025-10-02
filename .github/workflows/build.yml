@@ -34,5 +34,5 @@ jobs:
             -e RAILS_MASTER_KEY=$RAILS_MASTER_KEY \
             -v crystal_plates_db_database:/rails/dbdata \
             -v crystal_plates_db_storage:/rails/storage \
+            --network sharednet \
             crystal-plates-db:latest
-
