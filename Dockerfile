@@ -38,6 +38,9 @@ COPY --chown=rails:rails . .
 
 RUN bundle exec bootsnap precompile app/ lib/
 
+# Precompile assets for production
+RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+
 FROM base
 
 # Create user/group before copying files
