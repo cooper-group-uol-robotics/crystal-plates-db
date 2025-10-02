@@ -217,20 +217,21 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+function initializeSettingsPage() {
   const testButton = document.getElementById('test-connection');
   const endpointInput = document.getElementById('segmentation_api_endpoint');
   const timeoutInput = document.getElementById('segmentation_api_timeout');
   const statusDiv = document.getElementById('connection-status');
 
-  testButton.addEventListener('click', function() {
-    const endpoint = endpointInput.value;
-    const timeout = timeoutInput.value;
+  if (testButton) {
+    testButton.addEventListener('click', function() {
+      const endpoint = endpointInput.value;
+      const timeout = timeoutInput.value;
 
-    if (!endpoint) {
-      showStatus('Please enter an endpoint URL first', 'danger');
-      return;
-    }
+      if (!endpoint) {
+        showStatus('Please enter an endpoint URL first', 'danger');
+        return;
+      }
 
     // Show loading state
     testButton.disabled = true;
@@ -265,13 +266,16 @@ document.addEventListener('DOMContentLoaded', function() {
       testButton.disabled = false;
       testButton.innerHTML = '<i class="bi bi-wifi"></i> Test Connection';
     });
-  });
+    });
+  }
 
   function showStatus(message, type) {
-    statusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
-      ${message}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>`;
+    if (statusDiv) {
+      statusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>`;
+    }
   }
 
 
@@ -329,22 +333,62 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function showConventionalCellStatus(message, type) {
-    conventionalCellStatusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
-      ${message}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>`;
+    if (conventionalCellStatusDiv) {
+      conventionalCellStatusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>`;
+    }
   }
 
   // Reset defaults functionality
-  document.getElementById('reset-defaults').addEventListener('click', function() {
-    if (confirm('Are you sure you want to reset all settings to their default values?')) {
-      document.getElementById('segmentation_api_endpoint').value = 'http://aicdocker.liv.ac.uk:8000/segment/opencv';
-      document.getElementById('segmentation_api_timeout').value = '30';
-      document.getElementById('auto_segment_point_type').value = 'other';
-      document.getElementById('conventional_cell_api_endpoint').value = 'http://localhost:8000/api/v1/lepage';
-      document.getElementById('conventional_cell_api_timeout').value = '5';
-      document.getElementById('conventional_cell_max_delta').value = '1.0';
-    }
-  });
-});
+  const resetDefaultsButton = document.getElementById('reset-defaults');
+  if (resetDefaultsButton) {
+    resetDefaultsButton.addEventListener('click', function() {
+      if (confirm('Are you sure you want to reset all settings to their default values?')) {
+        const segmentationEndpoint = document.getElementById('segmentation_api_endpoint');
+        const segmentationTimeout = document.getElementById('segmentation_api_timeout');
+        const autoSegmentType = document.getElementById('auto_segment_point_type');
+        const conventionalCellEndpoint = document.getElementById('conventional_cell_api_endpoint');
+        const conventionalCellTimeout = document.getElementById('conventional_cell_api_timeout');
+        const conventionalCellMaxDelta = document.getElementById('conventional_cell_max_delta');
+
+        if (segmentationEndpoint) segmentationEndpoint.value = 'http://aicdocker.liv.ac.uk:8000/segment/opencv';
+        if (segmentationTimeout) segmentationTimeout.value = '30';
+        if (autoSegmentType) autoSegmentType.value = 'other';
+        if (conventionalCellEndpoint) conventionalCellEndpoint.value = 'http://localhost:8000/api/v1/lepage';
+        if (conventionalCellTimeout) conventionalCellTimeout.value = '5';
+        if (conventionalCellMaxDelta) conventionalCellMaxDelta.value = '1.0';
+      }
+    });
+  }
+}
+
+// Store references for cleanup
+let settingsPageInitialized = false;
+
+function cleanupSettingsPage() {
+  // Clear any existing event listeners or references if needed
+  settingsPageInitialized = false;
+}
+
+function safeInitializeSettingsPage() {
+  // Prevent double initialization
+  if (settingsPageInitialized) return;
+  
+  // Only initialize if we're on the settings page
+  if (document.getElementById('segmentation_api_endpoint') || document.getElementById('conventional_cell_api_endpoint')) {
+    initializeSettingsPage();
+    settingsPageInitialized = true;
+  }
+}
+
+// Initialize on both DOMContentLoaded and turbo:load for compatibility
+document.addEventListener('DOMContentLoaded', safeInitializeSettingsPage);
+document.addEventListener('turbo:load', safeInitializeSettingsPage);
+document.addEventListener('turbo:frame-load', safeInitializeSettingsPage);
+
+// Cleanup before navigation
+document.addEventListener('turbo:before-visit', cleanupSettingsPage);
+document.addEventListener('turbo:before-frame-render', cleanupSettingsPage);
 </script>
