@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted  # Important: using your self-hosted runner
+    runs-on: self-hosted # Important: using your self-hosted runner
 
     steps:
       - name: Checkout code
@@ -29,10 +29,4 @@ jobs:
         env:
           RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
         run: |
-          docker run -d --name crystal-plates-db \
-            -p 3000:80 \
-            -e RAILS_MASTER_KEY=$RAILS_MASTER_KEY \
-            -v crystal_plates_db_database:/rails/dbdata \
-            -v crystal_plates_db_storage:/rails/storage \
-            crystal-plates-db:latest
-            
+          bash
