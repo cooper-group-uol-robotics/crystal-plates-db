@@ -84,11 +84,17 @@
 <% end %>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// Use Turbo-compatible event listeners for both initial load and navigation
+function initializeLocationForm() {
   const carouselRadio = document.getElementById('carousel_location');
   const specialRadio = document.getElementById('special_location');
   const carouselFields = document.getElementById('carousel_fields');
   const specialFields = document.getElementById('special_fields');
+
+  // Return early if elements don't exist (in case script runs on wrong page)
+  if (!carouselRadio || !specialRadio || !carouselFields || !specialFields) {
+    return;
+  }
 
   function toggleFields() {
     if (carouselRadio.checked) {
@@ -121,4 +127,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Add event listeners
   carouselRadio.addEventListener('change', toggleFields);
   specialRadio.addEventListener('change', toggleFields);
-});</script>
+}
+
+// Listen for both DOMContentLoaded (initial page load) and turbo:load (Turbo navigation)
+document.addEventListener('DOMContentLoaded', initializeLocationForm);
+document.addEventListener('turbo:load', initializeLocationForm);</script>
