@@ -52,6 +52,9 @@
   import 'scxrd/rod_image_parser';
   import 'scxrd/diffraction_viewer';
 
+  // Set the WASM asset path for the ROD parser
+  window.ROD_WASM_PATH = '<%= asset_path("rod_decoder.wasm") %>';
+
   document.addEventListener('DOMContentLoaded', function() {
     // Construct URL for image data endpoint
     const baseUrl = '<% if @scxrd_dataset.well %>

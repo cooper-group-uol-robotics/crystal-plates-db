@@ -55,7 +55,8 @@ class RodImageParser {
       const wasmModule = await RodDecoderModule({
         locateFile: (path, prefix) => {
           if (path.endsWith('.wasm')) {
-            return '/assets/wasm/' + path;
+            // Use the asset path provided by Rails views
+            return window.ROD_WASM_PATH || '/assets/' + path;
           }
           return prefix + path;
         }

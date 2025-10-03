@@ -10,6 +10,9 @@
   import 'scxrd/card_toggler';
   import 'scxrd/reciprocal_lattice_viewer';
   import 'scxrd/gallery';
+
+  // Set the WASM asset path for the ROD parser
+  window.ROD_WASM_PATH = '<%= asset_path("rod_decoder.wasm") %>';
 </script>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
