@@ -5,9 +5,9 @@ class Api::V1::PxrdPatternsController < Api::V1::BaseController
   # GET /api/v1/wells/:well_id/pxrd_patterns
   def index
     if params[:well_id]
-      @pxrd_patterns = @well.pxrd_patterns.order(created_at: :desc)
+      @pxrd_patterns = @well.pxrd_patterns.order(Arel.sql("COALESCE(pxrd_patterns.measured_at, pxrd_patterns.created_at) DESC"))
     else
-      @pxrd_patterns = PxrdPattern.includes(:well).order(created_at: :desc)
+      @pxrd_patterns = PxrdPattern.includes(:well).order(Arel.sql("COALESCE(pxrd_patterns.measured_at, pxrd_patterns.created_at) DESC"))
     end
     render json: @pxrd_patterns.map { |pattern| format_pxrd_pattern(pattern) }
   end

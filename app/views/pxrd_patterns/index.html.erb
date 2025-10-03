@@ -42,26 +42,26 @@
           <i class="bi bi-sort-down"></i> 
           Sort by: 
           <% case params[:sort] %>
-          <% when 'measured_at' %>
-            Date Measured
           <% when 'title' %>
             Title
           <% when 'filename' %>
             Filename
-          <% else %>
+          <% when 'created_at' %>
             Date Created
+          <% else %>
+            Date Measured
           <% end %>
         </button>
         <ul class="dropdown-menu">
           <li>
             <%= link_to pxrd_patterns_path(sort: 'measured_at', direction: 'desc', search: params[:search]), 
-                       class: "dropdown-item #{'active' if params[:sort] == 'measured_at' && params[:direction] != 'asc'}" do %>
+                       class: "dropdown-item #{'active' if (params[:sort].nil? || params[:sort] == 'measured_at') && params[:direction] != 'asc'}" do %>
               <i class="bi bi-calendar-check"></i> Date Measured (Newest)
             <% end %>
           </li>
           <li>
             <%= link_to pxrd_patterns_path(sort: 'measured_at', direction: 'asc', search: params[:search]), 
-                       class: "dropdown-item #{'active' if params[:sort] == 'measured_at' && params[:direction] == 'asc'}" do %>
+                       class: "dropdown-item #{'active' if (params[:sort].nil? || params[:sort] == 'measured_at') && params[:direction] == 'asc'}" do %>
               <i class="bi bi-calendar-check"></i> Date Measured (Oldest)
             <% end %>
           </li>
@@ -94,7 +94,7 @@
           <li><hr class="dropdown-divider"></li>
           <li>
             <%= link_to pxrd_patterns_path(sort: 'created_at', direction: 'desc', search: params[:search]), 
-                       class: "dropdown-item #{'active' if (params[:sort].blank? || params[:sort] == 'created_at') && params[:direction] != 'asc'}" do %>
+                       class: "dropdown-item #{'active' if params[:sort] == 'created_at' && params[:direction] != 'asc'}" do %>
               <i class="bi bi-clock"></i> Date Created (Newest)
             <% end %>
           </li>

@@ -7,7 +7,7 @@ class PxrdPatternsController < ApplicationController
     if params[:well_id].present?
       # Well-specific index (existing functionality)
       @well = Well.find(params[:well_id])
-      @pxrd_patterns = @well.pxrd_patterns.order(created_at: :desc)
+      @pxrd_patterns = @well.pxrd_patterns.order(Arel.sql("COALESCE(pxrd_patterns.measured_at, pxrd_patterns.created_at) DESC"))
       render partial: "pxrd_patterns/gallery", locals: { well: @well }
     else
       # Global index for all PXRD patterns
@@ -23,7 +23,7 @@ class PxrdPatternsController < ApplicationController
       end
 
       # Apply sorting
-      sort_column = params[:sort] || "created_at"
+      sort_column = params[:sort] || "measured_at"
       sort_direction = params[:direction] || "desc"
 
       case sort_column
