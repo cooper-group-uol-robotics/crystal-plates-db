@@ -67,7 +67,7 @@ module ApplicationHelper
       button_class += " has-matches"
     else
       button_text = content_tag(:i, "", class: "bi bi-box-seam me-1") +
-                   "Find similar unit cells"
+                   "No similar unit cells"
     end
 
     content_tag(:button, button_text.html_safe,
