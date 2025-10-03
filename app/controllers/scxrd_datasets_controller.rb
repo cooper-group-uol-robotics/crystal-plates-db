@@ -135,16 +135,19 @@ class ScxrdDatasetsController < ApplicationController
     # Save the dataset first to get an ID, then process the archive
     if @scxrd_dataset.save
       begin
-        # Process uploaded compressed archive after dataset is saved with an ID
-        process_compressed_archive(compressed_archive)
-
-        # Save again to persist any changes from archive processing
+        # Store the uploaded archive first
+        @scxrd_dataset.archive.attach(compressed_archive)
         @scxrd_dataset.save!
 
-        redirect_to success_redirect, notice: "SCXRD dataset was successfully created."
+        Rails.logger.info "SCXRD: Queueing processing job for dataset #{@scxrd_dataset.id}"
+
+        # Queue background processing (same as API)
+        ScxrdArchiveProcessingJob.perform_later(@scxrd_dataset.id)
+
+        redirect_to success_redirect, notice: "SCXRD dataset was successfully created and is being processed."
       rescue => e
-        Rails.logger.error "SCXRD: Failed to process archive: #{e.message}"
-        @scxrd_dataset.errors.add(:base, "Failed to process experiment data: #{e.message}")
+        Rails.logger.error "SCXRD: Failed to queue processing: #{e.message}"
+        @scxrd_dataset.errors.add(:base, "Failed to queue processing: #{e.message}")
         render :new
       end
     else
@@ -161,12 +164,19 @@ class ScxrdDatasetsController < ApplicationController
   def update
     # Process uploaded compressed archive if provided
     if params[:scxrd_dataset][:compressed_archive].present?
-      process_compressed_archive(params[:scxrd_dataset][:compressed_archive])
+      Rails.logger.info "SCXRD: Queueing reprocessing job for dataset #{@scxrd_dataset.id}"
+
+      # Store new archive and queue processing
+      @scxrd_dataset.archive.attach(params[:scxrd_dataset][:compressed_archive])
+      ScxrdArchiveProcessingJob.perform_later(@scxrd_dataset.id)
     end
 
     if @scxrd_dataset.update(scxrd_dataset_params)
       redirect_path = @well ? [ @well, @scxrd_dataset ] : @scxrd_dataset
-      redirect_to redirect_path, notice: "SCXRD dataset was successfully updated."
+      notice_text = params[:scxrd_dataset][:compressed_archive].present? ?
+        "SCXRD dataset was successfully updated and is being reprocessed." :
+        "SCXRD dataset was successfully updated."
+      redirect_to redirect_path, notice: notice_text
     else
       # Note: Lattice centrings removed - primitive cells are always primitive
       render :edit
@@ -333,262 +343,7 @@ class ScxrdDatasetsController < ApplicationController
     end
   end
 
-  def process_compressed_archive(uploaded_archive)
-    return unless uploaded_archive.present?
 
-    begin
-      archive_start_time = Time.current
-      # Create a temporary directory to extract the archive
-      Dir.mktmpdir do |temp_dir|
-        # Detect archive type from filename or content type
-        original_filename = uploaded_archive.original_filename || ""
-        content_type = uploaded_archive.content_type || ""
-
-        is_tar = original_filename.end_with?(".tar") || content_type == "application/x-tar"
-
-        # Save the uploaded archive temporarily with correct extension
-        archive_extension = is_tar ? ".tar" : ".zip"
-        archive_path = File.join(temp_dir, "uploaded_archive#{archive_extension}")
-        File.open(archive_path, "wb") { |f| f.write(uploaded_archive.read) }
-
-        # Extract the archive
-        extract_start_time = Time.current
-        file_count = 0
-
-        if is_tar
-          Rails.logger.info "SCXRD: Extracting TAR archive..."
-          file_count = extract_tar_archive(archive_path, temp_dir)
-        else
-          Rails.logger.info "SCXRD: Extracting ZIP archive..."
-          file_count = extract_zip_archive(archive_path, temp_dir)
-        end
-
-        Rails.logger.info "SCXRD: Extracted #{file_count} files in #{(Time.current - extract_start_time).round(2)}s"
-
-        # Set experiment name from archive filename if not already set
-        if @scxrd_dataset.experiment_name.blank?
-          base_name = File.basename(uploaded_archive.original_filename, ".*")
-          @scxrd_dataset.experiment_name = base_name
-        end
-
-        # Find the experiment folder (should be the first directory in the extracted files)
-        experiment_folder = Dir.glob("#{temp_dir}/*").find { |path| File.directory?(path) }
-        if experiment_folder
-
-          processor = ScxrdFolderProcessorService.new(experiment_folder)
-          result = processor.process
-
-          Rails.logger.info "SCXRD: File processing completed, storing results..."
-
-          # Store extracted data as Active Storage attachments
-          if result[:peak_table]
-            @scxrd_dataset.peak_table.attach(
-              io: StringIO.new(result[:peak_table]),
-              filename: "#{@scxrd_dataset.experiment_name}_peak_table.txt",
-              content_type: "text/plain"
-            )
-            Rails.logger.info "SCXRD: Peak table stored (#{number_to_human_size(result[:peak_table].bytesize)})"
-          end
-
-
-
-          # Store all diffraction images as DiffractionImage records
-          if result[:all_diffraction_images] && result[:all_diffraction_images].any?
-            Rails.logger.info "SCXRD: Processing #{result[:all_diffraction_images].length} diffraction images..."
-
-            result[:all_diffraction_images].each_with_index do |image_data, index|
-              begin
-                diffraction_image = @scxrd_dataset.diffraction_images.build(
-                  run_number: image_data[:run_number],
-                  image_number: image_data[:image_number],
-                  filename: image_data[:filename],
-                  file_size: image_data[:file_size]
-                )
-
-                diffraction_image.rodhypix_file.attach(
-                  io: StringIO.new(image_data[:data]),
-                  filename: image_data[:filename],
-                  content_type: "application/octet-stream"
-                )
-
-                diffraction_image.save!
-
-                # Log progress every 100 images to avoid log spam
-                if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
-                  Rails.logger.info "SCXRD: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
-                end
-
-              rescue => e
-                Rails.logger.error "SCXRD: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
-              end
-            end
-
-            total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
-            Rails.logger.info "SCXRD: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
-          end
-
-          # Store unit cell parameters from .par file if available
-          Rails.logger.info "SCXRD: Checking for parsed .par data..."
-          if result[:metadata]
-            metadata = result[:metadata]
-            Rails.logger.info "SCXRD: Found .par data: #{metadata.inspect}"
-
-            @scxrd_dataset.primitive_a = metadata[:a] if metadata[:a]
-            @scxrd_dataset.primitive_b = metadata[:b] if metadata[:b]
-            @scxrd_dataset.primitive_c = metadata[:c] if metadata[:c]
-            @scxrd_dataset.primitive_alpha = metadata[:alpha] if metadata[:alpha]
-            @scxrd_dataset.primitive_beta = metadata[:beta] if metadata[:beta]
-            @scxrd_dataset.primitive_gamma = metadata[:gamma] if metadata[:gamma]
-
-            Rails.logger.info "SCXRD: Primitive unit cell parameters stored from .par file: a=#{@scxrd_dataset.primitive_a}, b=#{@scxrd_dataset.primitive_b}, c=#{@scxrd_dataset.primitive_c}, α=#{@scxrd_dataset.primitive_alpha}, β=#{@scxrd_dataset.primitive_beta}, γ=#{@scxrd_dataset.primitive_gamma}"
-
-            # Store real world coordinates if parsed from cmdscript.mac, but only if not already provided by user
-            parsed_coords_used = false
-
-            if @scxrd_dataset.real_world_x_mm.blank? && metadata[:real_world_x_mm]
-              @scxrd_dataset.real_world_x_mm = metadata[:real_world_x_mm]
-              parsed_coords_used = true
-            end
-
-            if @scxrd_dataset.real_world_y_mm.blank? && metadata[:real_world_y_mm]
-              @scxrd_dataset.real_world_y_mm = metadata[:real_world_y_mm]
-              parsed_coords_used = true
-            end
-
-            if @scxrd_dataset.real_world_z_mm.blank? && metadata[:real_world_z_mm]
-              @scxrd_dataset.real_world_z_mm = metadata[:real_world_z_mm]
-              parsed_coords_used = true
-            end
-
-            if parsed_coords_used
-              Rails.logger.info "SCXRD: Real world coordinates from cmdscript.mac used where not provided by user: x=#{@scxrd_dataset.real_world_x_mm}, y=#{@scxrd_dataset.real_world_y_mm}, z=#{@scxrd_dataset.real_world_z_mm}"
-            elsif metadata[:real_world_x_mm] || metadata[:real_world_y_mm] || metadata[:real_world_z_mm]
-              Rails.logger.info "SCXRD: Real world coordinates from cmdscript.mac ignored (user provided values take precedence): user=(#{@scxrd_dataset.real_world_x_mm}, #{@scxrd_dataset.real_world_y_mm}, #{@scxrd_dataset.real_world_z_mm})"
-            else
-              Rails.logger.info "SCXRD: No real world coordinates found in cmdscript.mac"
-            end
-
-            # Store measurement time from datacoll.ini if available (takes precedence over default)
-            if metadata[:measured_at]
-              @scxrd_dataset.measured_at = metadata[:measured_at]
-              Rails.logger.info "SCXRD: Measurement time from datacoll.ini: #{@scxrd_dataset.measured_at}"
-            else
-              Rails.logger.info "SCXRD: No measurement time found in datacoll.ini, using default date: #{@scxrd_dataset.measured_at}"
-            end
-          else
-            Rails.logger.warn "SCXRD: No .par data found in processing result"
-          end
-
-          # Store crystal image if available and no image is already attached
-          if result[:crystal_image] && !@scxrd_dataset.crystal_image.attached?
-            Rails.logger.info "SCXRD: Attaching crystal image from archive (#{number_to_human_size(result[:crystal_image][:data].bytesize)})"
-            @scxrd_dataset.crystal_image.attach(
-              io: StringIO.new(result[:crystal_image][:data]),
-              filename: result[:crystal_image][:filename],
-              content_type: result[:crystal_image][:content_type]
-            )
-          elsif result[:crystal_image]
-            Rails.logger.info "SCXRD: Crystal image found in archive but dataset already has an image attached, skipping"
-          end
-
-          # Store structure file if available and no structure file is already attached
-          if result[:structure_file] && !@scxrd_dataset.structure_file.attached?
-            Rails.logger.info "SCXRD: Attaching structure file from archive: #{result[:structure_file][:filename]} (#{number_to_human_size(result[:structure_file][:data].bytesize)})"
-            @scxrd_dataset.structure_file.attach(
-              io: StringIO.new(result[:structure_file][:data]),
-              filename: result[:structure_file][:filename],
-              content_type: result[:structure_file][:content_type]
-            )
-          elsif result[:structure_file]
-            Rails.logger.info "SCXRD: Structure file found in archive but dataset already has a structure file attached, skipping"
-          end
-
-          # Store the original archive as the zip attachment
-          Rails.logger.info "SCXRD: Attaching original compressed archive (#{number_to_human_size(uploaded_archive.size)})"
-          uploaded_archive.rewind  # Reset the file pointer
-          @scxrd_dataset.archive.attach(uploaded_archive)
-        else
-          Rails.logger.warn "SCXRD: No experiment folder found in extracted archive"
-          @scxrd_dataset.errors.add(:base, "No experiment folder found in the uploaded archive")
-        end
-
-        archive_end_time = Time.current
-        Rails.logger.info "SCXRD: Total archive processing completed in #{(archive_end_time - archive_start_time).round(2)} seconds"
-      end
-    rescue => e
-      Rails.logger.error "SCXRD: Error processing compressed archive: #{e.message}"
-      Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(5).join("\n")}"
-      @scxrd_dataset.errors.add(:base, "Error processing compressed archive: #{e.message}")
-    end
-  end
-
-  # Extract ZIP archive using rubyzip gem
-  def extract_zip_archive(archive_path, temp_dir)
-    require "zip"
-    file_count = 0
-
-    Zip::File.open(archive_path) do |zip_file|
-      zip_file.each do |entry|
-        next if entry.directory?
-
-        file_path = File.join(temp_dir, entry.name)
-        FileUtils.mkdir_p(File.dirname(file_path))
-        entry.extract(file_path)
-
-        file_count += 1
-      end
-    end
-
-    file_count
-  end
-
-  # Ruby-based TAR extraction as fallback
-  def extract_tar_archive(archive_path, temp_dir)
-    file_count = 0
-
-    File.open(archive_path, "rb") do |tar_file|
-      while !tar_file.eof?
-        # Read TAR header (512 bytes)
-        header = tar_file.read(512)
-        break if header.nil? || header.length < 512
-
-        # Check if this is the end of the archive (all zeros)
-        break if header.unpack("C*").all?(&:zero?)
-
-        # Parse TAR header
-        filename = header[0, 100].unpack("Z*")[0]
-        size_octal = header[124, 12].unpack("Z*")[0]
-
-        next if filename.empty?
-
-        file_size = size_octal.to_i(8)
-
-        # Skip directories
-        unless filename.end_with?("/")
-          # Create directory path
-          file_path = File.join(temp_dir, filename)
-          FileUtils.mkdir_p(File.dirname(file_path))
-
-          # Read and write file content
-          if file_size > 0
-            content = tar_file.read(file_size)
-            File.open(file_path, "wb") { |f| f.write(content) }
-            file_count += 1
-          end
-
-          # Skip to next 512-byte boundary
-          remainder = file_size % 512
-          tar_file.read(512 - remainder) if remainder > 0
-        else
-          # Skip directory content (should be 0)
-          remainder = file_size % 512
-          tar_file.read(file_size + (remainder > 0 ? 512 - remainder : 0))
-        end
-      end
-    end
-
-    file_count
-  end
 
   def scxrd_dataset_params
     # Create a copy of params without the compressed_archive to avoid unpermitted parameter warnings

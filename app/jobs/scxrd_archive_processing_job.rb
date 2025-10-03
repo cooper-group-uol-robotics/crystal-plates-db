@@ -1,4 +1,5 @@
 class ScxrdArchiveProcessingJob < ApplicationJob
+  include ActionView::Helpers::NumberHelper
   queue_as :default
 
   def perform(scxrd_dataset_id)
@@ -6,101 +7,270 @@ class ScxrdArchiveProcessingJob < ApplicationJob
     return unless dataset&.archive&.attached?
 
     begin
-      # Use the same extraction logic as before
+      archive_start_time = Time.current
+      Rails.logger.info "SCXRD Job: Starting processing for dataset #{dataset.id}"
+
+      # Download and extract the archive (same logic as controller)
+      archive_blob = dataset.archive.blob
       archive_file = dataset.archive.download
-      Tempfile.create([ "uploaded_archive", ".zip" ]) do |temp_zip|
-        temp_zip.binmode
-        temp_zip.write(archive_file)
-        temp_zip.rewind
 
-        Dir.mktmpdir do |temp_dir|
-          archive_path = temp_zip.path
-          require "zip"
-          Zip::File.open(archive_path) do |zip_file|
-            zip_file.each do |entry|
-              next if entry.directory?
-              file_path = File.join(temp_dir, entry.name)
-              FileUtils.mkdir_p(File.dirname(file_path))
-              entry.extract(file_path)
-            end
+      Dir.mktmpdir do |temp_dir|
+        # Detect archive type from filename or content type (same as controller)
+        original_filename = archive_blob.filename.to_s
+        content_type = archive_blob.content_type || ""
+
+        is_tar = original_filename.end_with?(".tar") || content_type == "application/x-tar"
+
+        # Save the archive temporarily with correct extension
+        archive_extension = is_tar ? ".tar" : ".zip"
+        archive_path = File.join(temp_dir, "uploaded_archive#{archive_extension}")
+        File.open(archive_path, "wb") { |f| f.write(archive_file) }
+
+        # Extract the archive using same methods as controller
+        extract_start_time = Time.current
+        file_count = 0
+
+        if is_tar
+          Rails.logger.info "SCXRD Job: Extracting TAR archive..."
+          file_count = extract_tar_archive(archive_path, temp_dir)
+        else
+          Rails.logger.info "SCXRD Job: Extracting ZIP archive..."
+          file_count = extract_zip_archive(archive_path, temp_dir)
+        end
+
+        Rails.logger.info "SCXRD Job: Extracted #{file_count} files in #{(Time.current - extract_start_time).round(2)}s"
+
+        # Set experiment name from archive filename if not already set
+        if dataset.experiment_name.blank? || dataset.experiment_name == "Processing..."
+          base_name = File.basename(archive_blob.filename.to_s, ".*")
+          dataset.experiment_name = base_name
+        end
+
+        # Find the experiment folder (should be the first directory in the extracted files)
+        experiment_folder = Dir.glob("#{temp_dir}/*").find { |path| File.directory?(path) }
+        if experiment_folder
+          Rails.logger.info "SCXRD Job: Processing experiment folder: #{experiment_folder}"
+
+          # Log contents for debugging
+          if Rails.logger.level <= Logger::DEBUG
+            all_files = Dir.glob("#{experiment_folder}/**/*", File::FNM_DOTMATCH).reject { |f| File.directory?(f) }
+            Rails.logger.debug "SCXRD Job: Archive contains #{all_files.length} files:"
+            all_files.first(50).each { |f| Rails.logger.debug "  #{f.sub(experiment_folder, '.')}" }
+            Rails.logger.debug "  ... (#{all_files.length - 50} more files)" if all_files.length > 50
           end
 
-          # Set experiment name from archive filename if not already set
-          if dataset.experiment_name.blank? || dataset.experiment_name == "Processing..."
-            base_name = File.basename(dataset.archive.filename.to_s, ".*")
-            dataset.experiment_name = base_name
+          processor = ScxrdFolderProcessorService.new(experiment_folder)
+          result = processor.process
+
+          Rails.logger.info "SCXRD Job: File processing completed, storing results..."
+
+          # Store extracted data as Active Storage attachments (exact same logic as controller)
+          if result[:peak_table]
+            dataset.peak_table.attach(
+              io: StringIO.new(result[:peak_table]),
+              filename: "#{dataset.experiment_name}_peak_table.txt",
+              content_type: "text/plain"
+            )
+            Rails.logger.info "SCXRD Job: Peak table stored (#{number_to_human_size(result[:peak_table].bytesize)})"
           end
 
-          experiment_folder = Dir.glob("#{temp_dir}/*").find { |path| File.directory?(path) }
-          if experiment_folder
-            processor = ScxrdFolderProcessorService.new(experiment_folder)
-            result = processor.process
+          # Store all diffraction images as DiffractionImage records (exact same logic)
+          if result[:all_diffraction_images] && result[:all_diffraction_images].any?
+            Rails.logger.info "SCXRD Job: Processing #{result[:all_diffraction_images].length} diffraction images..."
 
-            # Attach peak table
-            if result[:peak_table]
-              dataset.peak_table.attach(
-                io: StringIO.new(result[:peak_table]),
-                filename: "#{dataset.experiment_name}_peak_table.txt",
-                content_type: "text/plain"
-              )
-            end
-
-            # Attach diffraction images
-            if result[:all_diffraction_images]&.any?
-              result[:all_diffraction_images].each do |image_data|
+            result[:all_diffraction_images].each_with_index do |image_data, index|
+              begin
                 diffraction_image = dataset.diffraction_images.build(
                   run_number: image_data[:run_number],
                   image_number: image_data[:image_number],
                   filename: image_data[:filename],
                   file_size: image_data[:file_size]
                 )
+
                 diffraction_image.rodhypix_file.attach(
                   io: StringIO.new(image_data[:data]),
                   filename: image_data[:filename],
                   content_type: "application/octet-stream"
                 )
+
                 diffraction_image.save!
+
+                # Log progress every 100 images to avoid log spam
+                if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
+                  Rails.logger.info "SCXRD Job: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
+                end
+
+              rescue => e
+                Rails.logger.error "SCXRD Job: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
               end
             end
 
-            # Attach crystal image
-            if result[:crystal_image] && !dataset.crystal_image.attached?
-              dataset.crystal_image.attach(
-                io: StringIO.new(result[:crystal_image][:data]),
-                filename: result[:crystal_image][:filename],
-                content_type: result[:crystal_image][:content_type]
-              )
-            end
-
-            # Attach structure file
-            if result[:structure_file] && !dataset.structure_file.attached?
-              dataset.structure_file.attach(
-                io: StringIO.new(result[:structure_file][:data]),
-                filename: result[:structure_file][:filename],
-                content_type: result[:structure_file][:content_type]
-              )
-            end
-
-            # Store unit cell parameters
-            if result[:metadata]
-              metadata = result[:metadata]
-              dataset.primitive_a = metadata[:a] if metadata[:a]
-              dataset.primitive_b = metadata[:b] if metadata[:b]
-              dataset.primitive_c = metadata[:c] if metadata[:c]
-              dataset.primitive_alpha = metadata[:alpha] if metadata[:alpha]
-              dataset.primitive_beta = metadata[:beta] if metadata[:beta]
-              dataset.primitive_gamma = metadata[:gamma] if metadata[:gamma]
-              if metadata[:measured_at]
-                dataset.measured_at = metadata[:measured_at]
-              end
-            end
+            total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
+            Rails.logger.info "SCXRD Job: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
           end
-          dataset.save!
+
+          # Store unit cell parameters from metadata (exact same logic as controller)
+          Rails.logger.info "SCXRD Job: Checking for parsed metadata..."
+          if result[:metadata]
+            metadata = result[:metadata]
+            Rails.logger.info "SCXRD Job: Found metadata: #{metadata.inspect}"
+
+            dataset.primitive_a = metadata[:a] if metadata[:a]
+            dataset.primitive_b = metadata[:b] if metadata[:b]
+            dataset.primitive_c = metadata[:c] if metadata[:c]
+            dataset.primitive_alpha = metadata[:alpha] if metadata[:alpha]
+            dataset.primitive_beta = metadata[:beta] if metadata[:beta]
+            dataset.primitive_gamma = metadata[:gamma] if metadata[:gamma]
+
+            Rails.logger.info "SCXRD Job: Primitive unit cell parameters stored: a=#{dataset.primitive_a}, b=#{dataset.primitive_b}, c=#{dataset.primitive_c}, α=#{dataset.primitive_alpha}, β=#{dataset.primitive_beta}, γ=#{dataset.primitive_gamma}"
+
+            # Store real world coordinates if parsed, but only if not already provided by user
+            parsed_coords_used = false
+
+            if dataset.real_world_x_mm.blank? && metadata[:real_world_x_mm]
+              dataset.real_world_x_mm = metadata[:real_world_x_mm]
+              parsed_coords_used = true
+            end
+
+            if dataset.real_world_y_mm.blank? && metadata[:real_world_y_mm]
+              dataset.real_world_y_mm = metadata[:real_world_y_mm]
+              parsed_coords_used = true
+            end
+
+            if dataset.real_world_z_mm.blank? && metadata[:real_world_z_mm]
+              dataset.real_world_z_mm = metadata[:real_world_z_mm]
+              parsed_coords_used = true
+            end
+
+            if parsed_coords_used
+              Rails.logger.info "SCXRD Job: Real world coordinates from cmdscript.mac used: x=#{dataset.real_world_x_mm}, y=#{dataset.real_world_y_mm}, z=#{dataset.real_world_z_mm}"
+            elsif metadata[:real_world_x_mm] || metadata[:real_world_y_mm] || metadata[:real_world_z_mm]
+              Rails.logger.info "SCXRD Job: Real world coordinates ignored (user provided values take precedence)"
+            end
+
+            # Store measurement time from datacoll.ini if available (takes precedence over default)
+            if metadata[:measured_at]
+              dataset.measured_at = metadata[:measured_at]
+              Rails.logger.info "SCXRD Job: Measurement time from datacoll.ini: #{dataset.measured_at}"
+            end
+          else
+            Rails.logger.warn "SCXRD Job: No metadata found in processing result"
+          end
+
+          # Store crystal image if available and no image is already attached (exact same logic)
+          if result[:crystal_image] && !dataset.crystal_image.attached?
+            Rails.logger.info "SCXRD Job: Attaching crystal image from archive (#{number_to_human_size(result[:crystal_image][:data].bytesize)})"
+            dataset.crystal_image.attach(
+              io: StringIO.new(result[:crystal_image][:data]),
+              filename: result[:crystal_image][:filename],
+              content_type: result[:crystal_image][:content_type]
+            )
+          elsif result[:crystal_image]
+            Rails.logger.info "SCXRD Job: Crystal image found but dataset already has one attached, skipping"
+          end
+
+          # Store structure file if available and no structure file is already attached (exact same logic)
+          if result[:structure_file] && !dataset.structure_file.attached?
+            Rails.logger.info "SCXRD Job: Attaching structure file from archive: #{result[:structure_file][:filename]} (#{number_to_human_size(result[:structure_file][:data].bytesize)})"
+            dataset.structure_file.attach(
+              io: StringIO.new(result[:structure_file][:data]),
+              filename: result[:structure_file][:filename],
+              content_type: result[:structure_file][:content_type]
+            )
+          elsif result[:structure_file]
+            Rails.logger.info "SCXRD Job: Structure file found but dataset already has one attached, skipping"
+          end
+        else
+          Rails.logger.warn "SCXRD Job: No experiment folder found in extracted archive"
         end
+
+        archive_end_time = Time.current
+        Rails.logger.info "SCXRD Job: Total archive processing completed in #{(archive_end_time - archive_start_time).round(2)} seconds"
+      end
+
+      dataset.save!
+    rescue Errno::ENOENT => e
+      Rails.logger.error "SCXRD Archive Processing Job: Missing file - #{e.message}"
+      Rails.logger.error "This might indicate an incomplete or corrupted archive upload"
+      Rails.logger.error "Archive content should include all expected SCXRD files"
+
+      # Mark dataset as having an error but don't crash the job
+      if dataset
+        dataset.update(experiment_name: "#{dataset.experiment_name} (Processing Error)")
       end
     rescue => e
       Rails.logger.error "SCXRD Archive Processing Job: #{e.class} - #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
     end
+  end
+
+  private
+
+  # Extract ZIP archive using rubyzip gem (exact same method as controller)
+  def extract_zip_archive(archive_path, temp_dir)
+    require "zip"
+    file_count = 0
+
+    Zip::File.open(archive_path) do |zip_file|
+      zip_file.each do |entry|
+        next if entry.directory?
+
+        file_path = File.join(temp_dir, entry.name)
+        FileUtils.mkdir_p(File.dirname(file_path))
+        entry.extract(file_path)
+
+        file_count += 1
+      end
+    end
+
+    file_count
+  end
+
+  # Ruby-based TAR extraction as fallback (exact same method as controller)
+  def extract_tar_archive(archive_path, temp_dir)
+    file_count = 0
+
+    File.open(archive_path, "rb") do |tar_file|
+      while !tar_file.eof?
+        # Read TAR header (512 bytes)
+        header = tar_file.read(512)
+        break if header.nil? || header.length < 512
+
+        # Check if this is the end of the archive (all zeros)
+        break if header.unpack("C*").all?(&:zero?)
+
+        # Parse TAR header
+        filename = header[0, 100].unpack("Z*")[0]
+        size_octal = header[124, 12].unpack("Z*")[0]
+
+        next if filename.empty?
+
+        file_size = size_octal.to_i(8)
+
+        # Skip directories
+        unless filename.end_with?("/")
+          # Create directory path
+          file_path = File.join(temp_dir, filename)
+          FileUtils.mkdir_p(File.dirname(file_path))
+
+          # Read and write file content
+          if file_size > 0
+            content = tar_file.read(file_size)
+            File.open(file_path, "wb") { |f| f.write(content) }
+            file_count += 1
+          end
+
+          # Skip to next 512-byte boundary
+          remainder = file_size % 512
+          tar_file.read(512 - remainder) if remainder > 0
+        else
+          # Skip directory content (should be 0)
+          remainder = file_size % 512
+          tar_file.read(file_size + (remainder > 0 ? 512 - remainder : 0))
+        end
+      end
+    end
+
+    file_count
   end
 end

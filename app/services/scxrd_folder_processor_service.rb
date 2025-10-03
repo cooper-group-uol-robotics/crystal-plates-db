@@ -35,20 +35,23 @@ class ScxrdFolderProcessorService
     # Extract all diffraction images first
     extract_all_diffraction_images
 
-
-
     # Find peak table file (*peakhunt.tabbin) - exclude files starting with 'pre_'
-
     peak_table_pattern = File.join(@folder_path, "**", "*peakhunt.tabbin")
     all_peak_table_files = Dir.glob(peak_table_pattern, File::FNM_CASEFOLD)
     peak_table_files = all_peak_table_files.reject { |file| File.basename(file).start_with?("pre_") }
 
-
     if peak_table_files.any?
       peak_table_file = peak_table_files.first
+      Rails.logger.info "SCXRD: Found peak table file: #{peak_table_file}"
 
-      @peak_table_data = File.binread(peak_table_file) if File.exist?(peak_table_file)
-
+      if File.exist?(peak_table_file)
+        @peak_table_data = File.binread(peak_table_file)
+        Rails.logger.info "SCXRD: Peak table data extracted successfully (#{@peak_table_data.bytesize} bytes)"
+      else
+        Rails.logger.warn "SCXRD: Peak table file does not exist: #{peak_table_file}"
+      end
+    else
+      Rails.logger.info "SCXRD: No peak table files found"
     end
 
 
