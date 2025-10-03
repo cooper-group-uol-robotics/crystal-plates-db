@@ -639,33 +639,6 @@ class ScxrdDiffractionViewer {
     tryNextCdn();
   }
 
-  exportImage() {
-    if (!this.heatmapInstance) {
-      console.error('No heatmap instance available for export');
-      return;
-    }
-
-    try {
-      // Use Visual Heatmap's built-in export functionality
-      this.heatmapInstance.toBlob('image/png', 0.92).then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `scxrd_diffraction_${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        console.log('Image export completed');
-      }).catch(error => {
-        console.error('Error exporting image:', error);
-      });
-
-    } catch (error) {
-      console.error('Error exporting image:', error);
-    }
-  }
-
   showError(message) {
     const plotDiv = document.getElementById(this.containerId);
     if (plotDiv) {
@@ -724,20 +697,16 @@ class ScxrdDiffractionViewer {
     }
 
     try {
-      console.log('Handling window resize for diffraction image - completely redrawing');
+      console.log('Handling window resize for diffraction image - redrawing with preserved state');
 
-      // Get the current container dimensions
-      const container = document.getElementById(this.containerId);
-      if (!container) {
-        console.log('Container not found for resize');
-        return;
-      }
+      // Store current state before redrawing
+      const currentSliderValue = this.currentSliderValue;
+      const currentIntensityRange = [...this.currentIntensityRange];
+      const currentDiffractionImageId = this.currentDiffractionImageId;
 
-      // Get new container dimensions
-      const containerRect = container.getBoundingClientRect();
-      console.log(`New container dimensions: ${containerRect.width}x${containerRect.height}`);
+      console.log(`Preserving state: slider=${currentSliderValue}, intensity=[${currentIntensityRange}], imageId=${currentDiffractionImageId}`);
 
-      // Properly destroy the old heatmap instance and clear the canvas
+      // Properly destroy the old heatmap instance
       if (this.heatmapInstance) {
         // Try multiple destroy methods
         if (typeof this.heatmapInstance.destroy === 'function') {
@@ -748,86 +717,50 @@ class ScxrdDiffractionViewer {
         this.heatmapInstance = null;
       }
 
-      // Clear the canvas container completely
-      const canvasContainer = document.getElementById(`${this.containerId}-canvas`);
-      if (canvasContainer) {
-        // Remove all child elements (canvas, etc.)
-        canvasContainer.innerHTML = '';
-        console.log('Cleared canvas container for resize');
+      // Instead of clearing everything and recreating from scratch,
+      // call plotImage() which will recreate the UI properly
+      this.plotImage();
+
+      // Restore the preserved state after redrawing
+      this.currentSliderValue = currentSliderValue;
+      this.currentIntensityRange = currentIntensityRange;
+      this.currentDiffractionImageId = currentDiffractionImageId;
+
+      // Update the intensity slider to reflect the preserved state
+      const intensitySlider = document.getElementById(`${this.containerId}-intensity`);
+      const intensityValue = document.getElementById(`${this.containerId}-intensity-value`);
+      
+      if (intensitySlider && currentSliderValue !== null) {
+        intensitySlider.value = currentSliderValue;
+        if (intensityValue) {
+          intensityValue.textContent = currentSliderValue;
+        }
+        
+        // Apply the preserved intensity setting to the new heatmap instance
+        if (this.heatmapInstance && !this._destroyed) {
+          try {
+            // Try different API methods for updating max value
+            if (typeof this.heatmapInstance.setMax === 'function') {
+              this.heatmapInstance.setMax(currentSliderValue);
+            } else if (typeof this.heatmapInstance.configure === 'function') {
+              this.heatmapInstance.configure({ max: currentSliderValue });
+            } else if (typeof this.heatmapInstance.setConfig === 'function') {
+              this.heatmapInstance.setConfig({ max: currentSliderValue });
+            }
+
+            // Force re-render with preserved intensity
+            if (typeof this.heatmapInstance.render === 'function') {
+              this.heatmapInstance.render();
+            } else if (typeof this.heatmapInstance.repaint === 'function') {
+              this.heatmapInstance.repaint();
+            }
+          } catch (error) {
+            console.warn('Error applying preserved intensity settings:', error);
+          }
+        }
       }
 
-      // Get heatmap constructor
-      const HeatmapConstructor = this.getVisualHeatmap();
-      if (!HeatmapConstructor) {
-        console.error('VisualHeatmap not available for resize');
-        return;
-      }
-
-      // Recreate heatmap instance with new container size
-      this.heatmapInstance = HeatmapConstructor(`#${this.containerId}-canvas`, {
-        width: containerRect.width,
-        height: containerRect.height,
-        canvas: true,
-        radius: Math.max(1, Math.min(containerRect.width, containerRect.height) * 0.015),
-        maxOpacity: 0.8,
-        minOpacity: 0.1,
-        blur: 0.9,
-        size: 3,
-        gradient: [{
-          color: [0, 0, 0, 1.0],        // Black with transparency
-          offset: 0.0
-        }, {
-          color: [255, 0, 0, 1.0],      // Red
-          offset: 0.33
-        }, {
-          color: [255, 255, 0, 1.0],    // Yellow
-          offset: 0.66
-        }, {
-          color: [255, 255, 255, 1.0],  // White
-          offset: 1.0
-        }]
-      });
-
-      // Recalculate scaling factors for the new container size
-      const [originalWidth, originalHeight] = this.dimensions;
-      const scaleX = containerRect.width / originalWidth;
-      const scaleY = containerRect.height / originalHeight;
-      console.log(`Rescaling points: scaleX=${scaleX.toFixed(3)}, scaleY=${scaleY.toFixed(3)}`);
-
-      // Recreate superpixel heatmap data with new scaling
-      const heatmapData = this.createSuperpixelHeatmapData();
-
-      // Scale the heatmap data points to new container size
-      const scaledHeatmapData = heatmapData.map(point => ({
-        x: point.x * scaleX,
-        y: point.y * scaleY,
-        value: point.value
-      }));
-
-      console.log(`Redrawing with ${scaledHeatmapData.length} rescaled data points`);
-
-      // Apply the rescaled data to the new heatmap instance
-      if (typeof this.heatmapInstance.renderData === 'function') {
-        this.heatmapInstance.renderData(scaledHeatmapData);
-      } else if (typeof this.heatmapInstance.addData === 'function') {
-        scaledHeatmapData.forEach(point => this.heatmapInstance.addData(point));
-      } else if (typeof this.heatmapInstance.setData === 'function') {
-        this.heatmapInstance.setData({ data: scaledHeatmapData });
-      }
-
-      // Apply current intensity settings to the new instance
-      if (typeof this.heatmapInstance.setMax === 'function') {
-        this.heatmapInstance.setMax(this.defaultIntensity || 100);
-      }
-
-      // Render the new heatmap
-      if (typeof this.heatmapInstance.render === 'function') {
-        this.heatmapInstance.render();
-      } else if (typeof this.heatmapInstance.repaint === 'function') {
-        this.heatmapInstance.repaint();
-      }
-
-      console.log('Diffraction image completely redrawn and rescaled successfully');
+      console.log('Diffraction image resized successfully with preserved state');
 
     } catch (error) {
       console.error('Error handling resize:', error);
