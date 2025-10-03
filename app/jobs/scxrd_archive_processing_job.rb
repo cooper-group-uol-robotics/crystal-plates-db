@@ -51,14 +51,6 @@ class ScxrdArchiveProcessingJob < ApplicationJob
         if experiment_folder
           Rails.logger.info "SCXRD Job: Processing experiment folder: #{experiment_folder}"
 
-          # Log contents for debugging
-          if Rails.logger.level <= Logger::DEBUG
-            all_files = Dir.glob("#{experiment_folder}/**/*", File::FNM_DOTMATCH).reject { |f| File.directory?(f) }
-            Rails.logger.debug "SCXRD Job: Archive contains #{all_files.length} files:"
-            all_files.first(50).each { |f| Rails.logger.debug "  #{f.sub(experiment_folder, '.')}" }
-            Rails.logger.debug "  ... (#{all_files.length - 50} more files)" if all_files.length > 50
-          end
-
           processor = ScxrdFolderProcessorService.new(experiment_folder)
           result = processor.process
 
@@ -206,27 +198,38 @@ class ScxrdArchiveProcessingJob < ApplicationJob
 
   private
 
-  # Extract ZIP archive using rubyzip gem (exact same method as controller)
+  # Extract ZIP archive using rubyzip InputStream
   def extract_zip_archive(archive_path, temp_dir)
     require "zip"
     file_count = 0
 
-    Zip::File.open(archive_path) do |zip_file|
-      zip_file.each do |entry|
-        next if entry.directory?
+    File.open(archive_path, "rb") do |file|
+      Zip::InputStream.open(file) do |zip_stream|
+        while (entry = zip_stream.get_next_entry)
+          file_path = File.join(temp_dir, entry.name)
 
-        file_path = File.join(temp_dir, entry.name)
-        FileUtils.mkdir_p(File.dirname(file_path))
-        entry.extract(file_path)
+          if entry.directory?
+            # Create directory
+            FileUtils.mkdir_p(file_path)
+          else
+            # Create parent directories
+            FileUtils.mkdir_p(File.dirname(file_path))
 
-        file_count += 1
+            # Extract file content
+            File.open(file_path, "wb") do |output_file|
+              output_file.write(zip_stream.read)
+            end
+
+            file_count += 1
+          end
+        end
       end
     end
 
     file_count
   end
 
-  # Ruby-based TAR extraction as fallback (exact same method as controller)
+  # Ruby-based TAR extraction
   def extract_tar_archive(archive_path, temp_dir)
     file_count = 0
 
