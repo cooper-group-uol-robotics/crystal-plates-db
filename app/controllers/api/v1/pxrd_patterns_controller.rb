@@ -29,6 +29,7 @@ class Api::V1::PxrdPatternsController < Api::V1::BaseController
           wavelength: parsed_data[:wavelength],
           metadata: {
             title: @pxrd_pattern.title,
+            filename: @pxrd_pattern.pxrd_data_file.attached? ? @pxrd_pattern.pxrd_data_file.filename.to_s : nil,
             measured_at: @pxrd_pattern.measured_at,
             total_points: parsed_data[:two_theta]&.length || 0
           }
