@@ -36,7 +36,7 @@ class ScxrdDatasetsController < ApplicationController
         @scxrd_datasets = @scxrd_datasets.order(created_at: direction)
       end
 
-      @scxrd_datasets = @scxrd_datasets.page(params[:page]).per(10)
+      @scxrd_datasets = @scxrd_datasets.page(params[:page]).per(5)
 
       respond_to do |format|
         format.html { render "index" }
