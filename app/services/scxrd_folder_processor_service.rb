@@ -246,10 +246,11 @@ class ScxrdFolderProcessorService
       content = File.read(crystal_ini_file_path, encoding: "UTF-8")
       Rails.logger.info "SCXRD: Successfully read crystal.ini file content (#{content.length} characters)"
 
-      # Look for the reduced cell line
+      # Look for the reduced cell line first, then [Lattice] section as fallback
       # Format: reduced cell plus vol=7.2218583  8.5410638 8.5902173 107.6582105 91.8679754 90.9411566 504.4382028
       cell_info = {}
       lines_processed = 0
+      in_lattice_section = false
 
       content.each_line.with_index do |line, index|
         lines_processed += 1
@@ -258,37 +259,31 @@ class ScxrdFolderProcessorService
 
         Rails.logger.debug "SCXRD: Processing line #{index + 1}: '#{clean_line}'"
 
-        # Look for the reduced cell line
+        # Look for the reduced cell line first (preferred method)
         if clean_line.start_with?("reduced cell plus vol=")
           Rails.logger.info "SCXRD: Found reduced cell line at line #{index + 1}"
+          cell_info = parse_cell_parameters_from_line(clean_line, "reduced cell parameters")
+          break if cell_info # We found what we need
+        end
 
-          # Extract the numbers after the equals sign
-          # Format: reduced cell plus vol=a b c alpha beta gamma volume
-          parts = clean_line.split("=")
-          if parts.length == 2
-            numbers = parts[1].strip.split(/\s+/).map(&:to_f)
-            Rails.logger.info "SCXRD: Found #{numbers.length} numbers: #{numbers.inspect}"
+        # Check if we're entering the [Lattice] section (fallback method)
+        if clean_line == "[Lattice]"
+          Rails.logger.info "SCXRD: Found [Lattice] section at line #{index + 1}"
+          in_lattice_section = true
+          next
+        end
 
-            if numbers.length >= 6
-              # First six numbers are the reduced cell parameters
-              cell_info[:a] = numbers[0]
-              cell_info[:b] = numbers[1]
-              cell_info[:c] = numbers[2]
-              cell_info[:alpha] = numbers[3]
-              cell_info[:beta] = numbers[4]
-              cell_info[:gamma] = numbers[5]
+        # Check if we're leaving the Lattice section (new section starting)
+        if in_lattice_section && clean_line.start_with?("[") && clean_line != "[Lattice]"
+          Rails.logger.info "SCXRD: Exiting [Lattice] section at line #{index + 1}"
+          in_lattice_section = false
+        end
 
-              Rails.logger.info "SCXRD: Parsed reduced cell parameters:"
-              Rails.logger.info "SCXRD: a=#{cell_info[:a]}, b=#{cell_info[:b]}, c=#{cell_info[:c]}"
-              Rails.logger.info "SCXRD: α=#{cell_info[:alpha]}, β=#{cell_info[:beta]}, γ=#{cell_info[:gamma]}"
-
-              break # We found what we need
-            else
-              Rails.logger.warn "SCXRD: Reduced cell line found but insufficient numbers (#{numbers.length})"
-            end
-          else
-            Rails.logger.warn "SCXRD: Reduced cell line found but couldn't parse format"
-          end
+        # If we're in the Lattice section, look for constants plus vol line
+        if in_lattice_section && clean_line.start_with?("constants plus vol")
+          Rails.logger.info "SCXRD: Found constants plus vol line at line #{index + 1}"
+          cell_info = parse_cell_parameters_from_line(clean_line, "cell parameters from [Lattice] section")
+          break if cell_info # We found what we need
         end
       end
 
@@ -308,6 +303,40 @@ class ScxrdFolderProcessorService
       Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(10).join("\n")}"
       nil
     end
+  end
+
+  def parse_cell_parameters_from_line(line, description)
+    # Extract the numbers after the equals sign
+    # Format: <prefix>=a b c alpha beta gamma volume
+    parts = line.split("=")
+    if parts.length == 2
+      numbers = parts[1].strip.split(/\s+/).map(&:to_f)
+      Rails.logger.info "SCXRD: Found #{numbers.length} numbers: #{numbers.inspect}"
+
+      if numbers.length >= 6
+        # First six numbers are the cell parameters
+        cell_info = {
+          a: numbers[0],
+          b: numbers[1],
+          c: numbers[2],
+          alpha: numbers[3],
+          beta: numbers[4],
+          gamma: numbers[5]
+        }
+
+        Rails.logger.info "SCXRD: Parsed #{description}:"
+        Rails.logger.info "SCXRD: a=#{cell_info[:a]}, b=#{cell_info[:b]}, c=#{cell_info[:c]}"
+        Rails.logger.info "SCXRD: α=#{cell_info[:alpha]}, β=#{cell_info[:beta]}, γ=#{cell_info[:gamma]}"
+
+        return cell_info
+      else
+        Rails.logger.warn "SCXRD: #{description.capitalize} line found but insufficient numbers (#{numbers.length})"
+      end
+    else
+      Rails.logger.warn "SCXRD: #{description.capitalize} line found but couldn't parse format"
+    end
+
+    nil
   end
 
   def parse_cmdscript_coordinates
