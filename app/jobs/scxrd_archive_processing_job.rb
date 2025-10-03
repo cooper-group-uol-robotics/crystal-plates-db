@@ -82,16 +82,16 @@ class ScxrdArchiveProcessingJob < ApplicationJob
             end
 
             # Store unit cell parameters
-            if result[:par_data]
-              par_data = result[:par_data]
-              dataset.primitive_a = par_data[:a] if par_data[:a]
-              dataset.primitive_b = par_data[:b] if par_data[:b]
-              dataset.primitive_c = par_data[:c] if par_data[:c]
-              dataset.primitive_alpha = par_data[:alpha] if par_data[:alpha]
-              dataset.primitive_beta = par_data[:beta] if par_data[:beta]
-              dataset.primitive_gamma = par_data[:gamma] if par_data[:gamma]
-              if par_data[:measured_at]
-                dataset.measured_at = par_data[:measured_at]
+            if result[:metadata]
+              metadata = result[:metadata]
+              dataset.primitive_a = metadata[:a] if metadata[:a]
+              dataset.primitive_b = metadata[:b] if metadata[:b]
+              dataset.primitive_c = metadata[:c] if metadata[:c]
+              dataset.primitive_alpha = metadata[:alpha] if metadata[:alpha]
+              dataset.primitive_beta = metadata[:beta] if metadata[:beta]
+              dataset.primitive_gamma = metadata[:gamma] if metadata[:gamma]
+              if metadata[:measured_at]
+                dataset.measured_at = metadata[:measured_at]
               end
             end
           end

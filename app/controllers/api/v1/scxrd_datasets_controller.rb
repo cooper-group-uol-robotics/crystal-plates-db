@@ -414,22 +414,22 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
 
           # Store unit cell parameters from .par file if available
           Rails.logger.info "API SCXRD: Checking for parsed .par data..."
-          if result[:par_data]
-            par_data = result[:par_data]
-            Rails.logger.info "API SCXRD: Found .par data: #{par_data.inspect}"
+          if result[:metadata]
+            metadata = result[:metadata]
+            Rails.logger.info "API SCXRD: Found .par data: #{metadata.inspect}"
 
-            @scxrd_dataset.primitive_a = par_data[:a] if par_data[:a]
-            @scxrd_dataset.primitive_b = par_data[:b] if par_data[:b]
-            @scxrd_dataset.primitive_c = par_data[:c] if par_data[:c]
-            @scxrd_dataset.primitive_alpha = par_data[:alpha] if par_data[:alpha]
-            @scxrd_dataset.primitive_beta = par_data[:beta] if par_data[:beta]
-            @scxrd_dataset.primitive_gamma = par_data[:gamma] if par_data[:gamma]
+            @scxrd_dataset.primitive_a = metadata[:a] if metadata[:a]
+            @scxrd_dataset.primitive_b = metadata[:b] if metadata[:b]
+            @scxrd_dataset.primitive_c = metadata[:c] if metadata[:c]
+            @scxrd_dataset.primitive_alpha = metadata[:alpha] if metadata[:alpha]
+            @scxrd_dataset.primitive_beta = metadata[:beta] if metadata[:beta]
+            @scxrd_dataset.primitive_gamma = metadata[:gamma] if metadata[:gamma]
 
             Rails.logger.info "API SCXRD: Primitive unit cell parameters stored from .par file: a=#{@scxrd_dataset.primitive_a}, b=#{@scxrd_dataset.primitive_b}, c=#{@scxrd_dataset.primitive_c}, α=#{@scxrd_dataset.primitive_alpha}, β=#{@scxrd_dataset.primitive_beta}, γ=#{@scxrd_dataset.primitive_gamma}"
 
             # Store measurement time from datacoll.ini if available (takes precedence over default)
-            if par_data[:measured_at]
-              @scxrd_dataset.measured_at = par_data[:measured_at]
+            if metadata[:measured_at]
+              @scxrd_dataset.measured_at = metadata[:measured_at]
               Rails.logger.info "API SCXRD: Measurement time from datacoll.ini: #{@scxrd_dataset.measured_at}"
             else
               Rails.logger.info "API SCXRD: No measurement time found in datacoll.ini, using default date: #{@scxrd_dataset.measured_at}"

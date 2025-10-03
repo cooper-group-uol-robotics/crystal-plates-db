@@ -139,10 +139,10 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
     result = service.process
 
     # Should use crystal.ini values, not par file values
-    assert_not_nil result[:par_data]
-    assert_equal 7.2218583, result[:par_data][:a]
-    assert_equal 8.5410638, result[:par_data][:b]
-    assert_equal 8.5902173, result[:par_data][:c]
+    assert_not_nil result[:metadata]
+    assert_equal 7.2218583, result[:metadata][:a]
+    assert_equal 8.5410638, result[:metadata][:b]
+    assert_equal 8.5902173, result[:metadata][:c]
   end
 
   test "parses coordinates from cmdscript.mac file" do
@@ -203,20 +203,20 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
       service = ScxrdFolderProcessorService.new(temp_dir)
       result = service.process
 
-      assert_not_nil result[:par_data]
+      assert_not_nil result[:metadata]
 
       # Check unit cell parameters
-      assert_equal 7.2218583, result[:par_data][:a]
-      assert_equal 8.5410638, result[:par_data][:b]
-      assert_equal 8.5902173, result[:par_data][:c]
-      assert_equal 107.6582105, result[:par_data][:alpha]
-      assert_equal 91.8679754, result[:par_data][:beta]
-      assert_equal 90.9411566, result[:par_data][:gamma]
+      assert_equal 7.2218583, result[:metadata][:a]
+      assert_equal 8.5410638, result[:metadata][:b]
+      assert_equal 8.5902173, result[:metadata][:c]
+      assert_equal 107.6582105, result[:metadata][:alpha]
+      assert_equal 91.8679754, result[:metadata][:beta]
+      assert_equal 90.9411566, result[:metadata][:gamma]
 
       # Check real world coordinates
-      assert_equal 48.25, result[:par_data][:real_world_x_mm]
-      assert_equal 1.33, result[:par_data][:real_world_y_mm]
-      assert_equal 0.08, result[:par_data][:real_world_z_mm]
+      assert_equal 48.25, result[:metadata][:real_world_x_mm]
+      assert_equal 1.33, result[:metadata][:real_world_y_mm]
+      assert_equal 0.08, result[:metadata][:real_world_z_mm]
     end
   end
 
