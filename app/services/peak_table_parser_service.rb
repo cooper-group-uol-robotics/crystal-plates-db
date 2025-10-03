@@ -34,8 +34,8 @@ class PeakTableParserService
     num_chunks_bytes = io.read(8)
     return empty_result("File too short to contain chunk count") if num_chunks_bytes.nil? || num_chunks_bytes.length < 8
 
-    # Unpack as little-endian unsigned long long (Q<)
-    num_chunks = num_chunks_bytes.unpack1("Q<")
+    # Unpack as little-endian unsigned long (L<)
+    num_chunks = num_chunks_bytes.unpack1("L<")
     Rails.logger.info "PeakTableParser: Number of chunks specified in file header: #{num_chunks}"
 
     # Skip the remaining 304 padding bytes (312 total - 8 already read)
