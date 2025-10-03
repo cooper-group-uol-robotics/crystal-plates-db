@@ -125,6 +125,32 @@ rubocop                       # Code linting
 bundle exec rails test        # Test suite
 ```
 
+## Known Issues
+
+### SCXRD Data Processing
+
+#### Peak Tables for Twin Crystals
+- **Issue**: Peak tables from twin crystal datasets don't load properly in the reciprocal lattice viewer
+- **Symptoms**: The first bytes of the `.tabbin` file (usually indicating the number of peaks) show unrealistically large values
+- **Root Cause**: The binary format for twin crystal peak tables may differ from standard single-crystal format
+- **Current Status**: Under investigation
+- **Workaround**: Use the raw peak table download instead of the parsed visualization
+- **Files Affected**: 
+  - `app/services/peak_table_parser_service.rb` - Binary parser implementation
+  - `app/javascript/scxrd/reciprocal_lattice_viewer.js` - Frontend visualization
+  - Files matching pattern `*peakhunt.tabbin` with twin crystal data
+
+### Turbo Integration
+- **Issue**: Turbo Drive causes compatibility issues with dynamic content updates
+- **Current State**: Turbo imported but not fully activated
+- **Recommended Approach**: Gradual adoption on isolated pages first
+- **Affected Areas**: Form submissions, AJAX-heavy pages, dynamic content updates
+
+### Asset Pipeline Migration
+- **Status**: Successfully migrated from Sprockets to Propsharp (Rails 8 default)
+- **Note**: Some legacy asset references may need updating
+- **Module System**: Using Importmap + ES6 modules (no build step required)
+
 ## API Endpoints
 
 ### Plates
