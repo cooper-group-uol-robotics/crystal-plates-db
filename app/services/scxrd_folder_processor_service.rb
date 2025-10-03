@@ -66,8 +66,16 @@ class ScxrdFolderProcessorService
     Rails.logger.info "SCXRD: Found #{crystal_ini_files.count} crystal.ini files (excluding pre_*): #{crystal_ini_files.map { |f| File.basename(f) }.inspect}"
 
     if crystal_ini_files.any?
-      crystal_ini_file = crystal_ini_files.first
-      Rails.logger.info "SCXRD: Using crystal.ini file: #{crystal_ini_file}"
+      # Prefer files starting with 'wit_' over other files
+      wit_crystal_ini_files = crystal_ini_files.select { |file| File.basename(file).start_with?("wit_") }
+      crystal_ini_file = wit_crystal_ini_files.any? ? wit_crystal_ini_files.first : crystal_ini_files.first
+
+      if wit_crystal_ini_files.any?
+        Rails.logger.info "SCXRD: Preferring wit_ crystal.ini file: #{crystal_ini_file}"
+      else
+        Rails.logger.info "SCXRD: Using crystal.ini file: #{crystal_ini_file}"
+      end
+
       @metadata = parse_crystal_ini_file(crystal_ini_file) if File.exist?(crystal_ini_file)
       Rails.logger.info "SCXRD: crystal.ini parsing result: #{@metadata ? 'SUCCESS' : 'FAILED'}"
     else
@@ -84,8 +92,16 @@ class ScxrdFolderProcessorService
     Rails.logger.info "SCXRD: Found #{datacoll_ini_files.count} datacoll.ini files (excluding pre_*): #{datacoll_ini_files.map { |f| File.basename(f) }.inspect}"
 
     if datacoll_ini_files.any?
-      datacoll_ini_file = datacoll_ini_files.first
-      Rails.logger.info "SCXRD: Using datacoll.ini file: #{datacoll_ini_file}"
+      # Prefer files starting with 'wit_' over other files
+      wit_datacoll_ini_files = datacoll_ini_files.select { |file| File.basename(file).start_with?("wit_") }
+      datacoll_ini_file = wit_datacoll_ini_files.any? ? wit_datacoll_ini_files.first : datacoll_ini_files.first
+
+      if wit_datacoll_ini_files.any?
+        Rails.logger.info "SCXRD: Preferring wit_ datacoll.ini file: #{datacoll_ini_file}"
+      else
+        Rails.logger.info "SCXRD: Using datacoll.ini file: #{datacoll_ini_file}"
+      end
+
       measurement_time = parse_datacoll_ini_file(datacoll_ini_file) if File.exist?(datacoll_ini_file)
       Rails.logger.info "SCXRD: datacoll.ini parsing result: #{measurement_time ? 'SUCCESS' : 'FAILED'}"
 
