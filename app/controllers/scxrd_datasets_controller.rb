@@ -2,7 +2,7 @@ class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
   before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
-  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :structure_file, :image_data, :peak_table_data ]
+  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :structure_file, :image_data, :peak_table_data, :g6_similar ]
 
   def index
     if params[:well_id].present?
@@ -322,6 +322,57 @@ class ScxrdDatasetsController < ApplicationController
         error: "Internal server error while processing peak table data"
       }, status: :internal_server_error
     end
+  end
+
+  def g6_similar
+    unless @scxrd_dataset.has_primitive_cell?
+      render json: {
+        success: false,
+        error: "This dataset does not have unit cell parameters",
+        count: 0,
+        datasets: []
+      }
+      return
+    end
+
+    tolerance = params[:tolerance]&.to_f || 10.0
+    similar_datasets = @scxrd_dataset.similar_datasets_by_g6(tolerance: tolerance)
+
+    # Format the response
+    datasets_data = similar_datasets.map do |dataset|
+      {
+        id: dataset.id,
+        experiment_name: dataset.experiment_name,
+        measured_at: dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
+        g6_distance: @scxrd_dataset.g6_distance_to(dataset)&.round(2),
+        unit_cell: dataset.display_cell ? {
+          a: number_with_precision(dataset.display_cell[:a], precision: 3),
+          b: number_with_precision(dataset.display_cell[:b], precision: 3),
+          c: number_with_precision(dataset.display_cell[:c], precision: 3),
+          alpha: number_with_precision(dataset.display_cell[:alpha], precision: 1),
+          beta: number_with_precision(dataset.display_cell[:beta], precision: 1),
+          gamma: number_with_precision(dataset.display_cell[:gamma], precision: 1),
+          bravais: dataset.display_cell[:bravais]
+        } : nil,
+        well: dataset.well ? {
+          id: dataset.well.id,
+          label: dataset.well.well_label,
+          plate_barcode: dataset.well.plate.barcode
+        } : nil
+      }
+    end
+
+    render json: {
+      success: true,
+      count: similar_datasets.size,
+      tolerance: tolerance,
+      current_dataset: {
+        id: @scxrd_dataset.id,
+        experiment_name: @scxrd_dataset.experiment_name,
+        g6_vector: @scxrd_dataset.g6_vector
+      },
+      datasets: datasets_data
+    }
   end
 
   private

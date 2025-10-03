@@ -157,6 +157,9 @@
               </div>
               <div class="text-end">
                 <div class="d-flex align-items-center gap-2">
+                  <% if dataset.has_primitive_cell? %>
+                    <%= g6_comparison_button(dataset) %>
+                  <% end %>
                   <div class="btn-group btn-group-sm">
                     <%= link_to scxrd_dataset_path(dataset), 
                                class: "btn btn-outline-primary btn-sm" do %>
@@ -208,7 +211,169 @@
   </div>
 <% end %>
 
+<!-- G6 Comparison Modal -->
+<div class="modal fade" id="g6ComparisonModal" tabindex="-1" aria-labelledby="g6ComparisonModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="g6ComparisonModalLabel">
+          <i class="bi bi-box-seam me-2"></i>Unit Cell Comparison (G6 Distance)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="g6ComparisonContent">
+        <div class="text-center py-4">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2">Searching for similar unit cells...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="me-auto">
+          <label for="g6Tolerance" class="form-label me-2">Tolerance:</label>
+          <input type="number" id="g6Tolerance" class="form-control d-inline-block" 
+                 style="width: 80px;" value="10.0" step="0.1" min="0.1">
+          <button type="button" class="btn btn-outline-secondary btn-sm ms-2" 
+                  onclick="updateG6Comparison()">Update</button>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+  let currentDatasetId = null;
+
+  function loadG6Comparison(datasetId) {
+    currentDatasetId = datasetId;
+    const tolerance = document.getElementById('g6Tolerance').value;
+    
+    // Show loading state
+    document.getElementById('g6ComparisonContent').innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Searching for similar unit cells...</p>
+      </div>
+    `;
+    
+    // Fetch comparison data
+    fetch(`/scxrd_datasets/${datasetId}/g6_similar?tolerance=${tolerance}`)
+      .then(response => response.json())
+      .then(data => {
+        displayG6Results(data);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('g6ComparisonContent').innerHTML = `
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Error loading comparison data: ${error.message}
+          </div>
+        `;
+      });
+  }
+
+  function updateG6Comparison() {
+    if (currentDatasetId) {
+      loadG6Comparison(currentDatasetId);
+    }
+  }
+
+  function displayG6Results(data) {
+    const content = document.getElementById('g6ComparisonContent');
+    
+    if (!data.success) {
+      content.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="bi bi-info-circle me-2"></i>
+          ${data.error}
+        </div>
+      `;
+      return;
+    }
+
+    if (data.count === 0) {
+      content.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-search me-2"></i>
+          No similar unit cells found within G6 distance of ${data.tolerance}.
+          <hr>
+          <small class="text-muted">
+            <strong>Current dataset:</strong> ${data.current_dataset.experiment_name}<br>
+            <strong>G6 vector:</strong> [${data.current_dataset.g6_vector.map(v => v.toFixed(2)).join(', ')}]
+          </small>
+        </div>
+      `;
+      return;
+    }
+
+    let html = `
+      <div class="alert alert-success">
+        <i class="bi bi-check-circle me-2"></i>
+        Found <strong>${data.count}</strong> dataset(s) with similar unit cells (G6 distance ≤ ${data.tolerance})
+      </div>
+      
+      <div class="mb-3">
+        <small class="text-muted">
+          <strong>Reference dataset:</strong> ${data.current_dataset.experiment_name}<br>
+          <strong>G6 vector:</strong> [${data.current_dataset.g6_vector.map(v => v.toFixed(2)).join(', ')}]
+        </small>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Dataset</th>
+              <th>Unit Cell</th>
+              <th>G6 Distance</th>
+              <th>Location</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    data.datasets.forEach(dataset => {
+      const unitCellText = dataset.unit_cell ? 
+        `${dataset.unit_cell.bravais} a=${dataset.unit_cell.a}Å b=${dataset.unit_cell.b}Å c=${dataset.unit_cell.c}Å α=${dataset.unit_cell.alpha}° β=${dataset.unit_cell.beta}° γ=${dataset.unit_cell.gamma}°` : 
+        'No unit cell';
+      
+      const locationText = dataset.well ? 
+        `${dataset.well.plate_barcode}-${dataset.well.label}` : 
+        'Standalone';
+
+      html += `
+        <tr>
+          <td>
+            <strong>${dataset.experiment_name}</strong><br>
+            <small class="text-muted">${dataset.measured_at}</small>
+          </td>
+          <td><small>${unitCellText}</small></td>
+          <td><span class="badge bg-info">${dataset.g6_distance}</span></td>
+          <td><small>${locationText}</small></td>
+          <td>
+            <a href="/scxrd_datasets/${dataset.id}" class="btn btn-outline-primary btn-sm" target="_blank">
+              <i class="bi bi-eye"></i> View
+            </a>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    content.innerHTML = html;
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     // Initialize card toggler for the page
     if (window.scxrdCardToggler && typeof window.scxrdCardToggler.reinitialize === 'function') {

@@ -57,6 +57,15 @@ class ConventionalCellService
       conventional_cells.first
     end
 
+    def conventional_cell_as_input(primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma, max_delta: nil)
+      return nil unless enabled?
+
+      conventional_cells = convert_to_conventional(primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma, max_delta: max_delta)
+      return nil unless conventional_cells&.any?
+
+      conventional_cells.last
+    end
+
     # Check if API is available
     def api_available?
       return false unless enabled?

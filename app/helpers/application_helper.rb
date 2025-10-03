@@ -50,4 +50,34 @@ module ApplicationHelper
       cell_params
     end
   end
+
+  # G6 comparison button for SCXRD datasets
+  def g6_comparison_button(dataset, options = {})
+    return "" unless dataset.has_primitive_cell?
+
+    button_class = options[:class] || "btn btn-outline-info btn-sm"
+    button_id = "g6-compare-#{dataset.id}"
+
+    # Get the count of similar datasets (with default tolerance)
+    similar_count = dataset.similar_datasets_count_by_g6
+
+    if similar_count > 0
+      button_text = content_tag(:i, "", class: "bi bi-box-seam me-1") +
+                   "#{similar_count} similar unit cells"
+      button_class += " has-matches"
+    else
+      button_text = content_tag(:i, "", class: "bi bi-box-seam me-1") +
+                   "Find similar unit cells"
+    end
+
+    content_tag(:button, button_text.html_safe,
+                id: button_id,
+                class: button_class,
+                data: {
+                  dataset_id: dataset.id,
+                  bs_toggle: "modal",
+                  bs_target: "#g6ComparisonModal"
+                },
+                onclick: "loadG6Comparison(#{dataset.id})")
+  end
 end
