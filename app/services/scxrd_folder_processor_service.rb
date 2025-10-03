@@ -265,6 +265,7 @@ class ScxrdFolderProcessorService
       # Look for the reduced cell line first, then [Lattice] section as fallback
       # Format: reduced cell plus vol=7.2218583  8.5410638 8.5902173 107.6582105 91.8679754 90.9411566 504.4382028
       cell_info = {}
+      lattice_cell_info = {} # Store lattice section data as fallback
       lines_processed = 0
       in_lattice_section = false
 
@@ -279,7 +280,7 @@ class ScxrdFolderProcessorService
         if clean_line.start_with?("reduced cell plus vol=")
           Rails.logger.info "SCXRD: Found reduced cell line at line #{index + 1}"
           cell_info = parse_cell_parameters_from_line(clean_line, "reduced cell parameters")
-          break if cell_info # We found what we need
+          # Don't break here - continue processing to ensure we find all reduced cell lines
         end
 
         # Check if we're entering the [Lattice] section (fallback method)
@@ -295,12 +296,17 @@ class ScxrdFolderProcessorService
           in_lattice_section = false
         end
 
-        # If we're in the Lattice section, look for constants plus vol line
-        if in_lattice_section && clean_line.start_with?("constants plus vol")
+        # If we're in the Lattice section, look for constants plus vol line (only as fallback)
+        if in_lattice_section && clean_line.start_with?("constants plus vol") && cell_info.empty?
           Rails.logger.info "SCXRD: Found constants plus vol line at line #{index + 1}"
-          cell_info = parse_cell_parameters_from_line(clean_line, "cell parameters from [Lattice] section")
-          break if cell_info # We found what we need
+          lattice_cell_info = parse_cell_parameters_from_line(clean_line, "cell parameters from [Lattice] section")
         end
+      end
+
+      # Use reduced cell parameters if found, otherwise use lattice section as fallback
+      if cell_info.empty? && !lattice_cell_info.empty?
+        Rails.logger.info "SCXRD: Using [Lattice] section cell parameters as fallback"
+        cell_info = lattice_cell_info
       end
 
       Rails.logger.info "SCXRD: Processed #{lines_processed} lines total"
