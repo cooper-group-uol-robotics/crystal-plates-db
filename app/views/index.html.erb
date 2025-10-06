@@ -189,12 +189,23 @@
       </div>
       <div class="modal-body">
         <div id="instructions">
-          <p>Click the button below to import chemicals from Sciformation.</p>
+          <p class="mb-3">To import chemicals from Sciformation, you'll need to provide your authentication cookie.</p>
+          
           <div class="alert alert-info">
-            <small>
-              <i class="fas fa-info-circle"></i>
-              You'll need to provide your Sciformation authentication cookie. Instructions will be provided to help you find it.
-            </small>
+            <h6><i class="fas fa-info-circle"></i> How to get your Sciformation cookie:</h6>
+            <ol class="mb-2 small">
+              <li>Keep this dialog open</li>
+              <li>Open a new tab and go to <strong>https://jfb.liverpool.ac.uk</strong></li>
+              <li>Log in if needed</li>
+              <li>Press <kbd>F12</kbd> to open Developer Tools</li>
+              <li>Go to the <strong>"Application"</strong> or <strong>"Storage"</strong> tab</li>
+              <li>Look for <strong>"Cookies"</strong> in the left sidebar</li>
+              <li>Click on <strong>"https://jfb.liverpool.ac.uk"</strong></li>
+              <li>Find the cookie named <strong>"SCIFORMATION"</strong></li>
+              <li>Copy its <strong>Value</strong> (the long string)</li>
+              <li>Click the button below and paste it when prompted</li>
+            </ol>
+            <p class="mb-0 small text-muted">This is a one-time setup - the import will happen automatically once you provide the cookie.</p>
           </div>
         </div>
         
@@ -224,7 +235,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-primary" id="importButton" onclick="startImport()">
-          Authenticate & Import
+          Import with Cookie
         </button>
       </div>
     </div>
@@ -234,14 +245,13 @@
 <script>
 async function startImport() {
   console.log("startImport called");
-  showInstructions();
   await getCookieAndImport();
 }
 
 async function getCookieAndImport() {
   try {
     // Get the SCIFORMATION cookie from user
-    const cookie = await getSciFormationCookie();
+    const cookie = getSciFormationCookie();
     
     if (!cookie) {
       showError("Import cancelled - no cookie provided.");
@@ -257,26 +267,7 @@ async function getCookieAndImport() {
   }
 }
 
-async function getSciFormationCookie() {
-  const instructions = `
-To get your Sciformation cookie:
-
-1. Keep this dialog open
-2. Open a new tab and go to https://jfb.liverpool.ac.uk
-3. Log in if needed
-4. Press F12 to open Developer Tools
-5. Go to the "Application" or "Storage" tab
-6. Look for "Cookies" in the left sidebar
-7. Click on "https://jfb.liverpool.ac.uk"
-8. Find the cookie named "SCIFORMATION" 
-9. Copy its Value (the long string)
-10. Paste it below
-
-This is a one-time setup - the import will happen automatically once you paste the cookie.
-  `.trim();
-  
-  alert(instructions);
-  
+function getSciFormationCookie() {
   const cookie = prompt("Paste your SCIFORMATION cookie value here:");
   return cookie ? cookie.trim() : null;
 }

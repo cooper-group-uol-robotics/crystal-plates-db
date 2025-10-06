@@ -10,6 +10,8 @@
 # Initialize default units
 [
   { name: "milligram", symbol: "mg", conversion_to_base: 1.0 },
+  { name: "nanoliter", symbol: "nl", conversion_to_base: 0.001 },
+  { name: "microgram", symbol: "µg", conversion_to_base: 0.001 },
   { name: "microliter", symbol: "µl", conversion_to_base: 1.0 },
   { name: "milliliter", symbol: "ml", conversion_to_base: 1000.0 },
   { name: "gram", symbol: "g", conversion_to_base: 1000.0 }
