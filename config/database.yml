@@ -30,7 +30,7 @@ production:
     database: <%= ENV.fetch("DATABASE_NAME") %>
     username: <%= ENV.fetch("DATABASE_USERNAME") %>
     password: <%= ENV["DATABASE_PASSWORD"] %>
-    sslmode: <%= ENV.fetch("DATABASE_SSL_MODE") %>
+    sslmode: <%= ENV.fetch("DATABASE_SSL_MODE", "require") %>
   cache:
     <<: *production_primary
     database: <%= ENV.fetch("CACHE_DATABASE_NAME", "crystal_plates_production_cache") %>

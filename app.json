@@ -104,6 +104,6 @@
     }
   },
   "scripts": {
-    "postdeploy": "bundle exec rails db:create db:migrate"
+    "postdeploy": "bundle exec rails db:deploy"
   }
 }
