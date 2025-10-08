@@ -1,0 +1,109 @@
+{
+  "name": "Crystal Plates Database",
+  "description": "Laboratory plate and data management system with dual interfaces for scientific data",
+  "website": "https://github.com/cooper-group-uol-robotics/crystal-plates-db",
+  "repository": "https://github.com/cooper-group-uol-robotics/crystal-plates-db",
+  "logo": "https://raw.githubusercontent.com/cooper-group-uol-robotics/crystal-plates-db/main/public/icon.png",
+  "success_url": "/plates",
+  "keywords": [
+    "rails",
+    "postgresql",
+    "laboratory",
+    "scientific-data",
+    "x-ray-diffraction"
+  ],
+  "stack": "heroku-24",
+  "addons": [],
+  "buildpacks": [
+    {
+      "url": "heroku/ruby"
+    }
+  ],
+  "env": {
+    "RAILS_ENV": {
+      "value": "production"
+    },
+    "RAILS_LOG_LEVEL": {
+      "value": "info"
+    },
+    "RAILS_SERVE_STATIC_FILES": {
+      "value": "true"
+    },
+    "RAILS_FORCE_SSL": {
+      "value": "true"
+    },
+    "DATABASE_HOST": {
+      "value": "crystal-plates-db-data.c9uaeowuif5j.eu-north-1.rds.amazonaws.com",
+      "description": "Amazon RDS PostgreSQL host"
+    },
+    "DATABASE_PORT": {
+      "value": "5432",
+      "description": "Database port"
+    },
+    "DATABASE_NAME": {
+      "value": "crystal_plates_production",
+      "description": "Main database name"
+    },
+    "DATABASE_USERNAME": {
+      "value": "postgres",
+      "description": "Database username"
+    },
+    "DATABASE_PASSWORD": {
+      "required": true,
+      "description": "Database password for RDS instance"
+    },
+    "DATABASE_SSL_MODE": {
+      "value": "require",
+      "description": "SSL mode for database connection"
+    },
+    "CACHE_DATABASE_NAME": {
+      "value": "crystal_plates_production_cache",
+      "required": false,
+      "description": "Cache database name (optional, defaults to main DB)"
+    },
+    "QUEUE_DATABASE_NAME": {
+      "value": "crystal_plates_production_queue", 
+      "required": false,
+      "description": "Queue database name (optional, defaults to main DB)"
+    },
+    "CABLE_DATABASE_NAME": {
+      "value": "crystal_plates_production_cable",
+      "required": false,
+      "description": "Cable database name (optional, defaults to main DB)"
+    },
+    "ACTIVE_STORAGE_SERVICE": {
+      "value": "local",
+      "description": "Set to 'amazon' if using S3 for file storage"
+    },
+    "AWS_REGION": {
+      "value": "eu-north-1",
+      "required": false,
+      "description": "AWS region for S3 storage (only needed if using S3)"
+    },
+    "AWS_S3_BUCKET": {
+      "required": false,
+      "description": "S3 bucket name for file storage (only needed if using S3)"
+    },
+    "AWS_ACCESS_KEY_ID": {
+      "required": false,  
+      "description": "AWS access key for S3 (only needed if using S3)"
+    },
+    "AWS_SECRET_ACCESS_KEY": {
+      "required": false,
+      "description": "AWS secret key for S3 (only needed if using S3)"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    },
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "scripts": {
+    "postdeploy": "bundle exec rails db:create db:migrate"
+  }
+}

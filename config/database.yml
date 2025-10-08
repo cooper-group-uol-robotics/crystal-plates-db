@@ -1,13 +1,14 @@
-# SQLite. Versions 3.8.0 and up are supported.
-#   gem install sqlite3
-#
-#   Ensure the SQLite 3 gem is defined in your Gemfile
-#   gem "sqlite3"
-#
+# Default configuration for development and test (SQLite)
 default: &default
   adapter: sqlite3
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   timeout: 5000
+
+# PostgreSQL configuration for production
+postgresql: &postgresql
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
 
 development:
   <<: *default
@@ -20,22 +21,25 @@ test:
   <<: *default
   database: storage/test.sqlite3
 
-
-# Store production database in the storage/ directory, which by default
-# is mounted as a persistent Docker volume in config/deploy.yml.
+# Production configuration using PostgreSQL on Amazon RDS
 production:
-  primary:
-    <<: *default
-    database: storage/production.sqlite3
+  primary: &production_primary
+    <<: *postgresql
+    host: <%= ENV.fetch("DATABASE_HOST") %>
+    port: <%= ENV.fetch("DATABASE_PORT") %>
+    database: <%= ENV.fetch("DATABASE_NAME") %>
+    username: <%= ENV.fetch("DATABASE_USERNAME") %>
+    password: <%= ENV["DATABASE_PASSWORD"] %>
+    sslmode: <%= ENV.fetch("DATABASE_SSL_MODE") %>
   cache:
-    <<: *default
-    database: storage/production_cache.sqlite3
+    <<: *production_primary
+    database: <%= ENV.fetch("CACHE_DATABASE_NAME", "crystal_plates_production_cache") %>
     migrations_paths: db/cache_migrate
   queue:
-    <<: *default
-    database: storage/production_queue.sqlite3
+    <<: *production_primary
+    database: <%= ENV.fetch("QUEUE_DATABASE_NAME", "crystal_plates_production_queue") %>
     migrations_paths: db/queue_migrate
   cable:
-    <<: *default
-    database: storage/production_cable.sqlite3
+    <<: *production_primary
+    database: <%= ENV.fetch("CABLE_DATABASE_NAME", "crystal_plates_production_cable") %>
     migrations_paths: db/cable_migrate
