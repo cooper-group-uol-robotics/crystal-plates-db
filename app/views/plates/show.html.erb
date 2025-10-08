@@ -121,6 +121,38 @@
 <%= render 'well_modal' %>
 <%= render 'edit_multiple_wells_modal' %>
 
+<!-- G6 Unit Cell Comparison Modal -->
+<div class="modal fade" id="g6ComparisonModal" tabindex="-1" aria-labelledby="g6ComparisonModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="g6ComparisonModalLabel">
+          <i class="bi bi-box-seam me-2"></i>Unit Cell Comparison (G6 Distance)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="g6ComparisonContent">
+        <div class="text-center py-4">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2">Searching for similar unit cells...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="me-auto">
+          <label for="g6Tolerance" class="form-label me-2">Tolerance:</label>
+          <input type="number" id="g6Tolerance" class="form-control d-inline-block" 
+                 style="width: 80px;" value="10.0" step="0.1" min="0.1">
+          <button type="button" class="btn btn-outline-secondary btn-sm ms-2" 
+                  onclick="updateG6Comparison()">Update</button>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import initializePlatesShow from 'plates_show';
   initializePlatesShow();
