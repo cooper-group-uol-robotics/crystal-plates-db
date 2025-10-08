@@ -3,64 +3,48 @@ namespace :db do
   task deploy: :environment do
     puts "🚀 Setting up databases for production deployment..."
 
-    # Database configurations
-    databases = {
-      primary: ENV.fetch("DATABASE_NAME"),
-      cache: ENV.fetch("CACHE_DATABASE_NAME", "crystal_plates_production_cache"),
-      queue: ENV.fetch("QUEUE_DATABASE_NAME", "crystal_plates_production_queue"),
-      cable: ENV.fetch("CABLE_DATABASE_NAME", "crystal_plates_production_cable")
-    }
-
-    # Create all databases
-    puts "\n📦 Creating databases..."
-    databases.each do |role, db_name|
-      begin
-        config = ActiveRecord::Base.configurations.configs_for(env_name: Rails.env, name: role.to_s)
-        ActiveRecord::Tasks::DatabaseTasks.create(config.database_configuration)
-        puts "✅ Created #{role} database: #{db_name}"
-      rescue ActiveRecord::DatabaseAlreadyExists
-        puts "ℹ️  #{role} database already exists: #{db_name}"
-      rescue => e
-        puts "❌ Error creating #{role} database: #{e.message}"
-        # Don't fail deployment for database creation errors
-      end
-    end
-
-    # Run migrations
-    puts "\n🔄 Running migrations..."
-
-    # Primary database migrations
+    # Create and migrate primary database
+    puts "\n📦 Setting up primary database..."
     begin
-      ActiveRecord::Base.connected_to(database: :primary) do
-        ActiveRecord::Tasks::DatabaseTasks.migrate
-      end
-      puts "✅ Primary database migrated"
+      Rake::Task["db:create"].invoke
+      Rake::Task["db:migrate"].invoke
+      puts "✅ Primary database setup completed"
     rescue => e
-      puts "❌ Error migrating primary database: #{e.message}"
-      raise e # Fail deployment if primary migrations fail
+      puts "❌ Error setting up primary database: #{e.message}"
+      raise e # Fail deployment if primary database fails
     end
 
-    # Secondary database migrations
-    [ :cache, :queue, :cable ].each do |db_role|
-      begin
-        ActiveRecord::Base.connected_to(database: db_role) do
-          migrations_path = case db_role
-          when :cache then "db/cache_migrate"
-          when :queue then "db/queue_migrate"
-          when :cable then "db/cable_migrate"
-          end
+    # Setup cache database
+    puts "\n📦 Setting up cache database..."
+    begin
+      Rails.application.load_tasks unless defined?(Rake::Task["solid_cache:install"])
+      Rake::Task["solid_cache:install"].invoke
+      puts "✅ Cache database setup completed"
+    rescue => e
+      puts "⚠️  Warning setting up cache database: #{e.message}"
+      # Don't fail deployment for cache database issues
+    end
 
-          if Dir.exist?(Rails.root.join(migrations_path))
-            ActiveRecord::MigrationContext.new(Rails.root.join(migrations_path).to_s).migrate
-            puts "✅ #{db_role.capitalize} database migrated"
-          else
-            puts "ℹ️  No migrations found for #{db_role} database"
-          end
-        end
-      rescue => e
-        puts "⚠️  Warning migrating #{db_role} database: #{e.message}"
-        # Don't fail deployment for secondary database migration errors
-      end
+    # Setup queue database  
+    puts "\n� Setting up queue database..."
+    begin
+      Rails.application.load_tasks unless defined?(Rake::Task["solid_queue:install"])
+      Rake::Task["solid_queue:install"].invoke
+      puts "✅ Queue database setup completed"
+    rescue => e
+      puts "⚠️  Warning setting up queue database: #{e.message}"
+      # Don't fail deployment for queue database issues
+    end
+
+    # Setup cable database
+    puts "\n📦 Setting up cable database..."
+    begin
+      Rails.application.load_tasks unless defined?(Rake::Task["solid_cable:install"])
+      Rake::Task["solid_cable:install"].invoke
+      puts "✅ Cable database setup completed"
+    rescue => e
+      puts "⚠️  Warning setting up cable database: #{e.message}"
+      # Don't fail deployment for cable database issues
     end
 
     puts "\n🎉 Database setup completed!"
@@ -70,14 +54,25 @@ namespace :db do
   task check: :environment do
     puts "🔍 Checking database connections..."
 
-    [ :primary, :cache, :queue, :cable ].each do |db_role|
+    # Check primary database
+    begin
+      ActiveRecord::Base.connection.execute("SELECT 1")
+      puts "✅ Primary database connection OK"
+    rescue => e
+      puts "❌ Primary database connection failed: #{e.message}"
+    end
+
+    # Check secondary databases by trying to connect to their tables
+    [
+      { name: "Cache", class: "SolidCache::Entry" },
+      { name: "Queue", class: "SolidQueue::Job" },
+      { name: "Cable", class: "SolidCable::Message" }
+    ].each do |db_info|
       begin
-        ActiveRecord::Base.connected_to(database: db_role) do
-          ActiveRecord::Base.connection.execute("SELECT 1")
-          puts "✅ #{db_role.capitalize} database connection OK"
-        end
+        db_info[:class].constantize.connection.execute("SELECT 1")
+        puts "✅ #{db_info[:name]} database connection OK"
       rescue => e
-        puts "❌ #{db_role.capitalize} database connection failed: #{e.message}"
+        puts "❌ #{db_info[:name]} database connection failed: #{e.message}"
       end
     end
   end
