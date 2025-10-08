@@ -71,6 +71,20 @@
       "required": false,
       "description": "Cable database name (optional, defaults to main DB)"
     },
+    "JOB_CONCURRENCY": {
+      "value": "1",
+      "description": "Number of job worker processes (Solid Queue)"
+    },
+    "SOLID_QUEUE_POLLING_INTERVAL": {
+      "value": "2",
+      "required": false,
+      "description": "Polling interval for Solid Queue workers (seconds)"
+    },
+    "SOLID_QUEUE_THREADS": {
+      "value": "2",
+      "required": false,
+      "description": "Number of threads per Solid Queue worker process"
+    },
     "ACTIVE_STORAGE_SERVICE": {
       "value": "local",
       "description": "Set to 'amazon' if using S3 for file storage"

@@ -50,6 +50,29 @@ namespace :db do
     puts "\n🎉 Database setup completed!"
   end
 
+  desc "Test Solid Queue functionality"
+  task test_queue: :environment do
+    puts "🧪 Testing Solid Queue functionality..."
+    
+    begin
+      # Queue a test job
+      job = TestJob.perform_later("Test from rake task at #{Time.current}")
+      puts "✅ Test job queued successfully: #{job.job_id}"
+      
+      # Check if we can access the queue database
+      total_jobs = SolidQueue::Job.count
+      pending_jobs = SolidQueue::Job.where(finished_at: nil).count
+      
+      puts "📊 Queue statistics:"
+      puts "   Total jobs: #{total_jobs}"
+      puts "   Pending jobs: #{pending_jobs}"
+      
+    rescue => e
+      puts "❌ Error testing Solid Queue: #{e.message}"
+      puts "   #{e.backtrace.first}"
+    end
+  end
+
   desc "Check database connections"
   task check: :environment do
     puts "🔍 Checking database connections..."
