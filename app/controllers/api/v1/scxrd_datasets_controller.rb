@@ -333,9 +333,14 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       archive_start_time = Time.current
       # Create a temporary directory to extract the archive
       Dir.mktmpdir do |temp_dir|
-        # Save the uploaded archive temporarily
+        # Save the uploaded archive temporarily - stream instead of loading into memory
         archive_path = File.join(temp_dir, "uploaded_archive.zip")
-        File.open(archive_path, "wb") { |f| f.write(uploaded_archive.read) }
+        uploaded_archive.rewind if uploaded_archive.respond_to?(:rewind)
+        File.open(archive_path, "wb") do |f|
+          while chunk = uploaded_archive.read(64.kilobytes)
+            f.write(chunk)
+          end
+        end
 
         # Extract the archive
         require "zip"
@@ -377,40 +382,42 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
             Rails.logger.info "API SCXRD: Peak table stored (#{number_to_human_size(result[:peak_table].bytesize)})"
           end
 
-          # Store all diffraction images as DiffractionImage records
-          if result[:all_diffraction_images] && result[:all_diffraction_images].any?
-            Rails.logger.info "API SCXRD: Processing #{result[:all_diffraction_images].length} diffraction images..."
+          # Store all diffraction images as DiffractionImage records using streaming
+          Rails.logger.info "API SCXRD: Processing diffraction images with streaming..."
+          
+          image_count = 0
+          total_size = 0
+          
+          processor.each_diffraction_image do |meta, io|
+            begin
+              diffraction_image = @scxrd_dataset.diffraction_images.build(
+                run_number: meta[:run_number],
+                image_number: meta[:image_number],
+                filename: meta[:filename],
+                file_size: meta[:file_size]
+              )
 
-            result[:all_diffraction_images].each_with_index do |image_data, index|
-              begin
-                diffraction_image = @scxrd_dataset.diffraction_images.build(
-                  run_number: image_data[:run_number],
-                  image_number: image_data[:image_number],
-                  filename: image_data[:filename],
-                  file_size: image_data[:file_size]
-                )
+              diffraction_image.rodhypix_file.attach(
+                io: io,
+                filename: meta[:filename],
+                content_type: "application/octet-stream"
+              )
 
-                diffraction_image.rodhypix_file.attach(
-                  io: StringIO.new(image_data[:data]),
-                  filename: image_data[:filename],
-                  content_type: "application/octet-stream"
-                )
+              diffraction_image.save!
+              image_count += 1
+              total_size += meta[:file_size]
 
-                diffraction_image.save!
-
-                # Log progress every 100 images to avoid log spam
-                if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
-                  Rails.logger.info "API SCXRD: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
-                end
-
-              rescue => e
-                Rails.logger.error "API SCXRD: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
+              # Log progress every 100 images to avoid log spam
+              if image_count % 100 == 0
+                Rails.logger.info "API SCXRD: Stored #{image_count} diffraction images so far..."
               end
-            end
 
-            total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
-            Rails.logger.info "API SCXRD: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
+            rescue => e
+              Rails.logger.error "API SCXRD: Error storing diffraction image #{meta[:filename]}: #{e.message}"
+            end
           end
+
+          Rails.logger.info "API SCXRD: All diffraction images stored (#{image_count} images, #{number_to_human_size(total_size)} total)"
 
           # Store unit cell parameters from .par file if available
           Rails.logger.info "API SCXRD: Checking for parsed .par data..."

@@ -86,8 +86,12 @@
       "description": "Number of threads per Solid Queue worker process"
     },
     "ACTIVE_STORAGE_SERVICE": {
-      "value": "local",
+      "value": "amazon",
       "description": "Set to 'amazon' if using S3 for file storage"
+    },
+    "SCXRD_DISABLE_BULK_IMAGE_LOADING": {
+      "value": "1",
+      "description": "Disable bulk image loading to prevent memory issues on small dynos"
     },
     "AWS_REGION": {
       "value": "eu-north-1",

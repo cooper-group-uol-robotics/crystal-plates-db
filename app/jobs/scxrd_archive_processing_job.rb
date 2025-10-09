@@ -10,9 +10,8 @@ class ScxrdArchiveProcessingJob < ApplicationJob
       archive_start_time = Time.current
       Rails.logger.info "SCXRD Job: Starting processing for dataset #{dataset.id}"
 
-      # Download and extract the archive (same logic as controller)
+      # Stream archive to avoid loading entire file into memory
       archive_blob = dataset.archive.blob
-      archive_file = dataset.archive.download
 
       Dir.mktmpdir do |temp_dir|
         # Detect archive type from filename or content type (same as controller)
@@ -21,10 +20,13 @@ class ScxrdArchiveProcessingJob < ApplicationJob
 
         is_tar = original_filename.end_with?(".tar") || content_type == "application/x-tar"
 
-        # Save the archive temporarily with correct extension
+        # Save the archive temporarily with correct extension - stream from blob
         archive_extension = is_tar ? ".tar" : ".zip"
         archive_path = File.join(temp_dir, "uploaded_archive#{archive_extension}")
-        File.open(archive_path, "wb") { |f| f.write(archive_file) }
+        
+        archive_blob.open do |tempfile|
+          FileUtils.cp(tempfile.path, archive_path)
+        end
 
         # Extract the archive using same methods as controller
         extract_start_time = Time.current
@@ -66,40 +68,42 @@ class ScxrdArchiveProcessingJob < ApplicationJob
             Rails.logger.info "SCXRD Job: Peak table stored (#{number_to_human_size(result[:peak_table].bytesize)})"
           end
 
-          # Store all diffraction images as DiffractionImage records (exact same logic)
-          if result[:all_diffraction_images] && result[:all_diffraction_images].any?
-            Rails.logger.info "SCXRD Job: Processing #{result[:all_diffraction_images].length} diffraction images..."
+          # Store all diffraction images as DiffractionImage records using streaming
+          Rails.logger.info "SCXRD Job: Processing diffraction images with streaming..."
+          
+          image_count = 0
+          total_size = 0
+          
+          processor.each_diffraction_image do |meta, io|
+            begin
+              diffraction_image = dataset.diffraction_images.build(
+                run_number: meta[:run_number],
+                image_number: meta[:image_number],
+                filename: meta[:filename],
+                file_size: meta[:file_size]
+              )
 
-            result[:all_diffraction_images].each_with_index do |image_data, index|
-              begin
-                diffraction_image = dataset.diffraction_images.build(
-                  run_number: image_data[:run_number],
-                  image_number: image_data[:image_number],
-                  filename: image_data[:filename],
-                  file_size: image_data[:file_size]
-                )
+              diffraction_image.rodhypix_file.attach(
+                io: io,
+                filename: meta[:filename],
+                content_type: "application/octet-stream"
+              )
 
-                diffraction_image.rodhypix_file.attach(
-                  io: StringIO.new(image_data[:data]),
-                  filename: image_data[:filename],
-                  content_type: "application/octet-stream"
-                )
+              diffraction_image.save!
+              image_count += 1
+              total_size += meta[:file_size]
 
-                diffraction_image.save!
-
-                # Log progress every 100 images to avoid log spam
-                if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
-                  Rails.logger.info "SCXRD Job: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
-                end
-
-              rescue => e
-                Rails.logger.error "SCXRD Job: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
+              # Log progress every 100 images to avoid log spam
+              if image_count % 100 == 0
+                Rails.logger.info "SCXRD Job: Stored #{image_count} diffraction images so far..."
               end
-            end
 
-            total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
-            Rails.logger.info "SCXRD Job: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
+            rescue => e
+              Rails.logger.error "SCXRD Job: Error storing diffraction image #{meta[:filename]}: #{e.message}"
+            end
           end
+
+          Rails.logger.info "SCXRD Job: All diffraction images stored (#{image_count} images, #{number_to_human_size(total_size)} total)"
 
           # Store unit cell parameters from metadata (exact same logic as controller)
           Rails.logger.info "SCXRD Job: Checking for parsed metadata..."

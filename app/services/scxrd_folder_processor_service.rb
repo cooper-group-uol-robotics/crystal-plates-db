@@ -15,16 +15,64 @@ class ScxrdFolderProcessorService
 
   def process
     extract_files
-    create_zip_archive
+    # Skip creating zip archive to save memory - can be created on-demand later
+    # create_zip_archive
 
     {
       peak_table: @peak_table_data,
       all_diffraction_images: @all_diffraction_images,
-      zip_archive: @zip_data,
+      zip_archive: nil, # @zip_data,
       metadata: @metadata,
       crystal_image: @crystal_image_data,
       structure_file: @structure_file_data
     }
+  end
+
+  # Stream diffraction images one at a time to avoid loading all into memory
+  def each_diffraction_image
+    return unless Dir.exist?(@folder_path)
+
+    Rails.logger.info "SCXRD: Streaming diffraction images from frames folder"
+
+    frames_pattern = File.join(@folder_path, "frames", "*.rodhypix")
+    all_rodhypix_files = Dir.glob(frames_pattern, File::FNM_CASEFOLD)
+
+    # Exclude files starting with 'pre_'
+    rodhypix_files = all_rodhypix_files.reject { |file| File.basename(file).start_with?("pre_") }
+
+    Rails.logger.info "SCXRD: Found #{rodhypix_files.length} diffraction images (excluding pre_* files)"
+
+    # Sort files for consistent ordering
+    rodhypix_files.sort!
+
+    rodhypix_files.each do |file_path|
+      filename = File.basename(file_path)
+
+      # Parse filename to extract run number and image number
+        # Expected format: <variable_string>_<run_number>_<image_number>.rodhypix
+        if filename =~ /^(.+)_(\d+)_(\d+)\.rodhypix$/i
+          run_number = $2.to_i
+          image_number = $3.to_i
+          file_size = File.size(file_path)
+
+          begin
+            File.open(file_path, "rb") do |io|
+              yield({
+                filename: filename,
+                run_number: run_number,
+                image_number: image_number,
+                file_size: file_size
+              }, io)
+            end
+
+            Rails.logger.debug "SCXRD: Streamed #{filename} - Run: #{run_number}, Image: #{image_number}, Size: #{number_to_human_size(file_size)}"
+          rescue => e
+            Rails.logger.error "SCXRD: Error streaming diffraction image #{filename}: #{e.message}"
+          end
+        else
+          Rails.logger.warn "SCXRD: Filename #{filename} doesn't match expected pattern <name>_<run>_<image>.rodhypix"
+        end
+    end
   end
 
   private
@@ -126,6 +174,13 @@ class ScxrdFolderProcessorService
   end
 
   def extract_all_diffraction_images
+    # Skip loading all images into memory to prevent OOM on large datasets
+    if ENV["SCXRD_DISABLE_BULK_IMAGE_LOADING"] == "1"
+      Rails.logger.info "SCXRD: Bulk image loading disabled, only collecting metadata"
+      @all_diffraction_images = collect_image_metadata
+      return
+    end
+
     Rails.logger.info "SCXRD: Starting to extract all diffraction images from frames folder"
 
     frames_pattern = File.join(@folder_path, "frames", "*.rodhypix")
@@ -144,7 +199,6 @@ class ScxrdFolderProcessorService
       # Parse filename to extract run number and image number
       # Expected format: <variable_string>_<run_number>_<image_number>.rodhypix
       if filename =~ /^(.+)_(\d+)_(\d+)\.rodhypix$/i
-        base_name = $1
         run_number = $2.to_i
         image_number = $3.to_i
 
@@ -189,6 +243,50 @@ class ScxrdFolderProcessorService
     end
   end
 
+  def collect_image_metadata
+    Rails.logger.info "SCXRD: Collecting image metadata without loading file contents"
+
+    frames_pattern = File.join(@folder_path, "frames", "*.rodhypix")
+    all_rodhypix_files = Dir.glob(frames_pattern, File::FNM_CASEFOLD)
+
+    # Exclude files starting with 'pre_'
+    rodhypix_files = all_rodhypix_files.reject { |file| File.basename(file).start_with?("pre_") }
+
+    Rails.logger.info "SCXRD: Found #{rodhypix_files.length} diffraction images (excluding pre_* files)"
+
+    metadata_only = []
+
+    rodhypix_files.each do |file_path|
+      filename = File.basename(file_path)
+
+      if filename =~ /^(.+)_(\d+)_(\d+)\.rodhypix$/i
+        run_number = $2.to_i
+        image_number = $3.to_i
+        file_size = File.size(file_path)
+
+        metadata_only << {
+          filename: filename,
+          run_number: run_number,
+          image_number: image_number,
+          file_size: file_size
+          # Note: no 'data' key to save memory
+        }
+      end
+    end
+
+    # Sort by run number and image number for consistent ordering
+    metadata_only.sort_by! { |img| [ img[:run_number], img[:image_number] ] }
+
+    Rails.logger.info "SCXRD: Collected metadata for #{metadata_only.length} diffraction images"
+
+    if metadata_only.any?
+      total_size = metadata_only.sum { |img| img[:file_size] }
+      Rails.logger.info "SCXRD: Total diffraction images size: #{number_to_human_size(total_size)}"
+    end
+
+    metadata_only
+  end
+
   def create_zip_archive
     return unless Dir.exist?(@folder_path)
 
@@ -231,7 +329,7 @@ class ScxrdFolderProcessorService
         # Log progress every 500 files to avoid log spam
         if @file_count % 500 == 0
           progress = total_files ? "#{@file_count}/#{total_files}" : @file_count.to_s
-
+          Rails.logger.info "SCXRD: Adding files to ZIP archive... #{progress}"
         end
       end
     end
