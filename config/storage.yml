@@ -6,14 +6,6 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
-# AWS S3 configuration for production (uses environment variables for Heroku)
-# amazon:
-#   service: S3
-#   access_key_id: <%= ENV.fetch("AWS_ACCESS_KEY_ID") %>
-#   secret_access_key: <%= ENV.fetch("AWS_SECRET_ACCESS_KEY") %>
-#   region: <%= ENV.fetch("AWS_REGION") %>
-#   bucket: <%= ENV.fetch("AWS_S3_BUCKET") %>
-
 # Stackhero MinIO configuration for production
 stackhero:
   service: S3
