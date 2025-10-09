@@ -13,6 +13,16 @@ amazon:
   secret_access_key: <%= ENV.fetch("AWS_SECRET_ACCESS_KEY") %>
   region: <%= ENV.fetch("AWS_REGION") %>
   bucket: <%= ENV.fetch("AWS_S3_BUCKET") %>
+
+# Stackhero MinIO configuration for production
+stackhero:
+  service: S3
+  access_key_id: <%= ENV.fetch("STACKHERO_MINIO_ROOT_ACCESS_KEY") %>
+  secret_access_key: <%= ENV.fetch("STACKHERO_MINIO_ROOT_SECRET_KEY") %>
+  region: <%= ENV.fetch("STACKHERO_MINIO_REGION", "us-east-1") %>
+  bucket: <%= ENV.fetch("STACKHERO_MINIO_BUCKET") %>
+  endpoint: <%= ENV.fetch("STACKHERO_MINIO_HOST") %>
+  force_path_style: true
 # Remember not to checkin your GCS keyfile to a repository
 # google:
 #   service: GCS

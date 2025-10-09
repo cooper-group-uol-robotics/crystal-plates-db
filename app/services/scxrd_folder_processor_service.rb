@@ -48,7 +48,7 @@ class ScxrdFolderProcessorService
     rodhypix_files.each do |file_path|
       filename = File.basename(file_path)
 
-      # Parse filename to extract run number and image number
+        # Parse filename to extract run number and image number
         # Expected format: <variable_string>_<run_number>_<image_number>.rodhypix
         if filename =~ /^(.+)_(\d+)_(\d+)\.rodhypix$/i
           run_number = $2.to_i

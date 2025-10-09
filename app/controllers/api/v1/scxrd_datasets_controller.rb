@@ -384,10 +384,10 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
 
           # Store all diffraction images as DiffractionImage records using streaming
           Rails.logger.info "API SCXRD: Processing diffraction images with streaming..."
-          
+
           image_count = 0
           total_size = 0
-          
+
           processor.each_diffraction_image do |meta, io|
             begin
               diffraction_image = @scxrd_dataset.diffraction_images.build(

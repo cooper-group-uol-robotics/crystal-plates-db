@@ -23,7 +23,7 @@ class ScxrdArchiveProcessingJob < ApplicationJob
         # Save the archive temporarily with correct extension - stream from blob
         archive_extension = is_tar ? ".tar" : ".zip"
         archive_path = File.join(temp_dir, "uploaded_archive#{archive_extension}")
-        
+
         archive_blob.open do |tempfile|
           FileUtils.cp(tempfile.path, archive_path)
         end
@@ -70,10 +70,10 @@ class ScxrdArchiveProcessingJob < ApplicationJob
 
           # Store all diffraction images as DiffractionImage records using streaming
           Rails.logger.info "SCXRD Job: Processing diffraction images with streaming..."
-          
+
           image_count = 0
           total_size = 0
-          
+
           processor.each_diffraction_image do |meta, io|
             begin
               diffraction_image = dataset.diffraction_images.build(

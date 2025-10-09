@@ -86,12 +86,33 @@
       "description": "Number of threads per Solid Queue worker process"
     },
     "ACTIVE_STORAGE_SERVICE": {
-      "value": "amazon",
-      "description": "Set to 'amazon' if using S3 for file storage"
+      "value": "stackhero",
+      "description": "Set to 'stackhero' for Stackhero MinIO, 'amazon' for AWS S3, or 'local' for local storage"
     },
     "SCXRD_DISABLE_BULK_IMAGE_LOADING": {
       "value": "1",
       "description": "Disable bulk image loading to prevent memory issues on small dynos"
+    },
+    "MINIO_ENDPOINT": {
+      "required": false,
+      "description": "Stackhero MinIO endpoint URL (only needed if using stackhero service)"
+    },
+    "MINIO_ACCESS_KEY": {
+      "required": false,
+      "description": "Stackhero MinIO access key (only needed if using stackhero service)"
+    },
+    "MINIO_SECRET_KEY": {
+      "required": false,
+      "description": "Stackhero MinIO secret key (only needed if using stackhero service)"
+    },
+    "MINIO_BUCKET": {
+      "required": false,
+      "description": "Stackhero MinIO bucket name (only needed if using stackhero service)"
+    },
+    "MINIO_REGION": {
+      "value": "us-east-1",
+      "required": false,
+      "description": "Stackhero MinIO region (only needed if using stackhero service)"
     },
     "AWS_REGION": {
       "value": "eu-north-1",
