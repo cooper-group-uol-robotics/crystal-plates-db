@@ -68,43 +68,6 @@ class ScxrdArchiveProcessingJob < ApplicationJob
             Rails.logger.info "SCXRD Job: Peak table stored (#{number_to_human_size(result[:peak_table].bytesize)})"
           end
 
-          # Store all diffraction images as DiffractionImage records using streaming
-          Rails.logger.info "SCXRD Job: Processing diffraction images with streaming..."
-
-          image_count = 0
-          total_size = 0
-
-          processor.each_diffraction_image do |meta, io|
-            begin
-              diffraction_image = dataset.diffraction_images.build(
-                run_number: meta[:run_number],
-                image_number: meta[:image_number],
-                filename: meta[:filename],
-                file_size: meta[:file_size]
-              )
-
-              diffraction_image.rodhypix_file.attach(
-                io: io,
-                filename: meta[:filename],
-                content_type: "application/octet-stream"
-              )
-
-              diffraction_image.save!
-              image_count += 1
-              total_size += meta[:file_size]
-
-              # Log progress every 100 images to avoid log spam
-              if image_count % 100 == 0
-                Rails.logger.info "SCXRD Job: Stored #{image_count} diffraction images so far..."
-              end
-
-            rescue => e
-              Rails.logger.error "SCXRD Job: Error storing diffraction image #{meta[:filename]}: #{e.message}"
-            end
-          end
-
-          Rails.logger.info "SCXRD Job: All diffraction images stored (#{image_count} images, #{number_to_human_size(total_size)} total)"
-
           # Store unit cell parameters from metadata (exact same logic as controller)
           Rails.logger.info "SCXRD Job: Checking for parsed metadata..."
           if result[:metadata]
@@ -176,6 +139,43 @@ class ScxrdArchiveProcessingJob < ApplicationJob
           elsif result[:structure_file]
             Rails.logger.info "SCXRD Job: Structure file found but dataset already has one attached, skipping"
           end
+
+          # Store all diffraction images as DiffractionImage records using streaming
+          Rails.logger.info "SCXRD Job: Processing diffraction images with streaming..."
+
+          image_count = 0
+          total_size = 0
+
+          processor.each_diffraction_image do |meta, io|
+            begin
+              diffraction_image = dataset.diffraction_images.build(
+                run_number: meta[:run_number],
+                image_number: meta[:image_number],
+                filename: meta[:filename],
+                file_size: meta[:file_size]
+              )
+
+              diffraction_image.rodhypix_file.attach(
+                io: io,
+                filename: meta[:filename],
+                content_type: "application/octet-stream"
+              )
+
+              diffraction_image.save!
+              image_count += 1
+              total_size += meta[:file_size]
+
+              # Log progress every 100 images to avoid log spam
+              if image_count % 100 == 0
+                Rails.logger.info "SCXRD Job: Stored #{image_count} diffraction images so far..."
+              end
+
+            rescue => e
+              Rails.logger.error "SCXRD Job: Error storing diffraction image #{meta[:filename]}: #{e.message}"
+            end
+          end
+
+          Rails.logger.info "SCXRD Job: All diffraction images stored (#{image_count} images, #{number_to_human_size(total_size)} total)"
         else
           Rails.logger.warn "SCXRD Job: No experiment folder found in extracted archive"
         end
