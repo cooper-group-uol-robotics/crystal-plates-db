@@ -86,6 +86,8 @@ Rails.application.routes.draw do
       get :image_data
       get :peak_table_data
       get :g6_similar
+      post :csd_search
+      get :similarity_counts
     end
     resources :diffraction_images, only: [ :index, :show ] do
       member do

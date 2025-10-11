@@ -2,7 +2,7 @@ class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
   before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
-  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :structure_file, :image_data, :peak_table_data, :g6_similar ]
+  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :structure_file, :image_data, :peak_table_data, :g6_similar, :csd_search, :similarity_counts ]
 
   def index
     if params[:well_id].present?
@@ -396,6 +396,136 @@ class ScxrdDatasetsController < ApplicationController
         unit_cell: @scxrd_dataset.display_cell
       },
       datasets: similar_datasets_data
+    }
+  end
+
+  def csd_search
+    unless @scxrd_dataset.has_primitive_cell?
+      render json: {
+        success: false,
+        error: "This dataset does not have unit cell parameters"
+      }
+      return
+    end
+
+    # Get max_hits parameter (default to 50)
+    max_hits = params[:max_hits]&.to_i || 50
+
+    begin
+      # Use the unit cell parameters from the dataset
+      cell_params = @scxrd_dataset.extract_cell_params_for_g6
+
+      # Make API request to CSD search endpoint
+      connection = Faraday.new(url: Setting.conventional_cell_api_endpoint) do |faraday|
+        faraday.request :json
+        faraday.response :json
+        faraday.adapter Faraday.default_adapter
+        faraday.options.timeout = Setting.conventional_cell_api_timeout
+      end
+
+      request_body = {
+        cell_parameters: [
+          cell_params[:a].to_f,
+          cell_params[:b].to_f,
+          cell_params[:c].to_f,
+          cell_params[:alpha].to_f,
+          cell_params[:beta].to_f,
+          cell_params[:gamma].to_f
+        ],
+        lattice_centring: "P",  # Always "P" for primitive/reduced cells
+        max_hits: max_hits
+      }
+
+      Rails.logger.debug "CSD Search API request: #{request_body.to_json}"
+
+      response = connection.post("/api/v1/csd/reduced-cell-search", request_body)
+      Rails.logger.debug "CSD Search API response: #{response.body.inspect}"
+
+      if response.success?
+        render json: {
+          success: true,
+          results: response.body || [],
+          search_parameters: {
+            max_hits: max_hits,
+            lattice_centring: "P",
+            unit_cell: cell_params
+          }
+        }
+      else
+        Rails.logger.warn "CSD Search API error: #{response.status} - #{response.body}"
+        render json: {
+          success: false,
+          error: "CSD search failed: HTTP #{response.status}",
+          details: response.body
+        }
+      end
+    rescue StandardError => e
+      Rails.logger.error "CSD search request failed: #{e.message}"
+      render json: {
+        success: false,
+        error: "CSD search failed: #{e.message}"
+      }
+    end
+  end
+
+  def similarity_counts
+    unless @scxrd_dataset.has_primitive_cell?
+      render json: {
+        success: false,
+        g6_count: 0,
+        csd_count: 0
+      }
+      return
+    end
+
+    g6_count = 0
+    csd_count = 0
+
+    # Get G6 similarity count
+    if G6DistanceService.enabled?
+      candidates = ScxrdDataset.where.not(id: @scxrd_dataset.id)
+                               .with_primitive_cells
+      similar_datasets = G6DistanceService.find_similar_datasets(@scxrd_dataset, candidates, tolerance: 10.0)
+      g6_count = similar_datasets.size
+    end
+
+    # Get CSD count
+    begin
+      cell_params = @scxrd_dataset.extract_cell_params_for_g6
+
+      connection = Faraday.new(url: Setting.conventional_cell_api_endpoint) do |faraday|
+        faraday.request :json
+        faraday.response :json
+        faraday.adapter Faraday.default_adapter
+        faraday.options.timeout = Setting.conventional_cell_api_timeout
+      end
+
+      request_body = {
+        cell_parameters: [
+          cell_params[:a].to_f,
+          cell_params[:b].to_f,
+          cell_params[:c].to_f,
+          cell_params[:alpha].to_f,
+          cell_params[:beta].to_f,
+          cell_params[:gamma].to_f
+        ],
+        lattice_centring: "P",
+        max_hits: 50
+      }
+
+      response = connection.post("/api/v1/csd/reduced-cell-search", request_body)
+
+      if response.success? && response.body.is_a?(Array)
+        csd_count = response.body.size
+      end
+    rescue StandardError => e
+      Rails.logger.error "Error getting CSD count: #{e.message}"
+    end
+
+    render json: {
+      success: true,
+      g6_count: g6_count,
+      csd_count: csd_count
     }
   end
 

@@ -190,22 +190,15 @@
               <div class="text-end">
                 <div class="d-flex align-items-center gap-2">
                   <% if dataset.has_primitive_cell? %>
-                    <% similarity_count = @unit_cell_similarities[dataset.id]&.size || 0 %>
-                    <% if similarity_count > 0 %>
-                      <button type="button" class="btn btn-outline-info btn-sm has-matches" 
-                              data-dataset-id="<%= dataset.id %>"
-                              data-bs-toggle="modal" 
-                              data-bs-target="#g6ComparisonModal"
-                              onclick="loadG6Comparison(<%= dataset.id %>)">
-                        <i class="bi bi-box-seam me-1"></i>
-                        <%= similarity_count %> similar unit cells
-                      </button>
-                    <% else %>
-                      <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                        <i class="bi bi-box-seam me-1"></i>
-                        No similar unit cells
-                      </button>
-                    <% end %>
+                    <button type="button" class="btn btn-outline-info btn-sm similarity-button" 
+                            id="similarity-btn-<%= dataset.id %>"
+                            data-dataset-id="<%= dataset.id %>"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#g6ComparisonModal"
+                            onclick="loadG6Comparison(<%= dataset.id %>)">
+                      <i class="bi bi-box-seam me-1"></i>
+                      <span class="similarity-text">Loading...</span>
+                    </button>
                   <% end %>
                   <div class="btn-group btn-group-sm">
                     <%= link_to scxrd_dataset_path(dataset), 
@@ -260,29 +253,54 @@
 
 <!-- G6 Comparison Modal -->
 <div class="modal fade" id="g6ComparisonModal" tabindex="-1" aria-labelledby="g6ComparisonModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="g6ComparisonModalLabel">
-          <i class="bi bi-box-seam me-2"></i>Unit Cell Comparison
+          <i class="bi bi-box-seam me-2"></i>Unit Cell Analysis
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" id="g6ComparisonContent">
-        <div class="text-center py-4">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
+      <div class="modal-body">
+        <!-- G6 Tolerance Control -->
+        <div class="mb-3">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <label for="g6Tolerance" class="form-label me-2">G6 Tolerance:</label>
+              <input type="number" id="g6Tolerance" class="form-control d-inline-block" 
+                     style="width: 80px;" value="10.0" step="0.1" min="0.1">
+              <button type="button" class="btn btn-outline-secondary btn-sm ms-2" 
+                      onclick="updateG6Comparison()">Update</button>
+            </div>
           </div>
-          <p class="mt-2">Searching for similar unit cells...</p>
+        </div>
+
+        <!-- Local Database Comparison -->
+        <div id="g6ComparisonContent">
+          <div class="text-center py-4">
+            <div class="spinner-border" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Searching for similar unit cells...</p>
+          </div>
+        </div>
+
+        <!-- CSD Search Results -->
+        <div class="mt-4">
+          <h6 class="border-bottom pb-2">
+            <i class="bi bi-globe me-2"></i>Cambridge Structural Database Results
+          </h6>
+          <div id="csdSearchContent">
+            <div class="text-center py-3">
+              <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-2 mb-0">Searching CSD...</p>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
-        <div class="me-auto">
-          <label for="g6Tolerance" class="form-label me-2">Tolerance:</label>
-          <input type="number" id="g6Tolerance" class="form-control d-inline-block" 
-                 style="width: 80px;" value="10.0" step="0.1" min="0.1">
-          <button type="button" class="btn btn-outline-secondary btn-sm ms-2" 
-                  onclick="updateG6Comparison()">Update</button>
-        </div>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -296,7 +314,7 @@
     currentDatasetId = datasetId;
     const tolerance = document.getElementById('g6Tolerance').value;
     
-    // Show loading state
+    // Show loading state for G6 comparison
     document.getElementById('g6ComparisonContent').innerHTML = `
       <div class="text-center py-4">
         <div class="spinner-border" role="status">
@@ -306,7 +324,17 @@
       </div>
     `;
     
-    // Fetch comparison data
+    // Show loading state for CSD search
+    document.getElementById('csdSearchContent').innerHTML = `
+      <div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 mb-0">Searching CSD...</p>
+      </div>
+    `;
+    
+    // Fetch G6 comparison data
     fetch(`/scxrd_datasets/${datasetId}/g6_similar?tolerance=${tolerance}`)
       .then(response => response.json())
       .then(data => {
@@ -321,12 +349,125 @@
           </div>
         `;
       });
+    
+    // Automatically trigger CSD search
+    searchCSD();
   }
 
   function updateG6Comparison() {
     if (currentDatasetId) {
       loadG6Comparison(currentDatasetId);
     }
+  }
+
+  function searchCSD() {
+    if (!currentDatasetId) return;
+    
+    // Fetch CSD search data (max_hits fixed at 50)
+    fetch(`/scxrd_datasets/${currentDatasetId}/csd_search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        max_hits: 50
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      displayCSDResults(data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      document.getElementById('csdSearchContent').innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          Error searching CSD: ${error.message}
+        </div>
+      `;
+    });
+  }
+
+  function displayCSDResults(data) {
+    const content = document.getElementById('csdSearchContent');
+    
+    if (!data.success) {
+      content.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="bi bi-info-circle me-2"></i>
+          CSD Search Error: ${data.error || 'Unknown error occurred'}
+        </div>
+      `;
+      return;
+    }
+
+    if (!data.results || data.results.length === 0) {
+      content.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-search me-2"></i>
+          No similar structures found in the Cambridge Structural Database.
+          <hr>
+          <small class="text-muted">
+            Try increasing the tolerance values or check if the unit cell parameters are correct.
+          </small>
+        </div>
+      `;
+      return;
+    }
+
+    let html = `
+      <div class="alert alert-success">
+        <i class="bi bi-check-circle me-2"></i>
+        Found <strong>${data.results.length}</strong> similar structure(s) in the Cambridge Structural Database
+      </div>
+      
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>CSD Code</th>
+              <th>Unit Cell</th>
+              <th>Space Group</th>
+              <th>Formula</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    data.results.forEach(structure => {
+      const unitCellText = structure.cell_parameters && structure.cell_parameters.length >= 6 ? 
+        `a=${structure.cell_parameters[0].toFixed(3)}Å b=${structure.cell_parameters[1].toFixed(3)}Å c=${structure.cell_parameters[2].toFixed(3)}Å α=${structure.cell_parameters[3].toFixed(1)}° β=${structure.cell_parameters[4].toFixed(1)}° γ=${structure.cell_parameters[5].toFixed(1)}°` : 
+        'No unit cell data';
+
+      html += `
+        <tr>
+          <td>
+            <strong>${structure.identifier || 'Unknown'}</strong>
+          </td>
+          <td><small>${unitCellText}</small></td>
+          <td><span class="badge bg-secondary">${structure.space_group || 'Unknown'}</span></td>
+          <td><small>${structure.formula || 'Unknown'}</small></td>
+          <td>
+            ${structure.identifier ? `
+              <button type="button" class="btn btn-outline-info btn-sm" 
+                      onclick="window.open('https://www.ccdc.cam.ac.uk/structures/Search?Ccdcid=${structure.identifier}', '_blank')">
+                <i class="bi bi-box-arrow-up-right"></i> CCDC
+              </button>
+            ` : ''}
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    content.innerHTML = html;
   }
 
   function displayG6Results(data) {
@@ -424,6 +565,50 @@
     content.innerHTML = html;
   }
 
+
+
+  function loadSimilarityCounts() {
+    // Load similarity counts for all datasets with unit cells
+    document.querySelectorAll('.similarity-button').forEach(button => {
+      const datasetId = button.getAttribute('data-dataset-id');
+      const textSpan = button.querySelector('.similarity-text');
+      
+      fetch(`/scxrd_datasets/${datasetId}/similarity_counts`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const g6Count = data.g6_count || 0;
+            const csdCount = data.csd_count || 0;
+            const totalCount = g6Count + csdCount;
+            
+            if (totalCount > 0) {
+              textSpan.textContent = `${g6Count} local + ${csdCount} CSD matches`;
+              button.classList.remove('btn-outline-secondary');
+              button.classList.add('btn-outline-info', 'has-matches');
+              button.disabled = false;
+            } else {
+              textSpan.textContent = 'No similar unit cells';
+              button.classList.remove('btn-outline-info');
+              button.classList.add('btn-outline-secondary');
+              button.disabled = true;
+            }
+          } else {
+            textSpan.textContent = 'No unit cell data';
+            button.classList.remove('btn-outline-info');
+            button.classList.add('btn-outline-secondary');
+            button.disabled = true;
+          }
+        })
+        .catch(error => {
+          console.error('Error loading similarity counts:', error);
+          textSpan.textContent = 'Error loading';
+          button.classList.remove('btn-outline-info');
+          button.classList.add('btn-outline-secondary');
+          button.disabled = true;
+        });
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     // Initialize card toggler for the page
     if (window.scxrdCardToggler && typeof window.scxrdCardToggler.reinitialize === 'function') {
@@ -431,5 +616,39 @@
         window.scxrdCardToggler.reinitialize();
       }, 500);
     }
+    
+    // Load similarity counts for all datasets
+    loadSimilarityCounts();
   });
 </script>
+
+<style>
+  .modal-xl {
+    max-width: 1200px;
+  }
+  
+  #unitCellTabs .nav-link {
+    border-bottom: 2px solid transparent;
+  }
+  
+  #unitCellTabs .nav-link.active {
+    border-bottom-color: var(--bs-primary);
+  }
+  
+  .tab-content {
+    min-height: 400px;
+  }
+  
+  .table-responsive {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .alert {
+    margin-bottom: 1rem;
+  }
+  
+  .spinner-border {
+    color: var(--bs-primary);
+  }
+</style>
