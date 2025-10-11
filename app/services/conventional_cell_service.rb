@@ -91,10 +91,7 @@ class ConventionalCellService
     private
 
     def base_url
-      # Extract base URL from the full endpoint
-      endpoint = Setting.conventional_cell_api_endpoint
-      uri = URI(endpoint)
-      "#{uri.scheme}://#{uri.host}:#{uri.port}"
+      Setting.conventional_cell_api_endpoint
     end
 
     def timeout_seconds

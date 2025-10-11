@@ -4,7 +4,7 @@ class ConventionalCellServiceTest < ActiveSupport::TestCase
   def setup
     # Create test settings
     Setting.set("conventional_cell_api_enabled", "true")
-    Setting.set("conventional_cell_api_endpoint", "http://localhost:8000/api/v1/lepage")
+    Setting.set("conventional_cell_api_endpoint", "http://localhost:8000")
     Setting.set("conventional_cell_max_delta", "1.0")
     Setting.set("conventional_cell_api_timeout", "5")
   end

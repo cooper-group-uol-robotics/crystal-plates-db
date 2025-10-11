@@ -19,6 +19,48 @@ class ScxrdDataset < ApplicationRecord
       x_mm, y_mm, tolerance_mm * 1.4142 # Manhattan distance approximation
     )
   }
+  scope :with_primitive_cells, -> {
+    where.not(
+      primitive_a: nil, primitive_b: nil, primitive_c: nil,
+      primitive_alpha: nil, primitive_beta: nil, primitive_gamma: nil
+    )
+  }
+
+  # Class methods for unit cell operations
+  def self.all_unit_cells
+    # Efficiently fetch all unit cell parameters for datasets that have complete primitive cells
+    with_primitive_cells.pluck(
+      :id, :experiment_name,
+      :primitive_a, :primitive_b, :primitive_c,
+      :primitive_alpha, :primitive_beta, :primitive_gamma
+    ).map do |id, name, a, b, c, alpha, beta, gamma|
+      {
+        dataset_id: id,
+        experiment_name: name,
+        unit_cell: {
+          a: a, b: b, c: c,
+          alpha: alpha, beta: beta, gamma: gamma
+        }
+      }
+    end
+  end
+
+  def self.unit_cells_for_api(exclude_id: nil)
+    # Get unit cell data formatted for the G6 distance API
+    query = with_primitive_cells
+    query = query.where.not(id: exclude_id) if exclude_id
+
+    query.pluck(
+      :id,
+      :primitive_a, :primitive_b, :primitive_c,
+      :primitive_alpha, :primitive_beta, :primitive_gamma
+    ).map do |id, a, b, c, alpha, beta, gamma|
+      {
+        dataset_id: id,
+        cell_params: [ a.to_f, b.to_f, c.to_f, alpha.to_f, beta.to_f, gamma.to_f ]
+      }
+    end
+  end
 
   # Spatial correlation methods
   def has_real_world_coordinates?
@@ -307,12 +349,32 @@ class ScxrdDataset < ApplicationRecord
     }
   end
 
-  # G6 representation methods for unit cell comparison
-  def g6_vector
-    return nil unless has_primitive_cell?
+  # Unit cell similarity methods using G6 distance API
+  def g6_distance_to(other_dataset)
+    return nil unless has_primitive_cell? && other_dataset.has_primitive_cell?
 
+    G6DistanceService.calculate_distance_between_datasets(self, other_dataset)
+  end
+
+  def similar_datasets_by_g6(tolerance: 10.0)
+    return ScxrdDataset.none unless has_primitive_cell?
+
+    # Get all other datasets with primitive cells
+    candidates = ScxrdDataset.where.not(id: id).includes(:well)
+                             .where.not(primitive_a: nil, primitive_b: nil, primitive_c: nil,
+                                       primitive_alpha: nil, primitive_beta: nil, primitive_gamma: nil)
+
+    G6DistanceService.find_similar_datasets(self, candidates, tolerance: tolerance)
+  end
+
+  def similar_datasets_count_by_g6(tolerance: 10.0)
+    similar_datasets_by_g6(tolerance: tolerance).size
+  end
+
+  # Extract cell parameters for G6 calculations
+  def extract_cell_params_for_g6
     # Use conventional cell if available, fallback to primitive
-    cell = conventional_cell_as_input || {
+    conventional_cell_as_input || {
       a: primitive_a,
       b: primitive_b,
       c: primitive_c,
@@ -320,61 +382,5 @@ class ScxrdDataset < ApplicationRecord
       beta: primitive_beta,
       gamma: primitive_gamma
     }
-
-    a, b, c = cell[:a], cell[:b], cell[:c]
-    alpha, beta, gamma = cell[:alpha], cell[:beta], cell[:gamma]
-
-    # Convert angles to radians
-    alpha_rad = Math::PI * alpha / 180.0
-    beta_rad = Math::PI * beta / 180.0
-    gamma_rad = Math::PI * gamma / 180.0
-
-    # Calculate G6 components
-    # G6 = [a², b², c², 2bc*cos(α), 2ac*cos(β), 2ab*cos(γ)]
-    g6 = [
-      a**2,
-      b**2,
-      c**2,
-      2 * b * c * Math.cos(alpha_rad),
-      2 * a * c * Math.cos(beta_rad),
-      2 * a * b * Math.cos(gamma_rad)
-    ]
-
-    g6
-  end
-
-  def g6_distance_to(other_dataset)
-    g6_self = g6_vector
-    g6_other = other_dataset.g6_vector
-
-    return nil if g6_self.nil? || g6_other.nil?
-
-    # Calculate Euclidean distance in G6 space
-    sum_of_squares = g6_self.zip(g6_other).map { |a, b| (a - b)**2 }.sum
-    Math.sqrt(sum_of_squares)
-  end
-
-  def similar_datasets_by_g6(tolerance: 10.0)
-    return ScxrdDataset.none unless has_primitive_cell?
-
-    my_g6 = g6_vector
-    return ScxrdDataset.none if my_g6.nil?
-
-    # Get all other datasets with primitive cells
-    candidates = ScxrdDataset.where.not(id: id).includes(:well)
-                             .where.not(primitive_a: nil, primitive_b: nil, primitive_c: nil,
-                                       primitive_alpha: nil, primitive_beta: nil, primitive_gamma: nil)
-
-    similar_datasets = candidates.select do |dataset|
-      distance = g6_distance_to(dataset)
-      distance && distance <= tolerance
-    end
-
-    # Sort by G6 distance
-    similar_datasets.sort_by { |dataset| g6_distance_to(dataset) }
-  end
-
-  def similar_datasets_count_by_g6(tolerance: 10.0)
-    similar_datasets_by_g6(tolerance: tolerance).size
   end
 end

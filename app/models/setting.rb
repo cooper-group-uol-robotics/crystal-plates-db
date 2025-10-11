@@ -31,7 +31,7 @@ class Setting < ApplicationRecord
 
     # Unit cell conversion API settings
     def conventional_cell_api_endpoint
-      get("conventional_cell_api_endpoint", "http://localhost:3001/api/v1/lepage")
+      get("conventional_cell_api_endpoint", "http://localhost:3001")
     end
 
     def conventional_cell_api_timeout
@@ -63,8 +63,8 @@ class Setting < ApplicationRecord
       },
       {
         key: "conventional_cell_api_endpoint",
-        value: "http://localhost:3001/api/v1/lepage",
-        description: "URL endpoint for the unit cell conversion API"
+        value: "http://localhost:3001",
+        description: "Base URL for the unit cell conversion API"
       },
       {
         key: "conventional_cell_api_timeout",

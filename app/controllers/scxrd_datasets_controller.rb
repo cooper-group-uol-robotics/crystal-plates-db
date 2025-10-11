@@ -38,6 +38,13 @@ class ScxrdDatasetsController < ApplicationController
 
       @scxrd_datasets = @scxrd_datasets.page(params[:page]).per(5)
 
+      # Precompute G6 similarities for all datasets with unit cells
+      @unit_cell_similarities = {}
+      if G6DistanceService.enabled?
+        tolerance = params[:g6_tolerance]&.to_f || 10.0
+        @unit_cell_similarities = G6DistanceService.calculate_all_similarities(tolerance: tolerance)
+      end
+
       respond_to do |format|
         format.html { render "index" }
         format.json do
@@ -336,42 +343,59 @@ class ScxrdDatasetsController < ApplicationController
     end
 
     tolerance = params[:tolerance]&.to_f || 10.0
-    similar_datasets = @scxrd_dataset.similar_datasets_by_g6(tolerance: tolerance)
 
-    # Format the response
-    datasets_data = similar_datasets.map do |dataset|
-      {
-        id: dataset.id,
-        experiment_name: dataset.experiment_name,
-        measured_at: dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
-        g6_distance: @scxrd_dataset.g6_distance_to(dataset)&.round(2),
-        unit_cell: dataset.display_cell ? {
-          a: number_with_precision(dataset.display_cell[:a], precision: 3),
-          b: number_with_precision(dataset.display_cell[:b], precision: 3),
-          c: number_with_precision(dataset.display_cell[:c], precision: 3),
-          alpha: number_with_precision(dataset.display_cell[:alpha], precision: 1),
-          beta: number_with_precision(dataset.display_cell[:beta], precision: 1),
-          gamma: number_with_precision(dataset.display_cell[:gamma], precision: 1),
-          bravais: dataset.display_cell[:bravais]
-        } : nil,
-        well: dataset.well ? {
-          id: dataset.well.id,
-          label: dataset.well.well_label,
-          plate_barcode: dataset.well.plate.barcode
-        } : nil
-      }
+    # Use API-based similarity calculation
+    similar_datasets_data = []
+
+    if G6DistanceService.enabled?
+      # Get all other datasets with unit cells
+      candidates = ScxrdDataset.where.not(id: @scxrd_dataset.id)
+                               .includes(well: :plate)
+                               .with_primitive_cells
+
+      # Use the G6 distance service to find similar datasets
+      similar_datasets = G6DistanceService.find_similar_datasets(@scxrd_dataset, candidates, tolerance: tolerance)
+
+      # Format the response with calculated distances
+      similar_datasets_data = similar_datasets.map do |dataset|
+        distance = G6DistanceService.calculate_distance(
+          @scxrd_dataset.extract_cell_params_for_g6,
+          dataset.extract_cell_params_for_g6
+        )
+
+        {
+          id: dataset.id,
+          experiment_name: dataset.experiment_name,
+          measured_at: dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
+          g6_distance: distance&.round(2),
+          unit_cell: dataset.display_cell ? {
+            a: number_with_precision(dataset.display_cell[:a], precision: 3),
+            b: number_with_precision(dataset.display_cell[:b], precision: 3),
+            c: number_with_precision(dataset.display_cell[:c], precision: 3),
+            alpha: number_with_precision(dataset.display_cell[:alpha], precision: 1),
+            beta: number_with_precision(dataset.display_cell[:beta], precision: 1),
+            gamma: number_with_precision(dataset.display_cell[:gamma], precision: 1),
+            bravais: dataset.display_cell[:bravais]
+          } : nil,
+          well: dataset.well ? {
+            id: dataset.well.id,
+            label: dataset.well.well_label,
+            plate_barcode: dataset.well.plate.barcode
+          } : nil
+        }
+      end
     end
 
     render json: {
       success: true,
-      count: similar_datasets.size,
+      count: similar_datasets_data.size,
       tolerance: tolerance,
       current_dataset: {
         id: @scxrd_dataset.id,
         experiment_name: @scxrd_dataset.experiment_name,
-        g6_vector: @scxrd_dataset.g6_vector
+        unit_cell: @scxrd_dataset.display_cell
       },
-      datasets: datasets_data
+      datasets: similar_datasets_data
     }
   end
 

@@ -104,7 +104,7 @@
                         value: @settings['conventional_cell_api_endpoint']&.value,
                         class: "form-control",
                         id: "conventional_cell_api_endpoint",
-                        placeholder: "http://localhost:8000/api/v1/lepage",
+                        placeholder: "http://localhost:3001",
                         required: true %>
                     <button type="button" id="test-conventional-cell-connection" class="btn btn-outline-secondary">
                       <i class="bi bi-wifi"></i> Test Connection
@@ -356,7 +356,7 @@ function initializeSettingsPage() {
         if (segmentationEndpoint) segmentationEndpoint.value = 'http://aicdocker.liv.ac.uk:8000/segment/opencv';
         if (segmentationTimeout) segmentationTimeout.value = '30';
         if (autoSegmentType) autoSegmentType.value = 'other';
-        if (conventionalCellEndpoint) conventionalCellEndpoint.value = 'http://localhost:8000/api/v1/lepage';
+        if (conventionalCellEndpoint) conventionalCellEndpoint.value = 'http://localhost:3001';
         if (conventionalCellTimeout) conventionalCellTimeout.value = '5';
         if (conventionalCellMaxDelta) conventionalCellMaxDelta.value = '1.0';
       }

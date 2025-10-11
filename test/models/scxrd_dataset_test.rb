@@ -47,7 +47,7 @@ class ScxrdDatasetTest < ActiveSupport::TestCase
     assert result.is_a?(Array)
   end
 
-  test "g6_vector calculates correct G6 representation" do
+  test "extract_cell_params_for_g6 returns correct parameters" do
     # Set known unit cell parameters
     @dataset.primitive_a = 10.0
     @dataset.primitive_b = 10.0
@@ -56,26 +56,28 @@ class ScxrdDatasetTest < ActiveSupport::TestCase
     @dataset.primitive_beta = 90.0
     @dataset.primitive_gamma = 90.0
 
-    g6 = @dataset.g6_vector
+    cell_params = @dataset.extract_cell_params_for_g6
 
-    assert_equal 6, g6.length
-    # For a cubic cell: G6 = [a², b², c², 2bc*cos(α), 2ac*cos(β), 2ab*cos(γ)]
-    # cos(90°) = 0, so last three components should be 0
-    assert_in_delta 100.0, g6[0], 0.001  # a²
-    assert_in_delta 100.0, g6[1], 0.001  # b²
-    assert_in_delta 100.0, g6[2], 0.001  # c²
-    assert_in_delta 0.0, g6[3], 0.001    # 2bc*cos(α)
-    assert_in_delta 0.0, g6[4], 0.001    # 2ac*cos(β)
-    assert_in_delta 0.0, g6[5], 0.001    # 2ab*cos(γ)
+    assert_equal 10.0, cell_params[:a]
+    assert_equal 10.0, cell_params[:b]
+    assert_equal 10.0, cell_params[:c]
+    assert_equal 90.0, cell_params[:alpha]
+    assert_equal 90.0, cell_params[:beta]
+    assert_equal 90.0, cell_params[:gamma]
   end
 
-  test "g6_vector returns nil when no primitive cell" do
-    @dataset.primitive_a = nil
-    assert_nil @dataset.g6_vector
+  test "g6_distance_to returns nil when no primitive cell" do
+    # Dataset without primitive cell parameters
+    other_dataset = ScxrdDataset.new(
+      experiment_name: "test2",
+      measured_at: Time.current
+    )
+
+    distance = @dataset.g6_distance_to(other_dataset)
+    assert_nil distance
   end
 
-  test "g6_distance_to calculates distance between datasets" do
-    # Create two identical cubic cells
+  test "g6_distance_to returns nil when other dataset has no primitive cell" do
     @dataset.primitive_a = 10.0
     @dataset.primitive_b = 10.0
     @dataset.primitive_c = 10.0
@@ -85,46 +87,18 @@ class ScxrdDatasetTest < ActiveSupport::TestCase
 
     other_dataset = ScxrdDataset.new(
       experiment_name: "test2",
-      measured_at: Time.current,
-      primitive_a: 10.0,
-      primitive_b: 10.0,
-      primitive_c: 10.0,
-      primitive_alpha: 90.0,
-      primitive_beta: 90.0,
-      primitive_gamma: 90.0
+      measured_at: Time.current
+      # No primitive cell parameters
     )
 
     distance = @dataset.g6_distance_to(other_dataset)
-    assert_in_delta 0.0, distance, 0.001  # Identical cells should have 0 distance
+    assert_nil distance
   end
 
-  test "g6_distance_to calculates non-zero distance for different cells" do
-    @dataset.primitive_a = 10.0
-    @dataset.primitive_b = 10.0
-    @dataset.primitive_c = 10.0
-    @dataset.primitive_alpha = 90.0
-    @dataset.primitive_beta = 90.0
-    @dataset.primitive_gamma = 90.0
-
-    other_dataset = ScxrdDataset.new(
-      experiment_name: "test2",
-      measured_at: Time.current,
-      primitive_a: 11.0,  # Different a parameter
-      primitive_b: 10.0,
-      primitive_c: 10.0,
-      primitive_alpha: 90.0,
-      primitive_beta: 90.0,
-      primitive_gamma: 90.0
-    )
-
-    distance = @dataset.g6_distance_to(other_dataset)
-    assert distance > 0  # Different cells should have non-zero distance
-  end
-
-  test "similar_datasets_count_by_g6 returns correct count" do
-    count = @dataset.similar_datasets_count_by_g6
-    assert count.is_a?(Integer)
-    assert count >= 0
+  test "similar_datasets_by_g6 returns empty when no primitive cell" do
+    # Dataset without primitive cell parameters
+    similar_datasets = @dataset.similar_datasets_by_g6(tolerance: 10.0)
+    assert_equal [], similar_datasets
   end
 
   # ...

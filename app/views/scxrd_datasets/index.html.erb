@@ -19,6 +19,17 @@
   <div class="d-flex align-items-center gap-3">
     <div class="text-muted">
       <i class="bi bi-box"></i> <%= @scxrd_datasets.total_count %> datasets total
+      <% if G6DistanceService.enabled? %>
+        <% datasets_with_cells = ScxrdDataset.with_primitive_cells.count %>
+        <% if datasets_with_cells > 0 %>
+          | <i class="bi bi-diagram-3"></i> <%= datasets_with_cells %> with unit cells
+          <% unless @unit_cell_similarities.empty? %>
+            | <i class="bi bi-box-seam"></i> Cell similarity tolerance (G6 distance): <%= params[:g6_tolerance] || '10.0' %>
+          <% end %>
+        <% end %>
+      <% else %>
+        | <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> G6 API disabled</span>
+      <% end %>
     </div>
     <%= link_to new_scxrd_dataset_path, class: "btn btn-primary" do %>
       <i class="bi bi-upload"></i> Upload Dataset
@@ -49,7 +60,28 @@
       <%= f.hidden_field :direction, value: params[:direction] %>
     <% end %>
   </div>
-  <div class="col-md-6">
+  <div class="col-md-3">
+    <% if G6DistanceService.enabled? %>
+      <%= form_with url: scxrd_datasets_path, method: :get, local: true, class: "d-flex align-items-center" do |f| %>
+        <div class="d-flex align-items-center justify-content-center">
+          <label for="g6_tolerance" class="form-label me-2 text-nowrap small mb-0">Cell Similarity Tolerance (G6 Distance):</label>
+          <%= f.number_field :g6_tolerance, 
+                            value: params[:g6_tolerance] || 10.0, 
+                            step: 0.1, 
+                            min: 0.1,
+                            class: "form-control form-control-sm me-2",
+                            style: "width: 80px;" %>
+          <button class="btn btn-outline-secondary btn-sm" type="submit">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+        <%= f.hidden_field :search, value: params[:search] %>
+        <%= f.hidden_field :sort, value: params[:sort] %>
+        <%= f.hidden_field :direction, value: params[:direction] %>
+      <% end %>
+    <% end %>
+  </div>
+  <div class="col-md-3">
     <div class="d-flex justify-content-end gap-2">
       <div class="btn-group" role="group">
         <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
@@ -158,7 +190,22 @@
               <div class="text-end">
                 <div class="d-flex align-items-center gap-2">
                   <% if dataset.has_primitive_cell? %>
-                    <%= g6_comparison_button(dataset) %>
+                    <% similarity_count = @unit_cell_similarities[dataset.id]&.size || 0 %>
+                    <% if similarity_count > 0 %>
+                      <button type="button" class="btn btn-outline-info btn-sm has-matches" 
+                              data-dataset-id="<%= dataset.id %>"
+                              data-bs-toggle="modal" 
+                              data-bs-target="#g6ComparisonModal"
+                              onclick="loadG6Comparison(<%= dataset.id %>)">
+                        <i class="bi bi-box-seam me-1"></i>
+                        <%= similarity_count %> similar unit cells
+                      </button>
+                    <% else %>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                        <i class="bi bi-box-seam me-1"></i>
+                        No similar unit cells
+                      </button>
+                    <% end %>
                   <% end %>
                   <div class="btn-group btn-group-sm">
                     <%= link_to scxrd_dataset_path(dataset), 
@@ -217,8 +264,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="g6ComparisonModalLabel">
-          <i class="bi bi-box-seam me-2"></i>Unit Cell Comparison (G6 Distance)
-        </h5>
+          <i class="bi bi-box-seam me-2"></i>Unit Cell Comparison
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="g6ComparisonContent">
@@ -304,7 +350,9 @@
           <hr>
           <small class="text-muted">
             <strong>Current dataset:</strong> ${data.current_dataset.experiment_name}<br>
-            <strong>G6 vector:</strong> [${data.current_dataset.g6_vector.map(v => v.toFixed(2)).join(', ')}]
+            <strong>Unit cell:</strong> ${data.current_dataset.unit_cell ? 
+              `${data.current_dataset.unit_cell.bravais || 'P'} a=${data.current_dataset.unit_cell.a}Å b=${data.current_dataset.unit_cell.b}Å c=${data.current_dataset.unit_cell.c}Å α=${data.current_dataset.unit_cell.alpha}° β=${data.current_dataset.unit_cell.beta}° γ=${data.current_dataset.unit_cell.gamma}°` : 
+              'No unit cell'}
           </small>
         </div>
       `;
@@ -320,7 +368,9 @@
       <div class="mb-3">
         <small class="text-muted">
           <strong>Reference dataset:</strong> ${data.current_dataset.experiment_name}<br>
-          <strong>G6 vector:</strong> [${data.current_dataset.g6_vector.map(v => v.toFixed(2)).join(', ')}]
+          <strong>Unit cell:</strong> ${data.current_dataset.unit_cell ? 
+            `${data.current_dataset.unit_cell.bravais || 'P'} a=${data.current_dataset.unit_cell.a}Å b=${data.current_dataset.unit_cell.b}Å c=${data.current_dataset.unit_cell.c}Å α=${data.current_dataset.unit_cell.alpha}° β=${data.current_dataset.unit_cell.beta}° γ=${data.current_dataset.unit_cell.gamma}°` : 
+            'No unit cell'}
         </small>
       </div>
 

@@ -1444,7 +1444,9 @@ window.displayG6Results = function(data) {
         <hr>
         <small class="text-muted">
           <strong>Current dataset:</strong> ${data.current_dataset.experiment_name}<br>
-          <strong>G6 vector:</strong> [${data.current_dataset.g6_vector.map(v => v.toFixed(2)).join(', ')}]
+          <strong>Unit cell:</strong> ${data.current_dataset.unit_cell ? 
+            `${data.current_dataset.unit_cell.bravais || 'P'} a=${data.current_dataset.unit_cell.a}Å b=${data.current_dataset.unit_cell.b}Å c=${data.current_dataset.unit_cell.c}Å α=${data.current_dataset.unit_cell.alpha}° β=${data.current_dataset.unit_cell.beta}° γ=${data.current_dataset.unit_cell.gamma}°` : 
+            'No unit cell'}
         </small>
       </div>
     `;
@@ -1460,7 +1462,9 @@ window.displayG6Results = function(data) {
     <div class="mb-3">
       <small class="text-muted">
         <strong>Reference dataset:</strong> ${data.current_dataset.experiment_name}<br>
-        <strong>G6 vector:</strong> [${data.current_dataset.g6_vector.map(v => v.toFixed(2)).join(', ')}]
+        <strong>Unit cell:</strong> ${data.current_dataset.unit_cell ? 
+          `${data.current_dataset.unit_cell.bravais || 'P'} a=${data.current_dataset.unit_cell.a}Å b=${data.current_dataset.unit_cell.b}Å c=${data.current_dataset.unit_cell.c}Å α=${data.current_dataset.unit_cell.alpha}° β=${data.current_dataset.unit_cell.beta}° γ=${data.current_dataset.unit_cell.gamma}°` : 
+          'No unit cell'}
       </small>
     </div>
 
