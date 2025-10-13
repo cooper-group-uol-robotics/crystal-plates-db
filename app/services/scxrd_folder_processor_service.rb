@@ -54,8 +54,6 @@ class ScxrdFolderProcessorService
       Rails.logger.info "SCXRD: No peak table files found"
     end
 
-
-
     # Find and parse crystal.ini file for reduced cell parameters - exclude files starting with 'pre_'
     Rails.logger.info "SCXRD: Searching for crystal.ini files in folder: #{@folder_path}"
     crystal_ini_pattern = File.join(@folder_path, "expinfo", "*_crystal.ini")
@@ -498,7 +496,7 @@ class ScxrdFolderProcessorService
     movie_folder = File.join(@folder_path, "movie")
     return unless Dir.exist?(movie_folder)
 
-    crystal_image_pattern = File.join(movie_folder, "oneclickmovie*.jpg")
+    crystal_image_pattern = File.join(movie_folder, "*.jpg")
     crystal_image_files = Dir.glob(crystal_image_pattern, File::FNM_CASEFOLD)
 
     Rails.logger.info "SCXRD: Found #{crystal_image_files.count} crystal image candidates: #{crystal_image_files.map { |f| File.basename(f) }.inspect}"

@@ -131,7 +131,11 @@ class DiffractionImagesController < ApplicationController
   def download
     return render_error("No rodhypix file attached") unless @diffraction_image.rodhypix_file.attached?
 
-    redirect_to rails_blob_path(@diffraction_image.rodhypix_file, disposition: "attachment")
+    # Stream the rodhypix file directly from Rails
+    send_data @diffraction_image.rodhypix_file.download,
+          filename: @diffraction_image.rodhypix_file.filename.to_s,
+          type: @diffraction_image.rodhypix_file.content_type,
+          disposition: "attachment"
   end
 
   private

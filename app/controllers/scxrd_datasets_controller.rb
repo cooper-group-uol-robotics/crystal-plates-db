@@ -198,7 +198,11 @@ class ScxrdDatasetsController < ApplicationController
 
   def download
     if @scxrd_dataset.archive.attached?
-      redirect_to rails_blob_path(@scxrd_dataset.archive, disposition: "attachment")
+      # Stream the archive file directly
+      send_data @scxrd_dataset.archive.download,
+                filename: @scxrd_dataset.archive.filename.to_s,
+                type: @scxrd_dataset.archive.content_type,
+                disposition: "attachment"
     else
       redirect_to [ @well, @scxrd_dataset ], alert: "No archive file attached."
     end
@@ -206,7 +210,10 @@ class ScxrdDatasetsController < ApplicationController
 
   def download_peak_table
     if @scxrd_dataset.has_peak_table?
-      redirect_to rails_blob_path(@scxrd_dataset.peak_table, disposition: "attachment")
+      send_data @scxrd_dataset.peak_table.download,
+                filename: @scxrd_dataset.peak_table.filename.to_s,
+                type: @scxrd_dataset.peak_table.content_type,
+                disposition: "attachment"
     else
       redirect_to [ @well, @scxrd_dataset ], alert: "No peak table available."
     end
@@ -214,7 +221,10 @@ class ScxrdDatasetsController < ApplicationController
 
   def crystal_image
     if @scxrd_dataset.has_crystal_image?
-      redirect_to rails_blob_path(@scxrd_dataset.crystal_image, disposition: "inline")
+      send_data @scxrd_dataset.crystal_image.download,
+                filename: @scxrd_dataset.crystal_image.filename.to_s,
+                type: @scxrd_dataset.crystal_image.content_type,
+                disposition: "inline"
     else
       head :not_found
     end

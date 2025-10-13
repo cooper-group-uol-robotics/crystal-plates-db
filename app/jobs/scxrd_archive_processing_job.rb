@@ -66,40 +66,7 @@ class ScxrdArchiveProcessingJob < ApplicationJob
             Rails.logger.info "SCXRD Job: Peak table stored (#{number_to_human_size(result[:peak_table].bytesize)})"
           end
 
-          # Store all diffraction images as DiffractionImage records (exact same logic)
-          if result[:all_diffraction_images] && result[:all_diffraction_images].any?
-            Rails.logger.info "SCXRD Job: Processing #{result[:all_diffraction_images].length} diffraction images..."
 
-            result[:all_diffraction_images].each_with_index do |image_data, index|
-              begin
-                diffraction_image = dataset.diffraction_images.build(
-                  run_number: image_data[:run_number],
-                  image_number: image_data[:image_number],
-                  filename: image_data[:filename],
-                  file_size: image_data[:file_size]
-                )
-
-                diffraction_image.rodhypix_file.attach(
-                  io: StringIO.new(image_data[:data]),
-                  filename: image_data[:filename],
-                  content_type: "application/octet-stream"
-                )
-
-                diffraction_image.save!
-
-                # Log progress every 100 images to avoid log spam
-                if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
-                  Rails.logger.info "SCXRD Job: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
-                end
-
-              rescue => e
-                Rails.logger.error "SCXRD Job: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
-              end
-            end
-
-            total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
-            Rails.logger.info "SCXRD Job: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
-          end
 
           # Store unit cell parameters from metadata (exact same logic as controller)
           Rails.logger.info "SCXRD Job: Checking for parsed metadata..."
@@ -171,6 +138,41 @@ class ScxrdArchiveProcessingJob < ApplicationJob
             )
           elsif result[:structure_file]
             Rails.logger.info "SCXRD Job: Structure file found but dataset already has one attached, skipping"
+          end
+
+          # Store all diffraction images as DiffractionImage records (exact same logic)
+          if result[:all_diffraction_images] && result[:all_diffraction_images].any?
+            Rails.logger.info "SCXRD Job: Processing #{result[:all_diffraction_images].length} diffraction images..."
+
+            result[:all_diffraction_images].each_with_index do |image_data, index|
+              begin
+                diffraction_image = dataset.diffraction_images.build(
+                  run_number: image_data[:run_number],
+                  image_number: image_data[:image_number],
+                  filename: image_data[:filename],
+                  file_size: image_data[:file_size]
+                )
+
+                diffraction_image.rodhypix_file.attach(
+                  io: StringIO.new(image_data[:data]),
+                  filename: image_data[:filename],
+                  content_type: "application/octet-stream"
+                )
+
+                diffraction_image.save!
+
+                # Log progress every 100 images to avoid log spam
+                if (index + 1) % 100 == 0 || index == result[:all_diffraction_images].length - 1
+                  Rails.logger.info "SCXRD Job: Stored #{index + 1}/#{result[:all_diffraction_images].length} diffraction images"
+                end
+
+              rescue => e
+                Rails.logger.error "SCXRD Job: Error storing diffraction image #{image_data[:filename]}: #{e.message}"
+              end
+            end
+
+            total_size = result[:all_diffraction_images].sum { |img| img[:file_size] }
+            Rails.logger.info "SCXRD Job: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
           end
         else
           Rails.logger.warn "SCXRD Job: No experiment folder found in extracted archive"
