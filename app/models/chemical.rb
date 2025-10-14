@@ -3,7 +3,7 @@ require "cgi"
 class Chemical < ApplicationRecord
   has_many :stock_solution_components, dependent: :destroy
   has_many :stock_solutions, through: :stock_solution_components
-  
+
   # Direct associations with wells through polymorphic well_contents
   has_many :well_contents, as: :contentable, dependent: :destroy
   has_many :wells, through: :well_contents
@@ -65,18 +65,18 @@ class Chemical < ApplicationRecord
   # Get usage summary
   def usage_summary
     summaries = []
-    
+
     if used_in_wells?
       summaries << "#{direct_wells_count} well#{direct_wells_count == 1 ? '' : 's'} (direct)"
     end
-    
+
     if used_in_stock_solutions?
       stock_solution_count = stock_solutions.count
       summaries << "#{stock_solution_count} stock solution#{stock_solution_count == 1 ? '' : 's'}"
     end
-    
+
     return "Not used" if summaries.empty?
-    summaries.join(', ')
+    summaries.join(", ")
   end
 
   def structure_image_url(width: 200, height: 200)

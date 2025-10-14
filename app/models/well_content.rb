@@ -30,11 +30,11 @@ class WellContent < ApplicationRecord
 
   # Helper methods to determine content type
   def stock_solution?
-    contentable_type == 'StockSolution'
+    contentable_type == "StockSolution"
   end
 
   def chemical?
-    contentable_type == 'Chemical'
+    contentable_type == "Chemical"
   end
 
   def content_name
@@ -123,8 +123,8 @@ class WellContent < ApplicationRecord
 
   def contentable_must_be_valid_type
     return unless contentable_type.present?
-    
-    allowed_types = ['StockSolution', 'Chemical']
+
+    allowed_types = [ "StockSolution", "Chemical" ]
     unless allowed_types.include?(contentable_type)
       errors.add(:contentable_type, "must be one of: #{allowed_types.join(', ')}")
     end

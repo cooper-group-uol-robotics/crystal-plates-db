@@ -140,7 +140,7 @@ class ChemicalsController < ApplicationController
   # GET /chemicals/search
   def search
     query = params[:q]&.strip
-    
+
     if query.blank? || query.length < 2
       render json: []
       return
