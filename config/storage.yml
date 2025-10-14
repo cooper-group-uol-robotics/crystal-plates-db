@@ -10,7 +10,7 @@ garage:
   service: S3
   access_key_id: <%= Rails.application.credentials.dig(:garage, :access_key_id) %>
   secret_access_key: <%= Rails.application.credentials.dig(:garage, :secret_access_key) %>
-  endpoint: http://10.10.2.101:3900
+  endpoint: http://10.12.67.9:3900
   region: garage
   bucket: crystal-plates-db-storage
 

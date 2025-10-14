@@ -6,10 +6,24 @@ class WellContentsController < ApplicationController
   def create
     @well_content = @well.well_contents.build(well_content_params)
 
+    # Handle polymorphic content assignment
+    if params[:well_content][:contentable_type].present? && params[:well_content][:contentable_id].present?
+      # New polymorphic approach
+      contentable_class = params[:well_content][:contentable_type].constantize
+      @well_content.contentable = contentable_class.find(params[:well_content][:contentable_id])
+    elsif params[:well_content][:stock_solution_id].present?
+      # Backward compatibility
+      @well_content.contentable = StockSolution.find(params[:well_content][:stock_solution_id])
+    elsif params[:well_content][:chemical_id].present?
+      # Backward compatibility
+      @well_content.contentable = Chemical.find(params[:well_content][:chemical_id])
+    end
+
     if @well_content.save
+      content_type = @well_content.stock_solution? ? "Stock solution" : "Chemical"
       render json: {
         status: "success",
-        message: "Stock solution added successfully",
+        message: "#{content_type} added successfully",
         well_content: @well_content
       }, status: :created
     else
@@ -23,10 +37,24 @@ class WellContentsController < ApplicationController
 
   # PATCH/PUT /wells/:well_id/well_contents/:id
   def update
+    # Handle polymorphic content assignment
+    if params[:well_content][:contentable_type].present? && params[:well_content][:contentable_id].present?
+      # New polymorphic approach
+      contentable_class = params[:well_content][:contentable_type].constantize
+      @well_content.contentable = contentable_class.find(params[:well_content][:contentable_id])
+    elsif params[:well_content][:stock_solution_id].present?
+      # Backward compatibility
+      @well_content.contentable = StockSolution.find(params[:well_content][:stock_solution_id])
+    elsif params[:well_content][:chemical_id].present?
+      # Backward compatibility
+      @well_content.contentable = Chemical.find(params[:well_content][:chemical_id])
+    end
+
     if @well_content.update(well_content_params)
+      content_type = @well_content.stock_solution? ? "Stock solution" : "Chemical"
       render json: {
         status: "success",
-        message: "Stock solution updated successfully",
+        message: "#{content_type} updated successfully",
         well_content: @well_content
       }
     else
@@ -40,10 +68,11 @@ class WellContentsController < ApplicationController
 
   # DELETE /wells/:well_id/well_contents/:id
   def destroy
+    content_type = @well_content.stock_solution? ? "Stock solution" : "Chemical"
     @well_content.destroy
     render json: {
       status: "success",
-      message: "Stock solution removed successfully"
+      message: "#{content_type} removed successfully"
     }
   end
 
@@ -52,7 +81,7 @@ class WellContentsController < ApplicationController
     @well.well_contents.destroy_all
     render json: {
       status: "success",
-      message: "All stock solutions removed successfully"
+      message: "All well contents removed successfully"
     }
   end
 
@@ -67,6 +96,6 @@ class WellContentsController < ApplicationController
   end
 
   def well_content_params
-    params.require(:well_content).permit(:stock_solution_id, :volume_with_unit, :notes)
+    params.require(:well_content).permit(:stock_solution_id, :chemical_id, :contentable_type, :contentable_id, :volume_with_unit, :notes)
   end
 end

@@ -21,6 +21,7 @@ Rails.application.routes.draw do
   resources :chemicals do
     collection do
       post :import_from_sciformation
+      get :search
     end
   end
   resources :wells do

@@ -137,6 +137,32 @@ class ChemicalsController < ApplicationController
     end
   end
 
+  # GET /chemicals/search
+  def search
+    query = params[:q]&.strip
+    
+    if query.blank? || query.length < 2
+      render json: []
+      return
+    end
+
+    chemicals = Chemical.where(
+      "name LIKE ? OR cas LIKE ? OR barcode LIKE ?",
+      "%#{query}%", "%#{query}%", "%#{query}%"
+    ).limit(20).order(:name)
+
+    render json: chemicals.map { |chemical|
+      {
+        id: chemical.id,
+        name: chemical.name,
+        cas: chemical.cas,
+        barcode: chemical.barcode,
+        storage: chemical.short_storage,
+        sciformation_id: chemical.sciformation_id
+      }
+    }
+  end
+
   private
 
   # Use callbacks to share common setup or constraints between actions.

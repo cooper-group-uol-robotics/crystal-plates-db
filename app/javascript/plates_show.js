@@ -590,8 +590,8 @@ class WellModal {
     // Update modal title immediately
     document.getElementById('wellImagesModalLabel').textContent = `Well ${wellLabel} Details`;
 
-    // Ensure Images tab is active when modal opens
-    this.activateImagesTab();
+    // Ensure Content tab is active when modal opens
+    this.activateContentTab();
 
     // Show immediate loading state for images tab only
     document.getElementById('wellImagesContent').innerHTML = `
@@ -633,17 +633,18 @@ class WellModal {
 
     // Load other tabs in background with staggered delays
     // Note: SCXRD is NOT loaded in background to prevent CifVis animation issues
-    setTimeout(() => this.loadContentTabInBackground(wellId), 200);
-    setTimeout(() => this.loadPxrdTabInBackground(wellId), 400);
+    // Disabled - now using Stimulus controller for modal management
+    // setTimeout(() => this.loadContentTabInBackground(wellId), 200);
+    // setTimeout(() => this.loadPxrdTabInBackground(wellId), 400);
     // SCXRD will be loaded only when the tab is clicked
   }
 
   handleModalHidden() {
     console.log('Well modal hidden - cleaning up visualizations');
-    
+
     // Clean up any CifVis instances within the modal
     this.cleanupModalVisualizations();
-    
+
     // Reset tab indicators when modal is closed
     const contentTab = document.getElementById('content-tab');
     const pxrdTab = document.getElementById('pxrd-tab');
@@ -656,11 +657,11 @@ class WellModal {
     // Clear content containers to stop any running visualizations
     const containers = [
       'wellImagesContent',
-      'wellContentForm', 
+      'wellContentForm',
       'wellPxrdContent',
       'wellScxrdContent'
     ];
-    
+
     containers.forEach(containerId => {
       const container = document.getElementById(containerId);
       if (container) {
@@ -683,7 +684,7 @@ class WellModal {
       cifWidgets.forEach((widget, index) => {
         try {
           console.log(`Cleaning up modal cifview-widget ${index + 1}`);
-          
+
           if (widget._cifvis) {
             if (typeof widget._cifvis.destroy === 'function') {
               widget._cifvis.destroy();
@@ -696,7 +697,7 @@ class WellModal {
           if (widget._animation) {
             widget._animation = null;
           }
-          
+
           if (widget.parentNode) {
             widget.parentNode.removeChild(widget);
           }
@@ -733,10 +734,10 @@ class WellModal {
     }
   }
 
-  activateImagesTab() {
-    // Ensure Images tab is active
-    const imagesTab = document.getElementById('images-tab');
-    const imagesPane = document.getElementById('images');
+  activateContentTab() {
+    // Ensure Content tab is active
+    const contentTab = document.getElementById('content-tab');
+    const contentPane = document.getElementById('content');
     const allTabs = document.querySelectorAll('#wellTabs .nav-link');
     const allPanes = document.querySelectorAll('#wellTabContent .tab-pane');
 
@@ -749,41 +750,43 @@ class WellModal {
       pane.classList.remove('show', 'active');
     });
 
-    // Activate images tab
-    if (imagesTab && imagesPane) {
-      imagesTab.classList.add('active');
-      imagesTab.setAttribute('aria-selected', 'true');
-      imagesPane.classList.add('show', 'active');
+    // Activate content tab
+    if (contentTab && contentPane) {
+      contentTab.classList.add('active');
+      contentTab.setAttribute('aria-selected', 'true');
+      contentPane.classList.add('show', 'active');
     }
   }
 
   loadContentTabInBackground(wellId) {
-    if (this.contentLoaded) return;
-    
-    fetch(`/wells/${wellId}/content_form`)
-      .then(response => response.text())
-      .then(html => {
-        document.getElementById('wellContentForm').innerHTML = html;
-        this.contentLoaded = true;
-        
-        // Content loaded in background - no visual indicator needed
-      })
-      .catch(() => {
-        document.getElementById('wellContentForm').innerHTML = `
-          <div class="text-center py-4 text-muted">
-            <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
-            <div>Error loading stock solutions</div>
-            <button class="btn btn-link btn-sm" onclick="window.wellModal.loadContentTab('${wellId}')">
-              Try again
-            </button>
-          </div>
-        `;
-      });
+    // Disabled - now using Stimulus controller for modal management
+    console.log('loadContentTabInBackground called (disabled), wellId:', wellId);
+    // if (this.contentLoaded) return;
+
+    // fetch(`/wells/${wellId}/content_form`)
+    //   .then(response => response.text())
+    //   .then(html => {
+    //     document.getElementById('wellContentForm').innerHTML = html;
+    //     this.contentLoaded = true;
+    //     
+    //     // Content loaded in background - no visual indicator needed
+    //   })
+    //   .catch(() => {
+    //     document.getElementById('wellContentForm').innerHTML = `
+    //       <div class="text-center py-4 text-muted">
+    //         <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
+    //         <div>Error loading stock solutions</div>
+    //         <button class="btn btn-link btn-sm" onclick="window.wellModal.loadContentTab('${wellId}')">
+    //           Try again
+    //         </button>
+    //       </div>
+    //     `;
+    //   });
   }
 
   loadPxrdTabInBackground(wellId) {
     if (this.pxrdLoaded) return;
-    
+
     fetch(`/wells/${wellId}/pxrd_patterns`)
       .then(response => {
         if (!response.ok) {
@@ -794,7 +797,7 @@ class WellModal {
       .then(html => {
         document.getElementById('wellPxrdContent').innerHTML = html;
         this.pxrdLoaded = true;
-        
+
         // Execute any scripts that were injected
         const scripts = document.querySelectorAll('#wellPxrdContent script');
         scripts.forEach(script => {
@@ -812,7 +815,7 @@ class WellModal {
             console.error('Error executing PXRD script:', e);
           }
         });
-        
+
         // PXRD loaded in background - no visual indicator needed
       })
       .catch((error) => {
@@ -831,7 +834,7 @@ class WellModal {
 
   loadScxrdTabInBackground(wellId) {
     if (this.scxrdLoaded) return;
-    
+
     fetch(`/wells/${wellId}/scxrd_datasets`)
       .then(response => {
         if (!response.ok) {
@@ -842,7 +845,7 @@ class WellModal {
       .then(html => {
         document.getElementById('wellScxrdContent').innerHTML = html;
         this.scxrdLoaded = true;
-        
+
         // Execute any scripts that were injected
         const scripts = document.querySelectorAll('#wellScxrdContent script');
         scripts.forEach(script => {
@@ -852,7 +855,7 @@ class WellModal {
             console.error('Error executing SCXRD script:', e);
           }
         });
-        
+
         // SCXRD loaded in background - no visual indicator needed
       })
       .catch((error) => {
@@ -1041,7 +1044,7 @@ class WellModal {
 
   loadContentTab(wellId) {
     const container = document.getElementById('wellContentForm');
-    
+
     // Show loading indicator
     container.innerHTML = `
       <div class="text-center py-3">
@@ -1051,7 +1054,7 @@ class WellModal {
         <div class="text-muted small">Loading content...</div>
       </div>
     `;
-    
+
     fetch(`/wells/${wellId}/content_form`)
       .then(response => response.text())
       .then(html => {
@@ -1386,10 +1389,10 @@ class WellModal {
 // G6 Unit Cell Comparison Functions
 window.currentDatasetId = null;
 
-window.loadG6Comparison = function(datasetId) {
+window.loadG6Comparison = function (datasetId) {
   window.currentDatasetId = datasetId;
   const tolerance = document.getElementById('g6Tolerance').value;
-  
+
   // Show loading state
   document.getElementById('g6ComparisonContent').innerHTML = `
     <div class="text-center py-4">
@@ -1399,7 +1402,7 @@ window.loadG6Comparison = function(datasetId) {
       <p class="mt-2">Searching for similar unit cells...</p>
     </div>
   `;
-  
+
   // Fetch comparison data
   fetch(`/scxrd_datasets/${datasetId}/g6_similar?tolerance=${tolerance}`)
     .then(response => response.json())
@@ -1417,15 +1420,15 @@ window.loadG6Comparison = function(datasetId) {
     });
 }
 
-window.updateG6Comparison = function() {
+window.updateG6Comparison = function () {
   if (window.currentDatasetId) {
     window.loadG6Comparison(window.currentDatasetId);
   }
 }
 
-window.displayG6Results = function(data) {
+window.displayG6Results = function (data) {
   const content = document.getElementById('g6ComparisonContent');
-  
+
   if (!data.success) {
     content.innerHTML = `
       <div class="alert alert-warning">
@@ -1444,9 +1447,9 @@ window.displayG6Results = function(data) {
         <hr>
         <small class="text-muted">
           <strong>Current dataset:</strong> ${data.current_dataset.experiment_name}<br>
-          <strong>Unit cell:</strong> ${data.current_dataset.unit_cell ? 
-            `${data.current_dataset.unit_cell.bravais || 'P'} a=${data.current_dataset.unit_cell.a}Å b=${data.current_dataset.unit_cell.b}Å c=${data.current_dataset.unit_cell.c}Å α=${data.current_dataset.unit_cell.alpha}° β=${data.current_dataset.unit_cell.beta}° γ=${data.current_dataset.unit_cell.gamma}°` : 
-            'No unit cell'}
+          <strong>Unit cell:</strong> ${data.current_dataset.unit_cell ?
+        `${data.current_dataset.unit_cell.bravais || 'P'} a=${data.current_dataset.unit_cell.a}Å b=${data.current_dataset.unit_cell.b}Å c=${data.current_dataset.unit_cell.c}Å α=${data.current_dataset.unit_cell.alpha}° β=${data.current_dataset.unit_cell.beta}° γ=${data.current_dataset.unit_cell.gamma}°` :
+        'No unit cell'}
         </small>
       </div>
     `;
@@ -1462,9 +1465,9 @@ window.displayG6Results = function(data) {
     <div class="mb-3">
       <small class="text-muted">
         <strong>Reference dataset:</strong> ${data.current_dataset.experiment_name}<br>
-        <strong>Unit cell:</strong> ${data.current_dataset.unit_cell ? 
-          `${data.current_dataset.unit_cell.bravais || 'P'} a=${data.current_dataset.unit_cell.a}Å b=${data.current_dataset.unit_cell.b}Å c=${data.current_dataset.unit_cell.c}Å α=${data.current_dataset.unit_cell.alpha}° β=${data.current_dataset.unit_cell.beta}° γ=${data.current_dataset.unit_cell.gamma}°` : 
-          'No unit cell'}
+        <strong>Unit cell:</strong> ${data.current_dataset.unit_cell ?
+      `${data.current_dataset.unit_cell.bravais || 'P'} a=${data.current_dataset.unit_cell.a}Å b=${data.current_dataset.unit_cell.b}Å c=${data.current_dataset.unit_cell.c}Å α=${data.current_dataset.unit_cell.alpha}° β=${data.current_dataset.unit_cell.beta}° γ=${data.current_dataset.unit_cell.gamma}°` :
+      'No unit cell'}
       </small>
     </div>
 
@@ -1483,12 +1486,12 @@ window.displayG6Results = function(data) {
   `;
 
   data.datasets.forEach(dataset => {
-    const unitCellText = dataset.unit_cell ? 
-      `${dataset.unit_cell.bravais} a=${dataset.unit_cell.a}Å b=${dataset.unit_cell.b}Å c=${dataset.unit_cell.c}Å α=${dataset.unit_cell.alpha}° β=${dataset.unit_cell.beta}° γ=${dataset.unit_cell.gamma}°` : 
+    const unitCellText = dataset.unit_cell ?
+      `${dataset.unit_cell.bravais} a=${dataset.unit_cell.a}Å b=${dataset.unit_cell.b}Å c=${dataset.unit_cell.c}Å α=${dataset.unit_cell.alpha}° β=${dataset.unit_cell.beta}° γ=${dataset.unit_cell.gamma}°` :
       'No unit cell';
-    
-    const locationText = dataset.well ? 
-      `${dataset.well.plate_barcode}-${dataset.well.label}` : 
+
+    const locationText = dataset.well ?
+      `${dataset.well.plate_barcode}-${dataset.well.label}` :
       'Standalone';
 
     html += `
@@ -1518,14 +1521,252 @@ window.displayG6Results = function(data) {
   content.innerHTML = html;
 }
 
+// Bridge between old system and new Stimulus controller
+window.wellModal = {
+  // Add a test function for debugging
+  test: function (wellId = 1) {
+    console.log('Testing well modal with wellId:', wellId);
+    this.showModal(wellId, 'content');
+  },
+
+  loadContentTab: function (wellId) {
+    console.log('loadContentTab called with wellId:', wellId, 'type:', typeof wellId);
+    this.showModal(wellId, 'content');
+  },
+
+  loadImagesTab: function (wellId) {
+    this.showModal(wellId, 'images');
+  },
+
+  loadPxrdTab: function (wellId) {
+    this.showModal(wellId, 'pxrd');
+  },
+
+  loadScxrdTab: function (wellId) {
+    this.showModal(wellId, 'scxrd');
+  },
+
+  showModal: function (wellId, activeTab = 'content') {
+    console.log('showModal called with wellId:', wellId, 'activeTab:', activeTab);
+
+    // Get the well information
+    const wellElement = document.querySelector(`[data-well-id="${wellId}"]`);
+    let wellLabel = '';
+
+    if (wellElement) {
+      wellLabel = wellElement.dataset.wellLabel ||
+        wellElement.dataset.wellRow + wellElement.dataset.wellColumn ||
+        `Well ${wellId}`;
+    } else {
+      wellLabel = `Well ${wellId}`;
+    }
+
+    console.log('Well label determined as:', wellLabel);
+
+    // Get the modal element
+    const modalElement = document.getElementById('wellImagesModal');
+    if (!modalElement) {
+      console.error('Modal element not found');
+      return;
+    }
+
+    // Try to get the Stimulus controller
+    let controller = null;
+    if (window.Stimulus && window.Stimulus.application) {
+      controller = window.Stimulus.application.getControllerForElementAndIdentifier(modalElement, 'well-modal');
+    }
+
+    if (controller) {
+      console.log('Using Stimulus controller');
+
+      // Ensure wellId is a valid number
+      const parsedWellId = parseInt(wellId);
+      console.log('Original wellId:', wellId, 'parsed:', parsedWellId);
+
+      if (isNaN(parsedWellId) || parsedWellId <= 0) {
+        console.error('Invalid well ID provided:', wellId);
+        return;
+      }
+
+      // Set the values on the controller BEFORE showing the modal
+      controller.wellIdValue = parsedWellId;
+      controller.wellLabelValue = wellLabel;
+
+      console.log('Set controller values:', {
+        wellId: controller.wellIdValue,
+        wellLabel: controller.wellLabelValue
+      });
+
+      // Show modal
+      const modal = new bootstrap.Modal(modalElement);
+      modal.show();
+
+      // Set active tab after modal is shown
+      if (activeTab !== 'content') {
+        setTimeout(() => {
+          this.activateTab(activeTab);
+        }, 200);
+      }
+    } else {
+      // Fallback to direct DOM manipulation
+      console.log('Stimulus controller not found, using fallback');
+      this.fallbackShowModal(wellId, wellLabel, activeTab);
+    }
+  },
+
+  activateTab: function (tabName) {
+    const tab = document.getElementById(`${tabName}-tab`);
+    if (tab) {
+      // Activate the tab using Bootstrap
+      const tabTrigger = new bootstrap.Tab(tab);
+      tabTrigger.show();
+    }
+  },
+
+  fallbackShowModal: function (wellId, wellLabel, activeTab) {
+    console.log('fallbackShowModal called with:', wellId, wellLabel, activeTab);
+
+    // Update title
+    const titleElement = document.getElementById('wellImagesModalLabel');
+    if (titleElement) {
+      titleElement.textContent = `Well ${wellLabel} Details`;
+      console.log('Title updated to:', titleElement.textContent);
+    }
+
+    // Show modal first
+    const modalElement = document.getElementById('wellImagesModal');
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+
+    // Wait for modal to be shown, then activate tab and load content
+    modalElement.addEventListener('shown.bs.modal', () => {
+      console.log('Modal shown event fired');
+
+      // Activate the correct tab
+      if (activeTab === 'content' || !activeTab) {
+        console.log('Activating content tab');
+        this.activateContentTab();
+        this.fallbackLoadContent(wellId);
+      } else {
+        console.log('Activating tab:', activeTab);
+        this.activateTab(activeTab);
+
+        // Load content for other tabs if needed
+        if (activeTab === 'images') {
+          this.fallbackLoadImages(wellId);
+        }
+      }
+    }, { once: true }); // Use once: true to prevent multiple event listeners
+  },
+
+  activateContentTab: function () {
+    console.log('activateContentTab called');
+    const contentTab = document.getElementById('content-tab');
+    const contentPane = document.getElementById('content');
+    const allTabs = document.querySelectorAll('#wellTabs .nav-link');
+    const allPanes = document.querySelectorAll('#wellTabContent .tab-pane');
+
+    console.log('Found elements:', {
+      contentTab: !!contentTab,
+      contentPane: !!contentPane,
+      allTabsCount: allTabs.length,
+      allPanesCount: allPanes.length
+    });
+
+    // Remove active class from all tabs and panes
+    allTabs.forEach(tab => {
+      tab.classList.remove('active');
+      tab.setAttribute('aria-selected', 'false');
+    });
+    allPanes.forEach(pane => {
+      pane.classList.remove('show', 'active');
+    });
+
+    // Activate content tab
+    if (contentTab && contentPane) {
+      contentTab.classList.add('active');
+      contentTab.setAttribute('aria-selected', 'true');
+      contentPane.classList.add('show', 'active');
+      console.log('Content tab activated successfully');
+    } else {
+      console.error('Content tab or pane not found');
+    }
+  },
+
+  fallbackLoadContent: function (wellId) {
+    console.log('fallbackLoadContent called for wellId:', wellId);
+    const contentDiv = document.getElementById('wellContentForm');
+    if (contentDiv && wellId) {
+      console.log('Loading content for well', wellId);
+      contentDiv.innerHTML = `
+        <div class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+            <span class="visually-hidden">Loading content...</span>
+          </div>
+          <div class="text-muted">Loading well contents...</div>
+        </div>
+      `;
+
+      fetch(`/wells/${wellId}/content_form`)
+        .then(response => {
+          console.log('Content form response status:', response.status);
+          return response.text();
+        })
+        .then(html => {
+          console.log('Content loaded successfully');
+          contentDiv.innerHTML = html;
+        })
+        .catch(error => {
+          console.error('Failed to load content:', error);
+          contentDiv.innerHTML = `
+            <div class="alert alert-danger">
+              Failed to load well contents. Please try again.
+            </div>
+          `;
+        });
+    } else {
+      console.error('Content div not found or wellId missing:', { contentDiv, wellId });
+    }
+  },
+
+  fallbackLoadImages: function (wellId) {
+    console.log('fallbackLoadImages called for wellId:', wellId);
+    const imagesDiv = document.getElementById('wellImagesContent');
+    if (imagesDiv && wellId) {
+      imagesDiv.innerHTML = `
+        <div class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+            <span class="visually-hidden">Loading images...</span>
+          </div>
+          <div class="text-muted">Loading well images...</div>
+        </div>
+      `;
+
+      fetch(`/wells/${wellId}/images`)
+        .then(response => response.text())
+        .then(html => {
+          imagesDiv.innerHTML = html;
+        })
+        .catch(error => {
+          console.error('Failed to load images:', error);
+          imagesDiv.innerHTML = `
+            <div class="alert alert-warning">
+              Failed to load images. Please refresh and try again.
+            </div>
+          `;
+        });
+    }
+  }
+};
+
 // Initialize everything when DOM is ready
 function initializePlatesShow() {
   window.wellSelector = new WellSelector();
-  window.wellModal = new WellModal();
+  // wellModal is now initialized above as a bridge object
 }
 
 // Export for use in other modules
-export { WellSelector, WellModal, Utils, ImageManager, CONSTANTS };
+export { WellSelector, Utils, ImageManager, CONSTANTS };
 
 // Export initialization function for manual control
 export default initializePlatesShow;

@@ -2,6 +2,13 @@ class Well < ApplicationRecord
   belongs_to :plate
   has_many :well_contents, dependent: :destroy
   has_many :stock_solutions, through: :well_contents
+  
+  # New polymorphic associations for direct chemical access
+  has_many :chemical_contents, -> { where(contentable_type: 'Chemical') }, class_name: 'WellContent'
+  has_many :chemicals, through: :chemical_contents, source: :contentable, source_type: 'Chemical'
+  
+  has_many :stock_solution_contents, -> { where(contentable_type: 'StockSolution') }, class_name: 'WellContent'
+  has_many :polymorphic_stock_solutions, through: :stock_solution_contents, source: :contentable, source_type: 'StockSolution'
   has_many :images, dependent: :destroy
   has_many :point_of_interests, through: :images, dependent: :destroy
 
@@ -50,6 +57,48 @@ class Well < ApplicationRecord
     else
       well_contents.exists?
     end
+  end
+
+  # Check if well contains chemicals directly
+  def has_chemicals?
+    if association(:well_contents).loaded?
+      well_contents.any? { |wc| wc.chemical? }
+    else
+      chemical_contents.exists?
+    end
+  end
+
+  # Check if well contains stock solutions
+  def has_stock_solutions?
+    if association(:well_contents).loaded?
+      well_contents.any? { |wc| wc.stock_solution? }
+    else
+      stock_solution_contents.exists?
+    end
+  end
+
+  # Get all content items (both chemicals and stock solutions)
+  def all_content_items
+    well_contents.includes(:contentable).map(&:contentable).compact
+  end
+
+  # Get content summary
+  def content_summary
+    return "No content" unless has_content?
+    
+    summaries = []
+    
+    if has_chemicals?
+      chemical_count = chemicals.count
+      summaries << "#{chemical_count} chemical#{chemical_count == 1 ? '' : 's'}"
+    end
+    
+    if has_stock_solutions?
+      stock_solution_count = polymorphic_stock_solutions.count
+      summaries << "#{stock_solution_count} stock solution#{stock_solution_count == 1 ? '' : 's'}"
+    end
+    
+    summaries.join(', ')
   end
 
   # Check if well has any PXRD patterns

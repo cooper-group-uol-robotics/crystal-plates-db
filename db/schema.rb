@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_02_200646) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_13_160430) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -229,11 +229,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_02_200646) do
 
   create_table "well_contents", force: :cascade do |t|
     t.integer "well_id", null: false
-    t.integer "stock_solution_id", null: false
+    t.integer "stock_solution_id"
     t.float "volume"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "unit_id"
+    t.string "contentable_type"
+    t.integer "contentable_id"
+    t.index ["contentable_type", "contentable_id"], name: "index_well_contents_on_contentable_type_and_contentable_id"
     t.index ["stock_solution_id"], name: "index_well_contents_on_stock_solution_id"
     t.index ["unit_id"], name: "index_well_contents_on_unit_id"
     t.index ["well_id"], name: "index_well_contents_on_well_id"

@@ -3,6 +3,10 @@ require "cgi"
 class Chemical < ApplicationRecord
   has_many :stock_solution_components, dependent: :destroy
   has_many :stock_solutions, through: :stock_solution_components
+  
+  # Direct associations with wells through polymorphic well_contents
+  has_many :well_contents, as: :contentable, dependent: :destroy
+  has_many :wells, through: :well_contents
 
   validates :sciformation_id, presence: true, uniqueness: true
   validates :name, presence: true
@@ -36,6 +40,43 @@ class Chemical < ApplicationRecord
 
   def has_structure?
     smiles.present? && smiles.strip != ""
+  end
+
+  # Check if chemical is used directly in wells
+  def used_in_wells?
+    well_contents.exists?
+  end
+
+  # Check if chemical is used in stock solutions
+  def used_in_stock_solutions?
+    stock_solution_components.exists?
+  end
+
+  # Check if chemical can be deleted (not used anywhere)
+  def can_be_deleted?
+    !used_in_wells? && !used_in_stock_solutions?
+  end
+
+  # Get wells where this chemical is used directly
+  def direct_wells_count
+    well_contents.count
+  end
+
+  # Get usage summary
+  def usage_summary
+    summaries = []
+    
+    if used_in_wells?
+      summaries << "#{direct_wells_count} well#{direct_wells_count == 1 ? '' : 's'} (direct)"
+    end
+    
+    if used_in_stock_solutions?
+      stock_solution_count = stock_solutions.count
+      summaries << "#{stock_solution_count} stock solution#{stock_solution_count == 1 ? '' : 's'}"
+    end
+    
+    return "Not used" if summaries.empty?
+    summaries.join(', ')
   end
 
   def structure_image_url(width: 200, height: 200)

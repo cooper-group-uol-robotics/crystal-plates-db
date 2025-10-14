@@ -7,11 +7,19 @@
   }
 </style>
 
-<div class="modal fade" id="wellImagesModal" tabindex="-1" aria-labelledby="wellImagesModalLabel" aria-hidden="true">
+<div class="modal fade" 
+     id="wellImagesModal" 
+     tabindex="-1" 
+     aria-labelledby="wellImagesModalLabel" 
+     aria-hidden="true"
+     data-controller="well-modal"
+     data-well-modal-target="modal">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="wellImagesModalLabel">Well Details</h5>
+        <h5 class="modal-title" 
+            id="wellImagesModalLabel" 
+            data-well-modal-target="title">Well Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body"
@@ -19,41 +27,81 @@
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" id="wellTabs" role="tablist">
           <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="images-tab" data-bs-toggle="tab" data-bs-target="#images" type="button" role="tab" aria-controls="images" aria-selected="true">Images</button>
+            <button class="nav-link active" 
+                    id="content-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#content" 
+                    data-action="click->well-modal#handleTabClick"
+                    type="button" 
+                    role="tab" 
+                    aria-controls="content" 
+                    aria-selected="true">Well Contents</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab" aria-controls="content" aria-selected="false">Stock Solutions</button>
+            <button class="nav-link" 
+                    id="images-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#images" 
+                    data-action="click->well-modal#handleTabClick"
+                    type="button" 
+                    role="tab" 
+                    aria-controls="images" 
+                    aria-selected="false">Images</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pxrd-tab" data-bs-toggle="tab" data-bs-target="#pxrd" type="button" role="tab" aria-controls="pxrd" aria-selected="false">PXRD</button>
+            <button class="nav-link" 
+                    id="pxrd-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#pxrd" 
+                    data-action="click->well-modal#handleTabClick"
+                    type="button" 
+                    role="tab" 
+                    aria-controls="pxrd" 
+                    aria-selected="false">PXRD</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="scxrd-tab" data-bs-toggle="tab" data-bs-target="#scxrd" type="button" role="tab" aria-controls="scxrd" aria-selected="false">SCXRD</button>
+            <button class="nav-link" 
+                    id="scxrd-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#scxrd" 
+                    data-action="click->well-modal#handleTabClick"
+                    type="button" 
+                    role="tab" 
+                    aria-controls="scxrd" 
+                    aria-selected="false">SCXRD</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="calorimetry-tab" data-bs-toggle="tab" data-bs-target="#calorimetry" type="button" role="tab" aria-controls="calorimetry" aria-selected="false">Calorimetry</button>
+            <button class="nav-link" 
+                    id="calorimetry-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#calorimetry" 
+                    data-action="click->well-modal#handleTabClick"
+                    type="button" 
+                    role="tab" 
+                    aria-controls="calorimetry" 
+                    aria-selected="false">Calorimetry</button>
           </li>
         </ul>
 
         <!-- Tab content -->
         <div class="tab-content mt-3" id="wellTabContent">
-          <div class="tab-pane fade show active" id="images" role="tabpanel" aria-labelledby="images-tab">
-            <div id="wellImagesContent">
+          <div class="tab-pane fade" id="images" role="tabpanel" aria-labelledby="images-tab">
+            <div id="wellImagesContent" data-well-modal-target="imagesContent">
               <!-- Images will be injected here -->
             </div>
           </div>
-          <div class="tab-pane fade" id="content" role="tabpanel" aria-labelledby="content-tab">
-            <div id="wellContentForm">
-              <!-- Stock solution form will be injected here -->
+          <div class="tab-pane fade show active" id="content" role="tabpanel" aria-labelledby="content-tab">
+            <div id="wellContentForm" data-well-modal-target="contentForm">
+              <!-- Content form will be injected here -->
             </div>
           </div>
           <div class="tab-pane fade" id="pxrd" role="tabpanel" aria-labelledby="pxrd-tab">
-            <div id="wellPxrdContent">
+            <div id="wellPxrdContent" data-well-modal-target="pxrdContent">
               <!-- PXRD patterns will be injected here -->
             </div>
           </div>
           <div class="tab-pane fade" id="scxrd" role="tabpanel" aria-labelledby="scxrd-tab">
-            <div id="wellScxrdContent">
+            <div id="wellScxrdContent" data-well-modal-target="scxrdContent">
               <!-- SCXRD datasets will be injected here -->
             </div>
           </div>

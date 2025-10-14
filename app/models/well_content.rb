@@ -1,10 +1,13 @@
 class WellContent < ApplicationRecord
   belongs_to :well
-  belongs_to :stock_solution
+  belongs_to :contentable, polymorphic: true
+  belongs_to :stock_solution, optional: true  # Keep for backward compatibility
   belongs_to :unit, optional: true
 
   validates :volume, presence: true, numericality: { greater_than: 0 }
   validates :unit, presence: true, if: -> { volume.present? && volume > 0 }
+  validates :contentable, presence: true
+  validate :contentable_must_be_valid_type
 
   attr_accessor :volume_with_unit
 
@@ -23,6 +26,32 @@ class WellContent < ApplicationRecord
   def display_volume
     return volume.to_s if unit.nil?
     "#{volume} #{unit.symbol}"
+  end
+
+  # Helper methods to determine content type
+  def stock_solution?
+    contentable_type == 'StockSolution'
+  end
+
+  def chemical?
+    contentable_type == 'Chemical'
+  end
+
+  def content_name
+    return contentable.display_name if stock_solution? && contentable.respond_to?(:display_name)
+    return contentable.name if contentable.respond_to?(:name)
+    return contentable.to_s if contentable
+    "Unknown Content"
+  end
+
+  def content_description
+    if stock_solution?
+      "Stock Solution: #{content_name}"
+    elsif chemical?
+      "Chemical: #{content_name}"
+    else
+      content_name
+    end
   end
 
   private
@@ -89,6 +118,15 @@ class WellContent < ApplicationRecord
       "kg"
     else
       symbol
+    end
+  end
+
+  def contentable_must_be_valid_type
+    return unless contentable_type.present?
+    
+    allowed_types = ['StockSolution', 'Chemical']
+    unless allowed_types.include?(contentable_type)
+      errors.add(:contentable_type, "must be one of: #{allowed_types.join(', ')}")
     end
   end
 end

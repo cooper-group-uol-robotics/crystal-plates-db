@@ -1,106 +1,184 @@
-<div class="well-content-form">
+<div class="well-content-form" 
+     data-controller="well-content-form" 
+     data-well-content-form-chemical-search-url-value="<%= search_chemicals_path %>"
+     data-well-content-form-stock-solution-search-url-value="<%= search_stock_solutions_path %>"
+     data-well-content-form-well-id-value="<%= well.id %>">
+  
   <style>
-    .stock-solution-search-dropdown {
-      z-index: 1060;
+    .search-results {
+      max-height: 200px;
+      overflow-y: auto;
       border: 1px solid #dee2e6;
       border-radius: 0.375rem;
       box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
       background-color: white;
+      z-index: 1060;
     }
     
-    .stock-solution-search-dropdown .dropdown-item {
+    .search-result-item {
       padding: 0.5rem 1rem;
-      border: none;
-      background: none;
-      text-align: left;
-      width: 100%;
+      border-bottom: 1px solid #f8f9fa;
       cursor: pointer;
+      transition: background-color 0.15s ease-in-out;
     }
     
-    .stock-solution-search-dropdown .dropdown-item:hover {
+    .search-result-item:hover {
       background-color: #f8f9fa;
     }
     
-    .stock-solution-search-dropdown .dropdown-item:focus {
-      background-color: #e9ecef;
+    .search-result-item:last-child {
+      border-bottom: none;
     }
     
-    .clickable-stock-solution {
-      transition: background-color 0.2s ease;
-    }
-    
-    .clickable-stock-solution:hover {
+    .clickable-content:hover {
       background-color: #f8f9fa !important;
     }
   </style>
   
   <div class="mb-3">
-    <h5>Current Stock Solutions</h5>
+    <h5>Current Well Contents</h5>
     <% if well_contents.any? %>
       <div class="list-group">
         <% well_contents.each do |content| %>
           <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="flex-grow-1 clickable-stock-solution" style="cursor: pointer;" onclick="window.open('<%= stock_solution_path(content.stock_solution) %>', '_blank')">
-              <strong><%= content.stock_solution.display_name %></strong>
+            <div class="flex-grow-1 clickable-content" style="cursor: pointer;" 
+                 <% if content.stock_solution? %>onclick="window.open('<%= stock_solution_path(content.contentable) %>', '_blank')"<% end %>>
+              <div class="d-flex align-items-center">
+                <% if content.stock_solution? %>
+                  <span class="badge bg-primary me-2">Stock Solution</span>
+                <% elsif content.chemical? %>
+                  <span class="badge bg-success me-2">Chemical</span>
+                <% end %>
+                <strong><%= content.content_name %></strong>
+              </div>
               <% if content.volume.present? %>
                 <div class="small text-muted">
                   Volume: <%= content.display_volume %>
                 </div>
               <% end %>
-              <% if content.stock_solution.stock_solution_components.any? %>
+              <% if content.stock_solution? && content.contentable.stock_solution_components.any? %>
                 <div class="small text-muted">
-                  <%= content.stock_solution.component_summary %>
+                  <%= content.contentable.component_summary %>
+                </div>
+              <% elsif content.chemical? %>
+                <div class="small text-muted">
+                  <%= content.content_description %>
+                  <% if content.contentable.cas.present? %>
+                    <br>CAS: <%= content.contentable.cas %>
+                  <% end %>
                 </div>
               <% end %>
             </div>
             <button type="button" class="btn btn-sm btn-outline-danger" 
-                    data-action="remove-stock-solution" 
-                    data-well-id="<%= well.id %>" 
-                    data-content-id="<%= content.id %>">
+                    data-content-id="<%= content.id %>"
+                    data-action="click->well-content-form#removeContent">
               Remove
             </button>
           </div>
         <% end %>
       </div>
       <button type="button" class="btn btn-sm btn-outline-warning mt-2" 
-              data-action="remove-all-content" 
-              data-well-id="<%= well.id %>">
+              data-action="click->well-content-form#removeAllContent">
         Remove All
       </button>
     <% else %>
-      <p class="text-muted">No stock solutions added yet.</p>
+      <p class="text-muted">No contents added yet.</p>
     <% end %>
   </div>
 
   <div class="mb-3">
-    <h5>Add Stock Solution</h5>
-    <div class="row">
-      <div class="col-md-8">
-        <label for="stockSolutionSearch_<%= well.id %>" class="form-label">Stock Solution</label>
-        <div class="position-relative">
-          <input type="hidden" id="stockSolutionId_<%= well.id %>">
-          <input type="text" class="form-control" id="stockSolutionSearch_<%= well.id %>" 
-                 placeholder="Search by name or components..."
-                 data-well-id="<%= well.id %>">
-          <div class="stock-solution-search-dropdown position-absolute w-100 d-none" 
-               style="top: 100%; max-height: 200px; overflow-y: auto;"
-               id="stockSolutionResults_<%= well.id %>">
+    <h5>Add Content</h5>
+    
+    <!-- Content Type Selection -->
+    <div class="mb-3">
+      <label class="form-label">Content Type</label>
+      <select class="form-select" 
+              data-well-content-form-target="contentType" 
+              data-action="change->well-content-form#contentTypeChanged">
+        <option value="">Select content type...</option>
+        <option value="stock_solution" selected>Stock Solution</option>
+        <option value="chemical">Chemical (Direct)</option>
+      </select>
+    </div>
+
+    <!-- Stock Solution Selection -->
+    <div data-well-content-form-target="stockSolutionFields" class="content-section">
+      <div class="row">
+        <div class="col-md-8">
+          <label class="form-label">Stock Solution</label>
+          <div class="position-relative">
+            <input type="hidden" 
+                   data-well-content-form-target="stockSolutionSelect">
+            <input type="text" class="form-control" 
+                   placeholder="Search by name or components..."
+                   data-well-content-form-target="stockSolutionSearch"
+                   data-action="input->well-content-form#searchStockSolutions">
+            <div class="position-absolute w-100 search-results"
+                 style="top: 100%; display: none;"
+                 data-well-content-form-target="stockSolutionResults">
+            </div>
           </div>
         </div>
+        
+        <div class="col-md-4">
+          <label class="form-label">Volume</label>
+          <input type="text" class="form-control" 
+                 placeholder="e.g., 50 μL"
+                 data-well-content-form-target="stockSolutionVolume">
+        </div>
       </div>
-      
-      <div class="col-md-4 mb-3">
-        <label for="volumeAmountInput_<%= well.id %>" class="form-label">Volume</label>
-        <input type="text" class="form-control" id="volumeAmountInput_<%= well.id %>" 
-               placeholder="e.g., 50 μL">
+    </div>
+
+    <!-- Chemical Selection -->
+    <div data-well-content-form-target="chemicalFields" class="content-section" style="display: none;">
+      <div class="row">
+        <div class="col-md-8">
+          <label class="form-label">Chemical</label>
+          <div class="position-relative">
+            <input type="hidden" 
+                   data-well-content-form-target="chemicalSelect">
+            <input type="text" class="form-control" 
+                   placeholder="Search by name or CAS..."
+                   data-well-content-form-target="chemicalSearch"
+                   data-action="input->well-content-form#searchChemicals">
+            <div class="position-absolute w-100 search-results"
+                 style="top: 100%; display: none;"
+                 data-well-content-form-target="chemicalResults">
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <label class="form-label">Volume/Amount</label>
+          <input type="text" class="form-control" 
+                 placeholder="e.g., 50 μL, 10 mg"
+                 data-well-content-form-target="chemicalVolume">
+        </div>
       </div>
     </div>
   
-    
-    <button type="button" class="btn btn-primary" data-action="add-stock-solution" data-well-id="<%= well.id %>">
-      Add Stock Solution
-    </button>
+    <!-- Form for submitting content -->
+    <%= form_with model: [well, WellContent.new], local: false, 
+                  data: { action: "submit->well-content-form#submitContent" } do |form| %>
+      
+      <!-- Hidden fields for polymorphic association -->
+      <input type="hidden" name="well_content[contentable_type]" id="contentable_type">
+      <input type="hidden" name="well_content[contentable_id]" id="contentable_id">
+      
+      <!-- Volume field for form submission -->
+      <input type="hidden" name="well_content[volume_with_unit]" id="form_volume">
+      
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary">
+          Add Content
+        </button>
+      </div>
+    <% end %>
   </div>
 
-  <div id="contentMessages_<%= well.id %>"></div>
+  <div class="mt-2" id="content-messages">
+    <!-- Error messages will appear here -->
+  </div>
 </div>
+
+
