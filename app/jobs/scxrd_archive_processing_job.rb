@@ -6,11 +6,15 @@ class ScxrdArchiveProcessingJob < ApplicationJob
     dataset = ScxrdDataset.find_by(id: scxrd_dataset_id)
     return unless dataset&.archive&.attached?
 
+    # Capture processing logs
+    log_capture_service = ProcessingLogCaptureService.new
+    
     begin
-      archive_start_time = Time.current
-      Rails.logger.info "SCXRD Job: Starting processing for dataset #{dataset.id}"
+      result, captured_logs = log_capture_service.capture_logs do
+        archive_start_time = Time.current
+        Rails.logger.info "SCXRD Job: Starting processing for dataset #{dataset.id}"
 
-      # Download and extract the archive (same logic as controller)
+        # Download and extract the archive (same logic as controller)
       archive_blob = dataset.archive.blob
       archive_file = dataset.archive.download
 
@@ -182,19 +186,40 @@ class ScxrdArchiveProcessingJob < ApplicationJob
         Rails.logger.info "SCXRD Job: Total archive processing completed in #{(archive_end_time - archive_start_time).round(2)} seconds"
       end
 
+      "processing_completed" # Return a value for the captured logs
+      end
+      
+      # Save the captured logs to the database
+      dataset.processing_log = captured_logs
       dataset.save!
     rescue Errno::ENOENT => e
-      Rails.logger.error "SCXRD Archive Processing Job: Missing file - #{e.message}"
-      Rails.logger.error "This might indicate an incomplete or corrupted archive upload"
-      Rails.logger.error "Archive content should include all expected SCXRD files"
+      error_logs = [
+        "SCXRD Archive Processing Job: Missing file - #{e.message}",
+        "This might indicate an incomplete or corrupted archive upload",
+        "Archive content should include all expected SCXRD files"
+      ].join("\n")
+      
+      Rails.logger.error error_logs
 
-      # Mark dataset as having an error but don't crash the job
+      # Mark dataset as having an error and save error logs
       if dataset
-        dataset.update(experiment_name: "#{dataset.experiment_name} (Processing Error)")
+        dataset.update(
+          experiment_name: "#{dataset.experiment_name} (Processing Error)",
+          processing_log: error_logs
+        )
       end
     rescue => e
-      Rails.logger.error "SCXRD Archive Processing Job: #{e.class} - #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      error_logs = [
+        "SCXRD Archive Processing Job: #{e.class} - #{e.message}",
+        e.backtrace.join("\n")
+      ].join("\n")
+      
+      Rails.logger.error error_logs
+      
+      # Save error logs to dataset
+      if dataset
+        dataset.update(processing_log: error_logs)
+      end
     end
   end
 

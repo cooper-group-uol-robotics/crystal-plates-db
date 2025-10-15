@@ -14,6 +14,14 @@
             <% end %>
           </div>
           <div class="btn-group">
+            <% if @scxrd_dataset.has_processing_log? %>
+              <button type="button" 
+                      class="btn btn-outline-info btn-sm" 
+                      data-bs-toggle="modal" 
+                      data-bs-target="#processingLogModal">
+                <i class="bi bi-file-text"></i> Processing Log
+              </button>
+            <% end %>
             <% if @scxrd_dataset.archive.attached? %>
               <% if @scxrd_dataset.well.present? %>
                 <%= link_to "Download Archive", download_well_scxrd_dataset_path(@scxrd_dataset.well, @scxrd_dataset), 
@@ -161,3 +169,8 @@
     </div>
   </div>
 </div>
+
+<!-- Processing Log Modal -->
+<% if @scxrd_dataset.has_processing_log? %>
+  <%= render 'processing_log_modal', dataset: @scxrd_dataset %>
+<% end %>

@@ -80,4 +80,36 @@ module ApplicationHelper
                 },
                 onclick: "loadG6Comparison(#{dataset.id})")
   end
+
+  # Helper method to determine CSS class for log lines based on content
+  def log_line_class(line)
+    case line
+    when /ERROR/i
+      "error"
+    when /WARN/i
+      "warn"
+    when /DEBUG/i
+      "debug"
+    when /INFO/i
+      "info"
+    else
+      "default"
+    end
+  end
+
+  # Helper for styling processing log lines based on log level
+  def log_line_class(line)
+    case line.downcase
+    when /\berror\b/
+      "error"
+    when /\bwarn\b/
+      "warn"
+    when /\binfo\b/
+      "info"
+    when /\bdebug\b/
+      "debug"
+    else
+      "default"
+    end
+  end
 end

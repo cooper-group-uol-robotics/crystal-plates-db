@@ -11,6 +11,16 @@ class ScxrdDataset < ApplicationRecord
   validates :primitive_a, :primitive_b, :primitive_c, :primitive_alpha, :primitive_beta, :primitive_gamma, numericality: { greater_than: 0 }, allow_nil: true
   validates :real_world_x_mm, :real_world_y_mm, :real_world_z_mm, numericality: true, allow_nil: true
 
+  # Processing log methods
+  def has_processing_log?
+    processing_log.present?
+  end
+
+  def processing_log_lines
+    return [] unless has_processing_log?
+    processing_log.split("\n")
+  end
+
   # Scopes
   scope :with_coordinates, -> { where.not(real_world_x_mm: nil, real_world_y_mm: nil) }
   scope :near_coordinates, ->(x_mm, y_mm, tolerance_mm = 0.5) {

@@ -184,6 +184,14 @@
                                class: "btn btn-outline-primary btn-sm" do %>
                       <i class="bi bi-eye"></i> Details
                     <% end %>
+                    <% if dataset.has_processing_log? %>
+                      <button type="button" 
+                              class="btn btn-outline-info btn-sm" 
+                              data-bs-toggle="modal" 
+                              data-bs-target="#processingLogModal-<%= dataset.id %>">
+                        <i class="bi bi-file-text"></i> Log
+                      </button>
+                    <% end %>
                     <% if dataset.archive.attached? %>
                       <%= link_to download_scxrd_dataset_path(dataset), 
                                  class: "btn btn-outline-success btn-sm" do %>
@@ -287,7 +295,89 @@
   </div>
 </div>
 
+<!-- Processing Log Modals for each dataset -->
+<% @scxrd_datasets.each do |dataset| %>
+  <% if dataset.has_processing_log? %>
+    <div class="modal fade" id="processingLogModal-<%= dataset.id %>" tabindex="-1" aria-labelledby="processingLogModalLabel-<%= dataset.id %>" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="processingLogModalLabel-<%= dataset.id %>">
+              <i class="bi bi-file-text me-2"></i>Processing Log: <%= dataset.experiment_name %>
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="processing-log-container">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <small class="text-muted">
+                  <i class="bi bi-clock"></i> 
+                  Processing completed: <%= dataset.updated_at.strftime('%b %d, %Y at %H:%M:%S') %>
+                </small>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyLogToClipboard(<%= dataset.id %>)">
+                  <i class="bi bi-clipboard"></i> Copy Log
+                </button>
+              </div>
+              
+              <div class="log-content" id="logContent-<%= dataset.id %>">
+                <% dataset.processing_log_lines.each do |line| %>
+                  <div class="log-line <%= log_line_class(line) %>">
+                    <code><%= h(line) %></code>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
 
+<!-- Processing Log Modals for each dataset -->
+<% @scxrd_datasets.each do |dataset| %>
+  <% if dataset.has_processing_log? %>
+    <div class="modal fade" id="processingLogModal-<%= dataset.id %>" tabindex="-1" aria-labelledby="processingLogModalLabel-<%= dataset.id %>" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="processingLogModalLabel-<%= dataset.id %>">
+              <i class="bi bi-file-text me-2"></i>Processing Log: <%= dataset.experiment_name %>
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="processing-log-container">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <small class="text-muted">
+                  <i class="bi bi-clock"></i> 
+                  Processing completed: <%= dataset.updated_at.strftime('%b %d, %Y at %H:%M:%S') %>
+                </small>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyLogToClipboard('<%= dataset.id %>')">
+                  <i class="bi bi-clipboard"></i> Copy Log
+                </button>
+              </div>
+              
+              <div class="log-content" id="logContent-<%= dataset.id %>">
+                <% dataset.processing_log_lines.each do |line| %>
+                  <div class="log-line <%= log_line_class(line) %>">
+                    <code><%= h(line) %></code>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
 
 <style>
   .modal-xl {
@@ -318,6 +408,75 @@
   .spinner-border {
     color: var(--bs-primary);
   }
+  
+  /* Processing Log Styles */
+  .processing-log-container {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  }
+  
+  .log-content {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 0.875rem;
+  }
+  
+  .log-line {
+    margin-bottom: 0.25rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  
+  .log-line.info code {
+    color: #0f5132;
+  }
+  
+  .log-line.warn code {
+    color: #664d03;
+    font-weight: 500;
+  }
+  
+  .log-line.error code {
+    color: #721c24;
+    font-weight: bold;
+  }
+  
+  .log-line.debug code {
+    color: #6c757d;
+  }
+  
+  .log-line.default code {
+    color: #212529;
+  }
 </style>
+
+<script>
+  function copyLogToClipboard(datasetId) {
+    const logContent = document.getElementById('logContent-' + datasetId);
+    const text = Array.from(logContent.querySelectorAll('.log-line code'))
+                     .map(line => line.textContent)
+                     .join('\n');
+    
+    navigator.clipboard.writeText(text).then(() => {
+      // Show temporary success message
+      const button = event.target.closest('button');
+      const originalHtml = button.innerHTML;
+      button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+      button.classList.remove('btn-outline-secondary');
+      button.classList.add('btn-success');
+      
+      setTimeout(() => {
+        button.innerHTML = originalHtml;
+        button.classList.remove('btn-success');
+        button.classList.add('btn-outline-secondary');
+      }, 2000);
+    }).catch(() => {
+      alert('Failed to copy to clipboard');
+    });
+  }
+</script>
 
 </div>

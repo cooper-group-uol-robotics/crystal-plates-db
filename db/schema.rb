@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_13_160430) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_14_182209) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -189,6 +189,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_13_160430) do
     t.decimal "real_world_x_mm", precision: 8, scale: 3
     t.decimal "real_world_y_mm", precision: 8, scale: 3
     t.decimal "real_world_z_mm", precision: 8, scale: 3
+    t.text "processing_log"
     t.index ["well_id"], name: "index_scxrd_datasets_on_well_id"
   end
 

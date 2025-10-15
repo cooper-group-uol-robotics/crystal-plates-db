@@ -2,7 +2,7 @@ class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
   before_action :set_well, if: -> { params[:well_id].present? && params[:well_id] != "null" }
-  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :structure_file, :image_data, :peak_table_data, :g6_similar, :csd_search, :similarity_counts ]
+  before_action :set_scxrd_dataset, only: [ :show, :edit, :update, :destroy, :download, :download_peak_table, :crystal_image, :structure_file, :processing_log, :image_data, :peak_table_data, :g6_similar, :csd_search, :similarity_counts ]
 
   def index
     if params[:well_id].present?
@@ -248,6 +248,19 @@ class ScxrdDatasetsController < ApplicationController
       render plain: structure_content
     else
       head :not_found
+    end
+  end
+
+  def processing_log
+    respond_to do |format|
+      format.html { render partial: "processing_log_modal", locals: { dataset: @scxrd_dataset } }
+      format.json do
+        render json: {
+          success: true,
+          has_log: @scxrd_dataset.has_processing_log?,
+          processing_log: @scxrd_dataset.processing_log_lines
+        }
+      end
     end
   end
 
