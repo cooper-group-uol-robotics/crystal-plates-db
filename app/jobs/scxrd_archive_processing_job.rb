@@ -72,20 +72,60 @@ class ScxrdArchiveProcessingJob < ApplicationJob
 
 
 
-          # Store unit cell parameters from metadata (exact same logic as controller)
+          # Store unit cell parameters from metadata, ensuring they are primitive
           Rails.logger.info "SCXRD Job: Checking for parsed metadata..."
           if result[:metadata]
             metadata = result[:metadata]
             Rails.logger.info "SCXRD Job: Found metadata: #{metadata.inspect}"
 
-            dataset.primitive_a = metadata[:a] if metadata[:a]
-            dataset.primitive_b = metadata[:b] if metadata[:b]
-            dataset.primitive_c = metadata[:c] if metadata[:c]
-            dataset.primitive_alpha = metadata[:alpha] if metadata[:alpha]
-            dataset.primitive_beta = metadata[:beta] if metadata[:beta]
-            dataset.primitive_gamma = metadata[:gamma] if metadata[:gamma]
+            # Extract unit cell parameters from metadata
+            if metadata[:a] && metadata[:b] && metadata[:c] && metadata[:alpha] && metadata[:beta] && metadata[:gamma]
+              original_a = metadata[:a]
+              original_b = metadata[:b]
+              original_c = metadata[:c]
+              original_alpha = metadata[:alpha]
+              original_beta = metadata[:beta]
+              original_gamma = metadata[:gamma]
 
-            Rails.logger.info "SCXRD Job: Primitive unit cell parameters stored: a=#{dataset.primitive_a}, b=#{dataset.primitive_b}, c=#{dataset.primitive_c}, α=#{dataset.primitive_alpha}, β=#{dataset.primitive_beta}, γ=#{dataset.primitive_gamma}"
+              Rails.logger.info "SCXRD Job: Original unit cell parameters: a=#{original_a}, b=#{original_b}, c=#{original_c}, α=#{original_alpha}, β=#{original_beta}, γ=#{original_gamma}"
+
+              # Convert to primitive cell using the PrimitiveCellService
+              if PrimitiveCellService.enabled?
+                primitive_cell = PrimitiveCellService.ensure_primitive(
+                  original_a, original_b, original_c,
+                  original_alpha, original_beta, original_gamma
+                )
+
+                if primitive_cell
+                  dataset.primitive_a = primitive_cell[:a]
+                  dataset.primitive_b = primitive_cell[:b]
+                  dataset.primitive_c = primitive_cell[:c]
+                  dataset.primitive_alpha = primitive_cell[:alpha]
+                  dataset.primitive_beta = primitive_cell[:beta]
+                  dataset.primitive_gamma = primitive_cell[:gamma]
+
+                  Rails.logger.info "SCXRD Job: Primitive unit cell parameters stored: a=#{dataset.primitive_a}, b=#{dataset.primitive_b}, c=#{dataset.primitive_c}, α=#{dataset.primitive_alpha}, β=#{dataset.primitive_beta}, γ=#{dataset.primitive_gamma}"
+                else
+                  Rails.logger.warn "SCXRD Job: Failed to convert to primitive cell, storing original parameters"
+                  dataset.primitive_a = original_a
+                  dataset.primitive_b = original_b
+                  dataset.primitive_c = original_c
+                  dataset.primitive_alpha = original_alpha
+                  dataset.primitive_beta = original_beta
+                  dataset.primitive_gamma = original_gamma
+                end
+              else
+                Rails.logger.warn "SCXRD Job: PrimitiveCellService is disabled, storing original parameters"
+                dataset.primitive_a = original_a
+                dataset.primitive_b = original_b
+                dataset.primitive_c = original_c
+                dataset.primitive_alpha = original_alpha
+                dataset.primitive_beta = original_beta
+                dataset.primitive_gamma = original_gamma
+              end
+            else
+              Rails.logger.warn "SCXRD Job: Incomplete unit cell parameters in metadata"
+            end
 
             # Store real world coordinates if parsed, but only if not already provided by user
             parsed_coords_used = false

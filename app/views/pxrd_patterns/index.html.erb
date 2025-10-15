@@ -216,7 +216,7 @@
 
   <!-- Pagination -->
   <div class="d-flex justify-content-center mt-4">
-    <%= paginate @pxrd_patterns, params: { search: params[:search], sort: params[:sort], direction: params[:direction] } %>
+    <%= paginate @pxrd_patterns, theme: :bootstrap_4, params: { search: params[:search], sort: params[:sort], direction: params[:direction] } %>
   </div>
 
 <% else %>

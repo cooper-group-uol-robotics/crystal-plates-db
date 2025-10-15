@@ -222,8 +222,9 @@ class G6DistanceService
     end
 
     def extract_cell_params(dataset)
-      # Use conventional cell if available, fallback to primitive
-      cell = dataset.conventional_cell_as_input || {
+      # Use primitive cell parameters directly from database
+      # The database should already store primitive cells after the optimization
+      {
         a: dataset.primitive_a,
         b: dataset.primitive_b,
         c: dataset.primitive_c,
@@ -231,8 +232,6 @@ class G6DistanceService
         beta: dataset.primitive_beta,
         gamma: dataset.primitive_gamma
       }
-
-      cell
     end
 
     def valid_unit_cell?(cell_params)

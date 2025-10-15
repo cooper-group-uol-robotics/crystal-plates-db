@@ -32,10 +32,15 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
 
   # POST /api/v1/wells/:well_id/scxrd_datasets or POST /api/v1/scxrd_datasets (standalone)
   def create
+    dataset_params = scxrd_dataset_params
+    
+    # Convert unit cell parameters to primitive if provided
+    dataset_params = ensure_primitive_cell_params(dataset_params)
+    
     if @well
-      @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
+      @scxrd_dataset = @well.scxrd_datasets.build(dataset_params)
     else
-      @scxrd_dataset = ScxrdDataset.new(scxrd_dataset_params)
+      @scxrd_dataset = ScxrdDataset.new(dataset_params)
     end
 
     if @scxrd_dataset.save
@@ -53,7 +58,12 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
 
   # PATCH/PUT /api/v1/wells/:well_id/scxrd_datasets/:id
   def update
-    if @scxrd_dataset.update(scxrd_dataset_params)
+    dataset_params = scxrd_dataset_params
+    
+    # Convert unit cell parameters to primitive if provided
+    dataset_params = ensure_primitive_cell_params(dataset_params)
+    
+    if @scxrd_dataset.update(dataset_params)
       render json: {
         message: "SCXRD dataset updated successfully",
         scxrd_dataset: detailed_dataset_json(@scxrd_dataset)
@@ -239,6 +249,45 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
 
   private
 
+  # Ensure unit cell parameters are primitive before saving to database
+  def ensure_primitive_cell_params(params)
+    # Check if unit cell parameters are provided
+    if params[:primitive_a].present? && params[:primitive_b].present? && params[:primitive_c].present? &&
+       params[:primitive_alpha].present? && params[:primitive_beta].present? && params[:primitive_gamma].present?
+      
+      original_a = params[:primitive_a].to_f
+      original_b = params[:primitive_b].to_f
+      original_c = params[:primitive_c].to_f
+      original_alpha = params[:primitive_alpha].to_f
+      original_beta = params[:primitive_beta].to_f
+      original_gamma = params[:primitive_gamma].to_f
+
+      # Convert to primitive using PrimitiveCellService
+      if PrimitiveCellService.enabled?
+        primitive_cell = PrimitiveCellService.ensure_primitive(
+          original_a, original_b, original_c,
+          original_alpha, original_beta, original_gamma
+        )
+
+        if primitive_cell
+          Rails.logger.info "API Controller: Converted unit cell to primitive form"
+          params[:primitive_a] = primitive_cell[:a]
+          params[:primitive_b] = primitive_cell[:b]
+          params[:primitive_c] = primitive_cell[:c]
+          params[:primitive_alpha] = primitive_cell[:alpha]
+          params[:primitive_beta] = primitive_cell[:beta]
+          params[:primitive_gamma] = primitive_cell[:gamma]
+        else
+          Rails.logger.warn "API Controller: Failed to convert unit cell to primitive, using original values"
+        end
+      else
+        Rails.logger.info "API Controller: PrimitiveCellService disabled, using provided cell parameters as-is"
+      end
+    end
+
+    params
+  end
+
   def set_well
     return if params[:well_id].blank? || params[:well_id] == "null"
     @well = Well.find(params[:well_id])
@@ -412,20 +461,60 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
             Rails.logger.info "API SCXRD: All diffraction images stored (#{result[:all_diffraction_images].length} images, #{number_to_human_size(total_size)} total)"
           end
 
-          # Store unit cell parameters from .par file if available
+          # Store unit cell parameters from .par file, ensuring they are primitive
           Rails.logger.info "API SCXRD: Checking for parsed .par data..."
           if result[:metadata]
             metadata = result[:metadata]
             Rails.logger.info "API SCXRD: Found .par data: #{metadata.inspect}"
 
-            @scxrd_dataset.primitive_a = metadata[:a] if metadata[:a]
-            @scxrd_dataset.primitive_b = metadata[:b] if metadata[:b]
-            @scxrd_dataset.primitive_c = metadata[:c] if metadata[:c]
-            @scxrd_dataset.primitive_alpha = metadata[:alpha] if metadata[:alpha]
-            @scxrd_dataset.primitive_beta = metadata[:beta] if metadata[:beta]
-            @scxrd_dataset.primitive_gamma = metadata[:gamma] if metadata[:gamma]
+            # Extract unit cell parameters from metadata
+            if metadata[:a] && metadata[:b] && metadata[:c] && metadata[:alpha] && metadata[:beta] && metadata[:gamma]
+              original_a = metadata[:a]
+              original_b = metadata[:b]
+              original_c = metadata[:c]
+              original_alpha = metadata[:alpha]
+              original_beta = metadata[:beta]
+              original_gamma = metadata[:gamma]
 
-            Rails.logger.info "API SCXRD: Primitive unit cell parameters stored from .par file: a=#{@scxrd_dataset.primitive_a}, b=#{@scxrd_dataset.primitive_b}, c=#{@scxrd_dataset.primitive_c}, α=#{@scxrd_dataset.primitive_alpha}, β=#{@scxrd_dataset.primitive_beta}, γ=#{@scxrd_dataset.primitive_gamma}"
+              Rails.logger.info "API SCXRD: Original unit cell parameters: a=#{original_a}, b=#{original_b}, c=#{original_c}, α=#{original_alpha}, β=#{original_beta}, γ=#{original_gamma}"
+
+              # Convert to primitive cell using the PrimitiveCellService
+              if PrimitiveCellService.enabled?
+                primitive_cell = PrimitiveCellService.ensure_primitive(
+                  original_a, original_b, original_c,
+                  original_alpha, original_beta, original_gamma
+                )
+
+                if primitive_cell
+                  @scxrd_dataset.primitive_a = primitive_cell[:a]
+                  @scxrd_dataset.primitive_b = primitive_cell[:b]
+                  @scxrd_dataset.primitive_c = primitive_cell[:c]
+                  @scxrd_dataset.primitive_alpha = primitive_cell[:alpha]
+                  @scxrd_dataset.primitive_beta = primitive_cell[:beta]
+                  @scxrd_dataset.primitive_gamma = primitive_cell[:gamma]
+
+                  Rails.logger.info "API SCXRD: Primitive unit cell parameters stored: a=#{@scxrd_dataset.primitive_a}, b=#{@scxrd_dataset.primitive_b}, c=#{@scxrd_dataset.primitive_c}, α=#{@scxrd_dataset.primitive_alpha}, β=#{@scxrd_dataset.primitive_beta}, γ=#{@scxrd_dataset.primitive_gamma}"
+                else
+                  Rails.logger.warn "API SCXRD: Failed to convert to primitive cell, storing original parameters"
+                  @scxrd_dataset.primitive_a = original_a
+                  @scxrd_dataset.primitive_b = original_b
+                  @scxrd_dataset.primitive_c = original_c
+                  @scxrd_dataset.primitive_alpha = original_alpha
+                  @scxrd_dataset.primitive_beta = original_beta
+                  @scxrd_dataset.primitive_gamma = original_gamma
+                end
+              else
+                Rails.logger.warn "API SCXRD: PrimitiveCellService is disabled, storing original parameters"
+                @scxrd_dataset.primitive_a = original_a
+                @scxrd_dataset.primitive_b = original_b
+                @scxrd_dataset.primitive_c = original_c
+                @scxrd_dataset.primitive_alpha = original_alpha
+                @scxrd_dataset.primitive_beta = original_beta
+                @scxrd_dataset.primitive_gamma = original_gamma
+              end
+            else
+              Rails.logger.warn "API SCXRD: Incomplete unit cell parameters in metadata"
+            end
 
             # Store measurement time from datacoll.ini if available (takes precedence over default)
             if metadata[:measured_at]
