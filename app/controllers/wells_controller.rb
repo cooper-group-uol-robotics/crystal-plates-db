@@ -43,39 +43,73 @@ class WellsController < ApplicationController
     end
 
     well_ids = params[:well_ids] || params["well_ids"]
-    stock_solution_id = params[:stock_solution_id] || params["stock_solution_id"]
     volume_with_unit = params[:volume_with_unit] || params["volume_with_unit"]
+    
+    # Support both new polymorphic approach and legacy stock solution approach
+    contentable_type = params[:contentable_type] || params["contentable_type"]
+    contentable_id = params[:contentable_id] || params["contentable_id"]
+    
+    # Legacy stock solution support
+    stock_solution_id = params[:stock_solution_id] || params["stock_solution_id"]
 
     unless well_ids.is_a?(Array) && well_ids.any?
       render json: { status: "error", message: "No wells selected" }, status: 400
       return
     end
-    unless stock_solution_id.present?
-      render json: { status: "error", message: "No stock solution selected" }, status: 400
+
+    # Determine contentable object
+    contentable = nil
+    content_type_name = ""
+
+    if contentable_type.present? && contentable_id.present?
+      # New polymorphic approach
+      case contentable_type
+      when 'StockSolution'
+        contentable = StockSolution.find_by(id: contentable_id)
+        content_type_name = "stock solution"
+      when 'Chemical'
+        contentable = Chemical.find_by(id: contentable_id)
+        content_type_name = "chemical"
+      else
+        render json: { status: "error", message: "Invalid content type" }, status: 400
+        return
+      end
+    elsif stock_solution_id.present?
+      # Legacy stock solution support
+      contentable = StockSolution.find_by(id: stock_solution_id)
+      content_type_name = "stock solution"
+      contentable_type = 'StockSolution'
+    else
+      render json: { status: "error", message: "No content selected" }, status: 400
       return
     end
 
-    stock_solution = StockSolution.find_by(id: stock_solution_id)
-    unless stock_solution
-      render json: { status: "error", message: "Stock solution not found" }, status: 404
+    unless contentable
+      render json: { status: "error", message: "#{content_type_name.capitalize} not found" }, status: 404
       return
     end
 
     success_count = 0
     error_wells = []
+    
     well_ids.each do |well_id|
       well = Well.find_by(id: well_id)
       if well.nil?
         error_wells << well_id
         next
       end
-      existing_content = well.well_contents.find_by(stock_solution: stock_solution)
+
+      # Check for existing content of the same type
+      existing_content = well.well_contents.find_by(contentable: contentable)
       if existing_content
         error_wells << well_id
         next
       end
-      well_content = well.well_contents.build(stock_solution: stock_solution)
+
+      # Create well content with polymorphic association
+      well_content = well.well_contents.build(contentable: contentable)
       well_content.volume_with_unit = volume_with_unit if volume_with_unit.present?
+      
       if well_content.save
         success_count += 1
       else
@@ -84,7 +118,7 @@ class WellsController < ApplicationController
     end
 
     if success_count > 0
-      msg = "Stock solution added to #{success_count} well(s)."
+      msg = "#{content_type_name.capitalize} added to #{success_count} well(s)."
       msg += " Failed for wells: #{error_wells.join(", ")}" if error_wells.any?
       render json: { status: "success", message: msg }
     else

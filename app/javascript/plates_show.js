@@ -403,108 +403,21 @@ class WellSelector {
   }
 
   setupBulkEditModal(wellIds) {
-    const bulkSearchInput = document.getElementById('bulkStockSolutionSearch');
-    const bulkResultsDiv = document.getElementById('bulkStockSolutionResults');
-    const bulkForm = document.getElementById('bulkStockSolutionForm');
-    const bulkContentMessages = document.getElementById('bulkContentMessages');
+    // Set well IDs as a custom event that the Stimulus controller can listen for
+    const modalEl = document.getElementById('editMultipleWellsModal');
+    if (!modalEl) return;
 
-    if (!bulkSearchInput || !bulkResultsDiv || !bulkForm) return;
+    // Store well IDs as data attribute for the Stimulus controller to access
+    modalEl.dataset.wellIds = JSON.stringify(wellIds);
 
-    bulkSearchInput.addEventListener('input', function () {
-      const query = bulkSearchInput.value.trim();
-      if (query.length < 2) {
-        bulkResultsDiv.classList.remove('show');
-        bulkResultsDiv.classList.add('d-none');
-        return;
-      }
-      fetch(`/stock_solutions/search?q=${encodeURIComponent(query)}`, {
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.length === 0) {
-            bulkResultsDiv.innerHTML = '<div class="dropdown-item text-muted">No stock solutions found</div>';
-          } else {
-            bulkResultsDiv.innerHTML = data.map(solution =>
-              `<button type="button" class="dropdown-item" 
-                     data-solution-id="${solution.id}" 
-                     data-solution-name="${solution.display_name}">
-              <strong>${solution.display_name}</strong>
-              ${solution.component_summary ? `<br><small class="text-muted">${solution.component_summary}</small>` : ''}
-            </button>`
-            ).join('');
-          }
-          bulkResultsDiv.classList.remove('d-none');
-          bulkResultsDiv.classList.add('show');
-        });
+    // Dispatch a custom event to notify the controller
+    const event = new CustomEvent('wellIdsSet', {
+      detail: { wellIds: wellIds },
+      bubbles: true
     });
+    modalEl.dispatchEvent(event);
 
-    bulkResultsDiv.addEventListener('click', function (event) {
-      const target = event.target.closest('.dropdown-item');
-      if (target && target.dataset.solutionId) {
-        document.getElementById('bulkStockSolutionId').value = target.dataset.solutionId;
-        bulkSearchInput.value = target.dataset.solutionName;
-        bulkResultsDiv.classList.remove('show');
-        bulkResultsDiv.classList.add('d-none');
-      }
-    });
-
-    // Hide dropdown on blur
-    bulkSearchInput.addEventListener('blur', function () {
-      setTimeout(() => {
-        bulkResultsDiv.classList.remove('show');
-        bulkResultsDiv.classList.add('d-none');
-      }, 200);
-    });
-
-    bulkForm.addEventListener('submit', function (event) {
-      event.preventDefault();
-      const stockSolutionId = document.getElementById('bulkStockSolutionId').value;
-      const volumeWithUnit = document.getElementById('bulkVolumeAmountInput').value.trim();
-
-      if (!stockSolutionId) {
-        bulkContentMessages.innerHTML = '<div class="alert alert-danger">Please select a stock solution</div>';
-        return;
-      }
-      if (!volumeWithUnit) {
-        bulkContentMessages.innerHTML = '<div class="alert alert-danger">Please enter a volume with unit (e.g., 50 μL)</div>';
-        return;
-      }
-
-      const csrfToken = document.querySelector('meta[name="csrf-token"]');
-      if (!csrfToken) {
-        bulkContentMessages.innerHTML = '<div class="alert alert-danger">CSRF token not found</div>';
-        return;
-      }
-
-      fetch('/wells/bulk_add_content', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-CSRF-Token': csrfToken.getAttribute('content')
-        },
-        body: JSON.stringify({
-          well_ids: wellIds,
-          stock_solution_id: stockSolutionId,
-          volume_with_unit: volumeWithUnit
-        })
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            bulkContentMessages.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-          } else {
-            bulkContentMessages.innerHTML = `<div class="alert alert-danger">${data.message || 'Bulk add failed'}</div>`;
-          }
-        })
-        .catch(error => {
-          bulkContentMessages.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
-        });
-    });
+    // The Stimulus controller will handle all the UI logic now
   }
 }
 

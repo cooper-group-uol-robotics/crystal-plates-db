@@ -310,6 +310,137 @@ class PlatesController < ApplicationController
     def process_bulk_contents_csv(csv)
       results = { success_count: 0, errors: [] }
 
+      # Check if we have dual header rows (chemical barcodes and stock solution IDs)
+      csv_rows = csv.to_a
+      return { success_count: 0, errors: ["CSV file is empty"] } if csv_rows.empty?
+
+      # Detect if we have dual headers by checking the first two rows
+      has_dual_headers = detect_dual_headers(csv_rows)
+      
+      if has_dual_headers
+        results.merge!(process_dual_header_csv(csv_rows))
+      else
+        # Legacy single header processing (stock solutions only)
+        results.merge!(process_legacy_csv(csv))
+      end
+
+      results
+    end
+
+    def detect_dual_headers(csv_rows)
+      return false if csv_rows.length < 3 # Need at least 2 header rows + 1 data row
+
+      first_row = csv_rows[0]
+      second_row = csv_rows[1]
+      
+      # Check if first row contains "Chemical Barcode" and second contains "Stock Solution ID"
+      first_has_chemical_header = first_row.any? { |cell| cell&.downcase&.include?("chemical") || cell&.downcase&.include?("barcode") }
+      second_has_stock_header = second_row.any? { |cell| cell&.downcase&.include?("stock") || cell&.downcase&.include?("solution") }
+      
+      first_has_chemical_header && second_has_stock_header
+    end
+
+    def process_dual_header_csv(csv_rows)
+      results = { success_count: 0, errors: [] }
+      
+      chemical_header_row = csv_rows[0][1..-1] # Skip first column (well labels)
+      stock_solution_header_row = csv_rows[1][1..-1] # Skip first column (well labels)
+      data_rows = csv_rows[2..-1] # Data starts from third row
+      
+      # Build content mapping for each column
+      content_mapping = {}
+      
+      chemical_header_row.each_with_index do |barcode, index|
+        next if barcode.nil? || barcode.strip.empty?
+        
+        chemical = Chemical.find_by(barcode: barcode.strip)
+        if chemical
+          content_mapping[index] = { 
+            type: 'Chemical', 
+            object: chemical, 
+            default_unit: 'mg',
+            identifier: barcode.strip 
+          }
+        else
+          results[:errors] << "Chemical not found for barcode: #{barcode}"
+        end
+      end
+      
+      stock_solution_header_row.each_with_index do |solution_id, index|
+        next if solution_id.nil? || solution_id.strip.empty?
+        next if content_mapping[index] # Chemical already mapped to this column
+        
+        # Try to find stock solution by ID first, then by name
+        stock_solution = nil
+        if solution_id.match?(/^\d+$/) # If it's just a number, treat as ID
+          stock_solution = StockSolution.find_by(id: solution_id.to_i)
+        else
+          # Try to find by name (case insensitive)
+          stock_solution = StockSolution.find_by("name ILIKE ?", solution_id.strip)
+        end
+        
+        if stock_solution
+          content_mapping[index] = { 
+            type: 'StockSolution', 
+            object: stock_solution, 
+            default_unit: 'μL',
+            identifier: solution_id.strip 
+          }
+        else
+          results[:errors] << "Stock solution not found: #{solution_id}"
+        end
+      end
+      
+      return results if content_mapping.empty?
+      
+      # Process data rows
+      data_rows.each do |row|
+        well_label = row[0]&.strip
+        next if well_label.nil? || well_label.empty? || well_label.downcase.include?("total")
+
+        # Parse well label
+        well_row, well_column, subwell = parse_well_label(well_label)
+        unless well_row && well_column && subwell
+          results[:errors] << "Invalid well label format: #{well_label}"
+          next
+        end
+
+        # Find the well
+        well = @plate.wells.find_by(well_row: well_row, well_column: well_column, subwell: subwell)
+        unless well
+          results[:errors] << "Well not found: #{well_label} (row: #{well_row}, column: #{well_column}, subwell: #{subwell})"
+          next
+        end
+
+        # Process each content for this well
+        content_mapping.each do |column_index, content_info|
+          value_str = row[column_index + 1]&.strip # +1 because we skip first column
+          next if value_str.nil? || value_str.empty? || value_str == "0"
+
+          # Add default unit if the value is purely numeric
+          if value_str.match?(/^\d+(?:\.\d+)?$/)
+            value_str = "#{value_str} #{content_info[:default_unit]}"
+          end
+
+          begin
+            # Find or create well content using polymorphic association
+            well_content = well.well_contents.find_or_initialize_by(contentable: content_info[:object])
+            well_content.volume_with_unit = value_str
+            well_content.save!
+
+            results[:success_count] += 1
+          rescue => e
+            results[:errors] << "Error saving #{content_info[:type].downcase} content for well #{well_label}: #{e.message}"
+          end
+        end
+      end
+      
+      results
+    end
+
+    def process_legacy_csv(csv)
+      results = { success_count: 0, errors: [] }
+
       # Get stock solution mapping from headers (skip first column which is well labels)
       headers = csv.headers[1..-1] # Remove first column (well labels)
       stock_solution_mapping = {}
@@ -369,8 +500,8 @@ class PlatesController < ApplicationController
 
             stock_solution = stock_solution_mapping[header]
 
-            # Find or create well content
-            well_content = well.well_contents.find_or_initialize_by(stock_solution: stock_solution)
+            # Find or create well content using polymorphic association
+            well_content = well.well_contents.find_or_initialize_by(contentable: stock_solution)
             well_content.volume_with_unit = volume_str  # Use the virtual attribute that handles parsing
             well_content.save!
 

@@ -16,25 +16,42 @@
       <div class="collapse" id="bulkUploadCollapse">
         <div class="card-body">
           <p class="text-muted small mb-3">
-            Upload a CSV file to bulk populate well contents. 
-            <strong>Format:</strong> First row contains stock solution IDs, 
-            first column contains well labels (A1, B2, etc.), body contains volumes in µL. 
-            Empty cells or 0 values will be skipped.
+            Upload a CSV file to bulk populate well contents with chemicals or stock solutions.
+            <strong>Supports two formats:</strong>
+            <br><strong>1. Legacy format:</strong> Single header row with stock solution IDs (volumes in µL)
+            <br><strong>2. New dual header format:</strong> First row for chemical barcodes, second row for stock solution IDs
+            <br>First column always contains well labels (A1, B2, etc.). Empty cells or 0 values will be skipped.
             <a href="#" class="text-decoration-none" data-bs-toggle="collapse" data-bs-target="#csvFormatExample">
-              <small>(Show example)</small>
+              <small>(Show examples)</small>
             </a>
           </p>
           
           <div class="collapse" id="csvFormatExample">
             <div class="alert alert-info small mb-3">
-              <strong>Example CSV format:</strong><br>
+              <strong>Legacy Format (Stock Solutions only):</strong><br>
               <code>
-                ,123,124,125<br>
-                A1,50,25,0<br>
-                A2,0,50,30<br>
-                B1,25,25,25
+                &nbsp;&nbsp;,123,124,125<br>
+                A1,&nbsp;50,&nbsp;25,&nbsp;&nbsp;0<br>
+                A2,&nbsp;&nbsp;0,&nbsp;50,&nbsp;30<br>
+                B1,&nbsp;25,&nbsp;25,&nbsp;25
               </code>
-              <br><small class="text-muted">Where 123, 124, 125 are stock solution IDs</small>
+              <br><small class="text-muted">Where 123, 124, 125 are stock solution IDs (volumes in µL)</small>
+              
+              <hr class="my-2">
+              
+              <strong>New Dual Header Format (Chemicals + Stock Solutions):</strong><br>
+              <code>
+                ,CHEM001,CHEM002,<br>
+                ,,123,124<br>
+                A1,5,10,50<br>
+                A2,0,15,25<br>
+                B1,8,0,30
+              </code>
+              <br><small class="text-muted">
+                Row 1: Chemical barcodes (amounts in mg)<br>
+                Row 2: Stock solution IDs (volumes in µL)<br>
+                Each column can have either a chemical OR stock solution, not both
+              </small>
             </div>
           </div>
 
@@ -50,7 +67,7 @@
           </div>
           <div>
             <%= f.submit "Upload CSV", class: "btn btn-primary", id: "uploadButton",
-                         data: { confirm: "This will update well contents. Existing contents for the same stock solutions will be overwritten. Continue?" } %>
+                         data: { confirm: "This will update well contents. Existing contents for the same chemicals or stock solutions will be overwritten. Continue?" } %>
           </div>
         <% end %>
         

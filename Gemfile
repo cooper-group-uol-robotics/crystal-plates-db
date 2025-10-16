@@ -72,3 +72,4 @@ gem "faraday"
 gem "faraday-multipart"
 gem "aws-sdk-s3", require: false
 gem "pg"
+gem "bullet"
