@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_14_182209) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_16_121755) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -237,7 +237,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_182209) do
     t.integer "unit_id"
     t.string "contentable_type"
     t.integer "contentable_id"
+    t.decimal "mass", precision: 10, scale: 4
+    t.integer "mass_unit_id"
     t.index ["contentable_type", "contentable_id"], name: "index_well_contents_on_contentable_type_and_contentable_id"
+    t.index ["mass_unit_id"], name: "index_well_contents_on_mass_unit_id"
     t.index ["stock_solution_id"], name: "index_well_contents_on_stock_solution_id"
     t.index ["unit_id"], name: "index_well_contents_on_unit_id"
     t.index ["well_id"], name: "index_well_contents_on_well_id"
@@ -272,6 +275,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_182209) do
   add_foreign_key "stock_solution_components", "units"
   add_foreign_key "well_contents", "stock_solutions"
   add_foreign_key "well_contents", "units"
+  add_foreign_key "well_contents", "units", column: "mass_unit_id"
   add_foreign_key "well_contents", "wells"
   add_foreign_key "wells", "plates"
 end

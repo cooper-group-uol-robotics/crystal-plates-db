@@ -1,0 +1,382 @@
+/* Plate Builder Styles */
+
+/* Screen flash overlay for CAS validation feedback */
+.screen-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.screen-flash.red {
+    background-color: rgba(220, 53, 69, 0.3);
+}
+
+.screen-flash.green {
+    background-color: rgba(25, 135, 84, 0.3);
+}
+
+/* Mini plate grid (control panel) */
+[data-plate-builder-target="miniGrid"],
+.plate-grid-mini {
+    display: grid;
+    grid-template-rows: repeat(8, 1fr);
+    gap: 2px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    max-width: 200px;
+    aspect-ratio: 3/2;
+    /* 12:8 ratio for plate dimensions */
+    min-height: 120px;
+}
+
+.plate-row-mini {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 2px;
+}
+
+.well-mini {
+    width: 100%;
+    height: 100%;
+    min-width: 12px;
+    min-height: 8px;
+    aspect-ratio: 3/2;
+    background-color: #e9ecef;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.well-mini:hover {
+    background-color: #dee2e6;
+    transform: scale(1.1);
+}
+
+.well-mini.selected {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.well-mini.filled {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.well-mini.valid {
+    background-color: #20c997;
+    border-color: #20c997;
+}
+
+.well-mini.error {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    animation: error-pulse 0.6s ease-in-out;
+}
+
+/* Main plate grid */
+[data-plate-builder-target="mainGrid"] {
+    display: grid;
+    grid-template-rows: auto repeat(8, 1fr);
+    gap: 3px;
+    max-width: 600px;
+    width: 100%;
+    min-height: 400px;
+    border: 1px solid #dee2e6;
+    padding: 10px;
+    border-radius: 8px;
+    background-color: #fafbfc;
+    transition: opacity 0.3s ease;
+}
+
+/* Disabled state for plate grid */
+[data-plate-builder-target="mainGrid"].plate-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    background-color: #f8f9fa;
+}
+
+[data-plate-builder-target="mainGrid"].plate-disabled .well-main {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+    cursor: not-allowed;
+}
+
+[data-plate-builder-target="mainGrid"].plate-disabled .well-content {
+    color: #adb5bd;
+}
+
+.plate-row {
+    display: grid;
+    grid-template-columns: 40px repeat(12, 1fr);
+    gap: 3px;
+}
+
+.plate-header {
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.well-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    height: 100%;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.well-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    width: 100%;
+    min-height: 40px;
+    height: 100%;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.well-main {
+    min-width: 40px;
+    min-height: 40px;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1;
+    background-color: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.well-main:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.well-main.selected {
+    background-color: #cce7ff;
+    border-color: #0d6efd;
+    box-shadow: 0 0 8px rgba(13, 110, 253, 0.3);
+}
+
+.well-main.filled {
+    background-color: #d1e7dd;
+    border-color: #198754;
+}
+
+.well-main.filled::after {
+    content: '●';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    color: #198754;
+    font-size: 12px;
+}
+
+.well-main.valid {
+    background-color: #d4edda;
+    border-color: #20c997;
+    animation: valid-pulse 0.6s ease-in-out;
+}
+
+.well-main.error {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    animation: error-pulse 0.6s ease-in-out;
+}
+
+.well-content {
+    font-size: 10px;
+    font-weight: 500;
+    color: #495057;
+    pointer-events: none;
+}
+
+/* Animations */
+@keyframes valid-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+@keyframes error-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    25% {
+        transform: scale(1.05) rotate(-1deg);
+    }
+
+    75% {
+        transform: scale(1.05) rotate(1deg);
+    }
+}
+
+/* Focus states for better keyboard navigation */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Enhance card styling */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Status indicators */
+.badge {
+    font-size: 0.75em;
+}
+
+/* Button enhancements */
+.btn {
+    transition: all 0.15s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    transform: none;
+}
+
+/* Toast positioning for better visibility */
+.toast-container {
+    z-index: 1050;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .well-main {
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    .well-content {
+        font-size: 8px;
+    }
+
+    .well-label,
+    .well-header {
+        min-width: 32px;
+        min-height: 32px;
+        font-size: 12px;
+    }
+
+    .plate-row {
+        grid-template-columns: 32px repeat(12, 1fr);
+    }
+
+    [data-plate-builder-target="mainGrid"] {
+        max-width: 450px;
+        min-height: 300px;
+    }
+
+    [data-plate-builder-target="miniGrid"],
+    .plate-grid-mini {
+        max-width: 160px;
+        min-height: 100px;
+    }
+
+    .well-mini {
+        min-width: 10px;
+        min-height: 6px;
+    }
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    [data-plate-builder-target="mainGrid"] {
+        max-width: 350px;
+        min-height: 250px;
+    }
+
+    .well-main {
+        min-width: 24px;
+        min-height: 24px;
+    }
+
+    .well-label,
+    .well-header {
+        min-width: 24px;
+        min-height: 24px;
+        font-size: 10px;
+    }
+
+    .plate-row {
+        grid-template-columns: 24px repeat(12, 1fr);
+    }
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0d6efd;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

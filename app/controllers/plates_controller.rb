@@ -206,6 +206,110 @@ class PlatesController < ApplicationController
     end
   end
 
+  # GET /plates/builder
+  def builder
+    @plate = Plate.new
+  end
+
+  # POST /plates/create_from_builder
+  def create_from_builder
+    barcode = params[:barcode]&.strip
+    well_data = params[:wells] || {}
+
+    # Check if plate with this barcode already exists
+    existing_plate = Plate.find_by(barcode: barcode)
+    if existing_plate
+      render json: { 
+        success: false, 
+        error: "Plate with barcode #{barcode} already exists" 
+      }, status: :unprocessable_entity
+      return
+    end
+
+    begin
+      ActiveRecord::Base.transaction do
+        # Create the plate
+        @plate = Plate.create!(barcode: barcode)
+        
+        # Process well data
+        well_data.each do |well_key, well_info|
+          next unless well_info['chemical_id'].present? && well_info['mass'].present?
+          
+          # Parse well position (e.g., "A1" -> row 1, column 1)
+          row_letter = well_key[0]
+          column_number = well_key[1..-1].to_i
+          row_number = row_letter.ord - 'A'.ord + 1
+          
+          # Find the well
+          well = @plate.wells.find_by(well_row: row_number, well_column: column_number, subwell: 1)
+          next unless well
+          
+          # Find the chemical
+          chemical = Chemical.find_by(id: well_info['chemical_id'])
+          next unless chemical
+          
+          # Convert mass from balance units (100s of μg) to mg
+          mass_in_mg = well_info['mass'].to_f / 10.0
+          
+          # Find mg unit
+          mg_unit = Unit.find_by(symbol: 'mg')
+          
+          # Create well content
+          well.well_contents.create!(
+            contentable: chemical,
+            mass: mass_in_mg,
+            mass_unit: mg_unit
+          )
+        end
+      end
+
+      render json: { 
+        success: true, 
+        plate_id: @plate.id,
+        redirect_url: plate_path(@plate)
+      }
+    rescue => e
+      render json: { 
+        success: false, 
+        error: "Error creating plate: #{e.message}" 
+      }, status: :unprocessable_entity
+    end
+  end
+
+  # GET /plates/check_chemical_cas
+  def check_chemical_cas
+    chemical_id = params[:chemical_id]
+    
+    chemical = Chemical.find_by(id: chemical_id)
+    if chemical.nil?
+      render json: { found: false, error: 'Chemical not found' }
+      return
+    end
+
+    # Check if this CAS number has been used in any well content
+    cas_used = false
+    if chemical.cas.present?
+      # Find all chemicals with the same CAS number
+      same_cas_chemicals = Chemical.where(cas: chemical.cas)
+      
+      # Check if any of these chemicals are used in well contents
+      cas_used = WellContent.joins("JOIN chemicals ON well_contents.contentable_type = 'Chemical' AND well_contents.contentable_id = chemicals.id")
+                           .where(chemicals: { cas: chemical.cas })
+                           .exists?
+    end
+
+    render json: { 
+      found: true,
+      cas_used: cas_used,
+      chemical: {
+        id: chemical.id,
+        name: chemical.name,
+        cas: chemical.cas,
+        barcode: chemical.barcode
+      }
+    }
+  end
+
   # POST /plates/:id/bulk_upload_contents
   def bulk_upload_contents
     require "csv"

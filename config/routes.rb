@@ -102,6 +102,9 @@ Rails.application.routes.draw do
   resources :plates do
     collection do
       get :deleted
+      get :builder
+      post :create_from_builder
+      get :check_chemical_cas
     end
     member do
       patch :restore

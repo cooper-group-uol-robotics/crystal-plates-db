@@ -1,0 +1,183 @@
+<% content_for :title, "Plate Builder" %>
+<%= stylesheet_link_tag "plate_builder", "data-turbo-track": "reload" %>
+
+<div class="container-fluid" 
+     data-controller="plate-builder"
+     data-plate-builder-check-chemical-cas-url-value="<%= check_chemical_cas_plates_path %>"
+     data-plate-builder-create-from-builder-url-value="<%= create_from_builder_plates_path %>"
+     data-plate-builder-chemical-search-url-value="<%= search_chemicals_path %>"
+     data-plate-builder-csrf-token-value="<%= form_authenticity_token %>">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Plate Builder</h1>
+    <div>
+      <%= link_to "Back to Plates", plates_path, class: "btn btn-outline-secondary" %>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Control Panel -->
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Plate Information</h5>
+        </div>
+        <div class="card-body">
+          <!-- Plate Barcode Input -->
+          <div class="mb-3">
+            <label for="plate-barcode" class="form-label">Plate Barcode <span class="text-danger">*</span></label>
+            <input type="text" 
+                   class="form-control" 
+                   id="plate-barcode" 
+                   placeholder="Scan plate barcode..." 
+                   autofocus
+                   data-plate-builder-target="plateBarcode"
+                   data-action="keypress->plate-builder#plateBarcodeKeypress">
+            <div class="form-text">Scan or enter the plate barcode to begin</div>
+          </div>
+
+          <!-- Plate Grid (initially hidden) -->
+          <div data-plate-builder-target="plateGrid" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0">Plate Status</label>
+              <button type="button" 
+                      class="btn btn-sm btn-success" 
+                      disabled
+                      data-plate-builder-target="savePlateBtn"
+                      data-action="click->plate-builder#savePlate">
+                <i class="bi bi-check-lg"></i> Save Plate
+              </button>
+            </div>
+            <div class="form-text mb-3">Click on wells in the main grid to add chemicals</div>
+            
+            <div class="text-muted small">
+              <div>Wells filled: <span data-plate-builder-target="wellsFilledCount">0</span> / 96</div>
+              <div>Current plate: <span data-plate-builder-target="currentPlateBarcode">—</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chemical Input Panel (initially hidden) -->
+      <div class="card mt-3" data-plate-builder-target="chemicalPanel" style="display: none;">
+        <div class="card-header">
+          <h6 class="mb-0">Well <span data-plate-builder-target="selectedWellLabel">—</span></h6>
+        </div>
+        <div class="card-body">
+          <!-- Chemical Barcode Input -->
+          <div class="mb-3">
+            <label for="chemical-barcode" class="form-label">Chemical Barcode <span class="text-danger">*</span></label>
+            <input type="text" 
+                   class="form-control" 
+                   id="chemical-barcode" 
+                   placeholder="Scan chemical barcode..."
+                   data-plate-builder-target="chemicalBarcode"
+                   data-action="keypress->plate-builder#chemicalBarcodeKeypress">
+            <div data-plate-builder-target="chemicalFeedback" class="form-text"></div>
+          </div>
+
+          <!-- Mass Input (initially hidden) -->
+          <div class="mb-3" data-plate-builder-target="massInputSection" style="display: none;">
+            <label for="chemical-mass" class="form-label">Mass (from balance) <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="text" 
+                     class="form-control" 
+                     id="chemical-mass" 
+                     placeholder="Enter mass from balance..." 
+                     data-plate-builder-target="chemicalMass"
+                     data-action="keypress->plate-builder#chemicalMassKeypress">
+              <span class="input-group-text">mg</span>
+            </div>
+            <div class="form-text">
+              Press button on balance to transfer mass reading<br>
+              <small class="text-muted">Balance reading will be divided by 10 (μg × 100 → mg)</small>
+            </div>
+          </div>
+
+          <!-- Chemical Info Display -->
+          <div data-plate-builder-target="chemicalInfo" style="display: none;">
+            <div class="alert alert-info small">
+              <strong data-plate-builder-target="chemicalName">—</strong><br>
+              <span class="text-muted">CAS: <span data-plate-builder-target="chemicalCas">—</span></span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="d-flex gap-2">
+            <button type="button" 
+                    class="btn btn-sm btn-outline-secondary"
+                    data-action="click->plate-builder#clearWell">Clear Well</button>
+            <button type="button" 
+                    class="btn btn-sm btn-outline-danger"
+                    data-action="click->plate-builder#cancelWell">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Plate Grid -->
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Plate Layout <span class="badge bg-secondary ms-2">8 × 12</span></h5>
+        </div>
+        <div class="card-body">
+          <div data-plate-builder-target="mainGrid" class="plate-disabled">
+            <!-- Static 8x12 grid -->
+            <div class="plate-row plate-header">
+              <div class="well-header"></div>
+              <% (1..12).each do |col| %>
+                <div class="well-header"><%= col %></div>
+              <% end %>
+            </div>
+            <% ('A'..'H').each do |row| %>
+              <div class="plate-row">
+                <div class="well-label"><%= row %></div>
+                <% (1..12).each do |col| %>
+                  <div class="well-main" data-well-id="<%= row %><%= col %>" data-action="click->plate-builder#selectWell">
+                    <div class="well-content"><%= row %><%= col %></div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <div data-plate-builder-target="plateGridPlaceholder" class="text-center text-muted py-3" style="display: none;">
+            <p class="mb-0">
+              <i class="bi bi-info-circle me-2"></i>
+              Scan a plate barcode to enable the grid
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen Flash Overlay for CAS Validation -->
+  <div data-plate-builder-target="screenFlash" class="screen-flash" style="display: none;"></div>
+</div>
+
+<!-- Toast Container for Feedback -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="feedback-toast" class="toast" role="alert">
+    <div class="toast-header">
+      <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+      <strong class="me-auto">Plate Builder</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+    </div>
+    <div class="toast-body">
+      <!-- Message will be inserted here -->
+    </div>
+  </div>
+</div>
+
+<!-- Debug: Test if Stimulus controller is loading -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, checking for controller...');
+    const controller = document.querySelector('[data-controller="plate-builder"]');
+    console.log('Controller element found:', !!controller);
+    if (controller) {
+      console.log('Controller element:', controller);
+    }
+  });
+</script>
+
