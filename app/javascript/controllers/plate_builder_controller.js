@@ -202,7 +202,7 @@ export default class extends Controller {
       if (wellInfo.chemical_id) {
         this.showChemicalInfo(wellInfo.chemical_name, wellInfo.chemical_cas)
         if (wellInfo.mass) {
-          this.chemicalMassTarget.value = (wellInfo.mass / 10).toFixed(4)
+          this.chemicalMassTarget.value = (wellInfo.mass).toFixed(4)
           this.massInputSectionTarget.style.display = 'block'
         }
       }
