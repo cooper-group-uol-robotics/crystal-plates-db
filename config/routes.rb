@@ -110,6 +110,7 @@ Rails.application.routes.draw do
       patch :restore
       delete :permanent_delete
       post :bulk_upload_contents
+      get :download_contents_csv
     end
   end
 

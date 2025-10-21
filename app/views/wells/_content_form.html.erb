@@ -42,7 +42,7 @@
         <% well_contents.each do |content| %>
           <div class="list-group-item d-flex justify-content-between align-items-center">
             <div class="flex-grow-1 clickable-content" style="cursor: pointer;" 
-                 <% if content.stock_solution? %>onclick="window.open('<%= stock_solution_path(content.contentable) %>', '_blank')"<% end %>>
+                 <% if content.stock_solution? && content.contentable.present? %>onclick="window.open('<%= stock_solution_path(content.contentable) %>', '_blank')"<% end %>>
               <div class="d-flex align-items-center">
                 <% if content.stock_solution? %>
                   <span class="badge bg-primary me-2">Stock Solution</span>

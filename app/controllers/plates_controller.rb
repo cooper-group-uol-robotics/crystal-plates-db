@@ -1,5 +1,5 @@
 class PlatesController < ApplicationController
-  before_action :set_plate, only: %i[ show edit update destroy bulk_upload_contents ]
+  before_action :set_plate, only: %i[ show edit update destroy bulk_upload_contents download_contents_csv ]
   before_action :set_deleted_plate, only: %i[ restore permanent_delete ]
 
   # GET /plates or /plates.json
@@ -340,6 +340,21 @@ class PlatesController < ApplicationController
     redirect_to @plate
   end
 
+  # GET /plates/:id/download_contents_csv
+  def download_contents_csv
+    require "csv"
+
+    csv_data = generate_plate_contents_csv(@plate)
+    
+    filename = "#{@plate.barcode}_contents_#{Date.current.strftime('%Y%m%d')}.csv"
+    
+    respond_to do |format|
+      format.csv do
+        send_data csv_data, filename: filename, type: 'text/csv'
+      end
+    end
+  end
+
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_plate
@@ -414,20 +429,17 @@ class PlatesController < ApplicationController
     def process_bulk_contents_csv(csv)
       results = { success_count: 0, errors: [] }
 
-      # Check if we have dual header rows (chemical barcodes and stock solution IDs)
+      # Process dual header CSV format only
       csv_rows = csv.to_a
       return { success_count: 0, errors: ["CSV file is empty"] } if csv_rows.empty?
 
-      # Detect if we have dual headers by checking the first two rows
-      has_dual_headers = detect_dual_headers(csv_rows)
-      
-      if has_dual_headers
-        results.merge!(process_dual_header_csv(csv_rows))
-      else
-        # Legacy single header processing (stock solutions only)
-        results.merge!(process_legacy_csv(csv))
+      # Validate that we have dual headers
+      unless detect_dual_headers(csv_rows)
+        results[:errors] << "Invalid CSV format. Please use the dual header format with 'Chemical Barcode' in the first row and 'Stock Solution ID' in the second row."
+        return results
       end
-
+      
+      results.merge!(process_dual_header_csv(csv_rows))
       results
     end
 
@@ -542,83 +554,6 @@ class PlatesController < ApplicationController
       results
     end
 
-    def process_legacy_csv(csv)
-      results = { success_count: 0, errors: [] }
-
-      # Get stock solution mapping from headers (skip first column which is well labels)
-      headers = csv.headers[1..-1] # Remove first column (well labels)
-      stock_solution_mapping = {}
-
-      headers.each do |header|
-        next if header.nil? || header.strip.empty? || header.downcase.include?("total")
-
-        # Try to find stock solution by ID first, then by name
-        stock_solution = nil
-        if header.match?(/^\d+$/) # If header is just a number, treat as ID
-          stock_solution = StockSolution.find_by(id: header.to_i)
-        else
-          # Try to find by name (case insensitive)
-          stock_solution = StockSolution.find_by("name ILIKE ?", header.strip)
-        end
-
-        if stock_solution
-          stock_solution_mapping[header] = stock_solution
-        else
-          results[:errors] << "Stock solution not found: #{header}"
-        end
-      end
-
-      return results if stock_solution_mapping.empty?
-
-      csv.each do |row|
-        well_label = row[0]&.strip
-        next if well_label.nil? || well_label.empty? || well_label.downcase.include?("total")
-
-        # Parse well label (e.g., "A1" -> row: 1, column: 1, subwell: 1; "A1.2" -> row: 1, column: 1, subwell: 2)
-        well_row, well_column, subwell = parse_well_label(well_label)
-        unless well_row && well_column && subwell
-          results[:errors] << "Invalid well label format: #{well_label}"
-          next
-        end
-
-        # Find the well by row, column, and subwell
-        well = @plate.wells.find_by(well_row: well_row, well_column: well_column, subwell: subwell)
-        unless well
-          results[:errors] << "Well not found: #{well_label} (row: #{well_row}, column: #{well_column}, subwell: #{subwell})"
-          next
-        end
-
-        # Process each stock solution for this well
-        headers.each do |header|
-          next unless stock_solution_mapping[header]
-
-          volume_str = row[header]&.strip
-          next if volume_str.nil? || volume_str.empty? || volume_str == "0"
-
-          # Add default unit of μL if the value is purely numeric
-          if volume_str.match?(/^\d+(?:\.\d+)?$/)
-            volume_str = "#{volume_str} μL"
-          end
-
-          begin
-
-            stock_solution = stock_solution_mapping[header]
-
-            # Find or create well content using polymorphic association
-            well_content = well.well_contents.find_or_initialize_by(contentable: stock_solution)
-            well_content.volume_with_unit = volume_str  # Use the virtual attribute that handles parsing
-            well_content.save!
-
-            results[:success_count] += 1
-          rescue => e
-            results[:errors] << "Error saving content for well #{well_label}: #{e.message}"
-          end
-        end
-      end
-
-      results
-    end
-
     def parse_well_label(label)
       # Parse labels like "A1", "B12", "A1.2", "B5-3", "C10_4", etc.
       # First extract the base well (letter + number) and any subwell after delimiter
@@ -637,5 +572,94 @@ class PlatesController < ApplicationController
       end
 
       [ row_number, column_number, subwell_number ]
+    end
+
+    def generate_plate_contents_csv(plate)
+      require "csv"
+      
+      # Get all wells with their contents
+      wells = plate.wells.includes(well_contents: [:contentable, :unit, :mass_unit]).order(:well_row, :well_column, :subwell)
+      
+      # Collect all chemicals and stock solutions used across the plate
+      chemicals = Set.new
+      stock_solutions = Set.new
+      
+      wells.each do |well|
+        well.well_contents.each do |content|
+          if content.chemical? && content.contentable.present?
+            chemicals.add(content.contentable)
+          elsif content.stock_solution? && content.contentable.present?
+            stock_solutions.add(content.contentable)
+          end
+        end
+      end
+      
+      chemicals = chemicals.to_a.compact.sort_by { |c| c.barcode || "" }
+      stock_solutions = stock_solutions.to_a.compact.sort_by { |s| s.id || 0 }
+      
+      CSV.generate do |csv|
+        # Always use dual header format with labels
+        # First header row: Chemical barcodes with label
+        chemical_header = ["Chemical Barcode"] + chemicals.map { |c| c.barcode || "UNKNOWN" } + Array.new(stock_solutions.length, "")
+        csv << chemical_header
+        
+        # Second header row: Stock solution IDs with label
+        stock_solution_header = ["Stock Solution ID"] + Array.new(chemicals.length, "") + stock_solutions.map { |s| s.id || "UNKNOWN" }
+        csv << stock_solution_header
+        
+        # Data rows
+        wells.each do |well|
+          well_label = well.subwell == 1 ? well.well_label : "#{well.well_label}.#{well.subwell}"
+          row_data = [well_label]
+          
+          # Add chemical amounts (in mg)
+          chemicals.each do |chemical|
+            content = well.well_contents.find { |wc| wc.contentable == chemical }
+            if content&.has_mass?
+              # Convert to mg if needed
+              amount = content.mass
+              unit_symbol = content.mass_unit&.symbol&.downcase
+              
+              case unit_symbol
+              when "g"
+                amount *= 1000 # g to mg
+              when "kg"
+                amount *= 1_000_000 # kg to mg
+              # mg is default, no conversion needed
+              end
+              
+              row_data << amount.to_s
+            else
+              row_data << ""
+            end
+          end
+          
+          # Add stock solution volumes (in µL)
+          stock_solutions.each do |stock_solution|
+            content = well.well_contents.find { |wc| wc.contentable == stock_solution }
+            if content&.has_volume?
+              # Convert to µL if needed
+              amount = content.volume
+              unit_symbol = content.unit&.symbol&.downcase
+              
+              case unit_symbol
+              when "ml", "mL"
+                amount *= 1000 # mL to µL
+              when "l"
+                amount *= 1_000_000 # L to µL
+              when "nl"
+                amount /= 1000 # nL to µL
+              # µL is default, no conversion needed
+              end
+              
+              row_data << amount.to_s
+            else
+              row_data << ""
+            end
+          end
+          
+          csv << row_data
+        end
+      end
     end
 end
