@@ -105,6 +105,8 @@ Rails.application.routes.draw do
       get :builder
       post :create_from_builder
       get :check_chemical_cas
+      get 'load_for_builder/:barcode', action: :load_for_builder, as: :load_for_builder
+      post :save_well_from_builder
     end
     member do
       patch :restore

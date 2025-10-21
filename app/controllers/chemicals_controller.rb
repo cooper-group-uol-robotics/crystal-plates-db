@@ -140,16 +140,30 @@ class ChemicalsController < ApplicationController
   # GET /chemicals/search
   def search
     query = params[:q]&.strip
+    exact_only = params[:exact_only] == 'true'
 
     if query.blank? || query.length < 2
       render json: []
       return
     end
 
-    chemicals = Chemical.where(
-      "name LIKE ? OR cas LIKE ? OR barcode LIKE ?",
-      "%#{query}%", "%#{query}%", "%#{query}%"
-    ).limit(20).order(:name)
+    if exact_only
+      # Only exact barcode match for barcode scanners
+      chemicals = Chemical.where(barcode: query).limit(1)
+    else
+      # First try exact barcode match, then fall back to substring search
+      exact_barcode_match = Chemical.where(barcode: query).limit(1)
+      
+      if exact_barcode_match.exists?
+        chemicals = exact_barcode_match
+      else
+        # Fall back to substring search for manual typing
+        chemicals = Chemical.where(
+          "name LIKE ? OR cas LIKE ? OR barcode LIKE ?",
+          "%#{query}%", "%#{query}%", "%#{query}%"
+        ).limit(20).order(:name)
+      end
+    end
 
     render json: chemicals.map { |chemical|
       {

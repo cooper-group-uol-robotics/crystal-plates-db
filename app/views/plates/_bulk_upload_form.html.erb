@@ -56,9 +56,6 @@
           <div class="flex-grow-1">
             <%= f.file_field :csv_file, accept: ".csv", class: "form-control", required: true, 
                              id: "csvFileInput" %>
-            <div class="form-text">
-              <small class="text-muted">Maximum file size: 10MB. Only CSV files are allowed.</small>
-            </div>
           </div>
           <div>
             <%= f.submit "Upload CSV", class: "btn btn-primary", id: "uploadButton",

@@ -219,7 +219,7 @@ class WellsController < ApplicationController
   def content_form
     @well = Well.find(params[:id])
     @stock_solutions = StockSolution.all.order(:name)
-    @well_contents = @well.well_contents.includes(:stock_solution, :unit)
+    @well_contents = @well.well_contents.includes(:contentable, :unit, :mass_unit)
     @units = Unit.all.order(:name)
     render partial: "content_form", locals: { well: @well, stock_solutions: @stock_solutions, well_contents: @well_contents, units: @units }
   rescue ActiveRecord::RecordNotFound

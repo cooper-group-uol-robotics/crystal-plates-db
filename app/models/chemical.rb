@@ -164,6 +164,13 @@ class Chemical < ApplicationRecord
           next
         end
 
+        # Skip chemicals with unwanted storage locations
+        if storage.blank? || storage.strip.downcase.in?(['*missing*', '*waste*'])
+          Rails.logger.warn "Skipping record #{index + 1}: Unwanted storage location (pk=#{sciformation_id}, storage=#{storage})"
+          skipped_count += 1
+          next
+        end
+
         # Check if chemical already exists
         existing = Chemical.find_by(sciformation_id: sciformation_id)
 

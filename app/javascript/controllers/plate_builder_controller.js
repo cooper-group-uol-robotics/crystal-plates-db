@@ -5,19 +5,23 @@ export default class extends Controller {
     "plateBarcode", "plateGrid", "plateGridPlaceholder", "mainGrid",
     "chemicalPanel", "selectedWellLabel", "chemicalBarcode", "chemicalFeedback",
     "massInputSection", "chemicalMass", "chemicalInfo", "chemicalName", "chemicalCas",
-    "wellsFilledCount", "currentPlateBarcode", "savePlateBtn", "screenFlash"
+    "wellsFilledCount", "currentPlateBarcode", "savePlateBtn", "screenFlash", "plateStatus"
   ]
 
   static values = {
     checkChemicalCasUrl: String,
     createFromBuilderUrl: String,
     chemicalSearchUrl: String,
+    loadForBuilderUrl: String,
+    saveWellUrl: String,
     csrfToken: String
   }
 
   connect() {
     console.log('PlateBuilder controller connected')
     this.currentPlate = null
+    this.existingPlateId = null
+    this.isExistingPlate = false
     this.selectedWell = null
     this.wellData = {}
 
@@ -33,6 +37,8 @@ export default class extends Controller {
   disconnect() {
     // Cleanup when navigating away
     this.currentPlate = null
+    this.existingPlateId = null
+    this.isExistingPlate = false
     this.selectedWell = null
     this.wellData = {}
   }
@@ -76,18 +82,28 @@ export default class extends Controller {
   }
 
   // Clear selected well
-  clearWell() {
+  async clearWell() {
     if (!this.selectedWell) return
 
-    delete this.wellData[this.selectedWell]
+    try {
+      // Save empty state to database (clears the well contents)
+      await this.saveWellToDatabase(this.selectedWell, {})
 
-    // Update visual state
-    this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
-      el.classList.remove('filled', 'valid', 'error')
-    })
+      // Update local state
+      delete this.wellData[this.selectedWell]
 
-    this.updateWellsFilledCount()
-    this.cancelWellSelection()
+      // Update visual state
+      this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
+        el.classList.remove('filled', 'valid', 'error')
+      })
+
+      this.updateWellsFilledCount()
+      this.cancelWellSelection()
+      this.showToast(`Well ${this.selectedWell} cleared`, 'info')
+    } catch (error) {
+      console.error('Error clearing well:', error)
+      this.showToast(`Error clearing well ${this.selectedWell}: ${error.message}`, 'danger')
+    }
   }
 
   // Cancel well selection
@@ -95,41 +111,55 @@ export default class extends Controller {
     this.cancelWellSelection()
   }
 
-  // Save plate
+  // Navigate to plate view (wells are already saved individually)
   async savePlate() {
-    if (!this.currentPlate || Object.keys(this.wellData).length === 0) {
-      this.showToast('No plate data to save', 'warning')
+    if (!this.currentPlate) {
+      this.showToast('No plate barcode entered', 'warning')
       return
     }
 
+    // Since wells are saved individually, just navigate to the plate
+    this.showToast('Navigating to plate view...', 'info')
+
+    // Find or create the plate to get its ID for navigation
     try {
-      const response = await fetch(this.createFromBuilderUrlValue, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': this.csrfTokenValue
-        },
-        body: JSON.stringify({
-          barcode: this.currentPlate,
-          wells: this.wellData
+      let plateId = this.existingPlateId
+
+      if (!plateId) {
+        // Create plate if it doesn't exist yet
+        const response = await fetch(this.createFromBuilderUrlValue, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': this.csrfTokenValue
+          },
+          body: JSON.stringify({
+            barcode: this.currentPlate,
+            wells: {}, // Empty since wells are saved individually
+            existing_plate_id: this.existingPlateId,
+            is_existing_plate: this.isExistingPlate
+          })
         })
-      })
 
-      const data = await response.json()
+        const data = await response.json()
+        if (data.success) {
+          plateId = data.plate_id
+        } else {
+          throw new Error(data.error)
+        }
+      }
 
-      if (data.success) {
-        this.showToast('Plate saved successfully!', 'success')
-
-        // Use Turbo.visit for navigation
+      // Navigate to plate view
+      if (plateId) {
         setTimeout(() => {
-          Turbo.visit(data.redirect_url)
-        }, 1500)
+          Turbo.visit(`/plates/${plateId}`)
+        }, 500)
       } else {
-        this.showToast('Error saving plate: ' + data.error, 'danger')
+        this.showToast('Error: Could not determine plate ID', 'danger')
       }
     } catch (error) {
-      console.error('Error saving plate:', error)
-      this.showToast('Error saving plate: ' + error.message, 'danger')
+      console.error('Error navigating to plate:', error)
+      this.showToast('Error: ' + error.message, 'danger')
     }
   }
 
@@ -145,18 +175,91 @@ export default class extends Controller {
     return normalized
   }
 
-  handlePlateBarcodeInput(barcode) {
+  async handlePlateBarcodeInput(barcode) {
     console.log('Handling plate barcode input:', barcode)
-    this.currentPlate = barcode
-    this.currentPlateBarcodeTarget.textContent = barcode
 
-    // Enable plate grid
-    console.log('Enabling plate grid...')
-    this.enablePlateGrid()
-    this.plateGridTarget.style.display = 'block'
-    this.plateGridPlaceholderTarget.style.display = 'none'
+    try {
+      // First, try to load an existing plate with this barcode
+      const loadUrl = this.loadForBuilderUrlValue.replace(':barcode', encodeURIComponent(barcode))
+      const response = await fetch(loadUrl)
+      const data = await response.json()
 
-    this.showToast('Plate barcode scanned successfully', 'success')
+      this.currentPlate = barcode
+      this.currentPlateBarcodeTarget.textContent = barcode
+
+      if (data.found) {
+        // Existing plate found - load its data
+        this.isExistingPlate = true
+        this.existingPlateId = data.plate.id
+        this.wellData = data.wells || {}
+
+        this.showToast(`Existing plate loaded: ${data.plate.name || barcode}`, 'info')
+
+        // Update wells visual state
+        this.loadExistingWellsIntoGrid()
+
+        // Show status indicator for existing plate
+        this.plateStatusTarget.textContent = `Status: Existing plate (editing)`
+        this.plateStatusTarget.className = 'text-info'
+        this.plateStatusTarget.style.display = 'block'
+
+        // Update save button text
+        this.savePlateBtnTarget.innerHTML = '<i class="bi bi-pencil-square"></i> Update Plate'
+      } else {
+        // New plate
+        this.isExistingPlate = false
+        this.existingPlateId = null
+        this.wellData = {}
+
+        this.showToast('New plate - ready for chemical input', 'success')
+
+        // Show status indicator for new plate
+        this.plateStatusTarget.textContent = `Status: New plate`
+        this.plateStatusTarget.className = 'text-success'
+        this.plateStatusTarget.style.display = 'block'
+
+        // Ensure save button text is correct
+        this.savePlateBtnTarget.innerHTML = '<i class="bi bi-check-lg"></i> Save Plate'
+      }
+
+      // Enable plate grid in both cases
+      console.log('Enabling plate grid...')
+      this.enablePlateGrid()
+      this.plateGridTarget.style.display = 'block'
+      this.plateGridPlaceholderTarget.style.display = 'none'
+      this.updateWellsFilledCount()
+
+    } catch (error) {
+      console.error('Error checking for existing plate:', error)
+      // Fall back to new plate behavior
+      this.currentPlate = barcode
+      this.currentPlateBarcodeTarget.textContent = barcode
+      this.isExistingPlate = false
+      this.existingPlateId = null
+      this.wellData = {}
+
+      this.enablePlateGrid()
+      this.plateGridTarget.style.display = 'block'
+      this.plateGridPlaceholderTarget.style.display = 'none'
+
+      // Show status as new plate (fallback)
+      this.plateStatusTarget.textContent = `Status: New plate`
+      this.plateStatusTarget.className = 'text-success'
+      this.plateStatusTarget.style.display = 'block'
+      this.savePlateBtnTarget.innerHTML = '<i class="bi bi-check-lg"></i> Save Plate'
+
+      this.showToast('Plate barcode scanned successfully', 'success')
+    }
+  }
+
+  loadExistingWellsIntoGrid() {
+    // Mark wells that have existing content as filled
+    Object.keys(this.wellData).forEach(wellId => {
+      this.element.querySelectorAll(`[data-well-id="${wellId}"]`).forEach(el => {
+        el.classList.add('filled')
+        el.classList.remove('valid', 'error', 'selected')
+      })
+    })
   }
 
   enablePlateGrid() {
@@ -202,7 +305,8 @@ export default class extends Controller {
       if (wellInfo.chemical_id) {
         this.showChemicalInfo(wellInfo.chemical_name, wellInfo.chemical_cas)
         if (wellInfo.mass) {
-          this.chemicalMassTarget.value = (wellInfo.mass).toFixed(4)
+          // Convert mg back to grams for balance display
+          this.chemicalMassTarget.value = (wellInfo.mass / 1000.0).toFixed(4)
           this.massInputSectionTarget.style.display = 'block'
         }
       }
@@ -213,32 +317,46 @@ export default class extends Controller {
     if (!barcode || !this.selectedWell) return
 
     try {
-      // Find chemical by barcode using the correct query parameter
+      // Find chemical by barcode using exact match only (no substring matching)
       const searchUrl = new URL(this.chemicalSearchUrlValue, window.location.origin)
       searchUrl.searchParams.set('q', barcode)
+      searchUrl.searchParams.set('exact_only', 'true')
 
       const response = await fetch(searchUrl)
+
+      // Check if response is ok and has valid content type
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Invalid response: expected JSON')
+      }
+
       const data = await response.json()
 
       if (data && data.length > 0) {
         const chemical = data[0]
 
         // First check if this chemical is already used in the current plate
-        const currentPlateHasChemical = Object.values(this.wellData).some(wellInfo =>
-          wellInfo.chemical_cas === chemical.cas
+        const conflictingWell = Object.keys(this.wellData).find(wellId =>
+          this.wellData[wellId].chemical_cas === chemical.cas
         )
 
-        if (currentPlateHasChemical) {
+        if (conflictingWell) {
           // Flash red and clear input - chemical already used in current plate
           this.flashScreen('red')
           this.chemicalBarcodeTarget.value = ''
-          this.chemicalFeedbackTarget.textContent = `This chemical (CAS: ${chemical.cas}) is already used in another well on this plate`
-          this.chemicalFeedbackTarget.className = 'form-text text-danger'
+          this.setFeedbackMessage(`This chemical (CAS: ${chemical.cas}) is already used in well ${conflictingWell} on this plate`, 'form-text text-danger')
 
           // Mark well as error
           this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
             el.classList.add('error')
           })
+
+          // Keep focus in the chemical barcode input
+          this.chemicalBarcodeTarget.focus()
           return
         }
 
@@ -253,18 +371,36 @@ export default class extends Controller {
           // Flash red and clear input - chemical used in other plates
           this.flashScreen('red')
           this.chemicalBarcodeTarget.value = ''
-          this.chemicalFeedbackTarget.textContent = `This chemical (CAS: ${chemical.cas}) has already been used in another plate`
-          this.chemicalFeedbackTarget.className = 'form-text text-danger'
+
+          // Show detailed conflict information
+          let conflictMessage = `This chemical (CAS: ${chemical.cas}) has already been used:`
+          if (casData.conflicts && casData.conflicts.length > 0) {
+            const conflicts = casData.conflicts.slice(0, 3) // Show max 3 conflicts to avoid UI overflow
+            const conflictDetails = conflicts.map(conflict =>
+              `\n• Plate ${conflict.plate_barcode}${conflict.plate_name ? ` (${conflict.plate_name})` : ''}, Well ${conflict.well_position}: ${conflict.chemical_name}${conflict.chemical_barcode ? ` [${conflict.chemical_barcode}]` : ''}`
+            ).join('')
+            conflictMessage += conflictDetails
+
+            if (casData.conflicts.length > 3) {
+              conflictMessage += `\n• ...and ${casData.conflicts.length - 3} more`
+            }
+          } else {
+            conflictMessage += ' in another plate'
+          }
+
+          this.setFeedbackMessage(conflictMessage, 'form-text text-danger', true)
 
           // Mark well as error
           this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
             el.classList.add('error')
           })
+
+          // Keep focus in the chemical barcode input
+          this.chemicalBarcodeTarget.focus()
         } else {
           // Flash green and proceed
           this.flashScreen('green')
-          this.chemicalFeedbackTarget.textContent = 'Chemical approved - ready for weighing'
-          this.chemicalFeedbackTarget.className = 'form-text text-success'
+          this.setFeedbackMessage('Chemical approved - ready for weighing', 'form-text text-success')
 
           // Show chemical info
           this.showChemicalInfo(chemical.name, chemical.cas)
@@ -288,45 +424,95 @@ export default class extends Controller {
           this.chemicalMassTarget.focus()
         }
       } else {
-        this.chemicalFeedbackTarget.textContent = `Chemical not found for barcode: ${barcode}`
-        this.chemicalFeedbackTarget.className = 'form-text text-warning'
+        // Flash red for chemical not found
+        this.flashScreen('red')
+        this.setFeedbackMessage(`Chemical not found for barcode: ${barcode}`, 'form-text text-danger')
+        // Keep focus in the chemical barcode input for retry
+        this.chemicalBarcodeTarget.focus()
       }
     } catch (error) {
       console.error('Error checking chemical:', error)
-      this.showToast('Error checking chemical: ' + error.message, 'danger')
+
+      // Flash red for any error (including chemical not found)
+      this.flashScreen('red')
+
+      // Check if it's a JSON parsing error or network error - likely means chemical not found
+      if (error.message.includes('JSON') || error.message.includes('Invalid response')) {
+        this.setFeedbackMessage(`Chemical not found for barcode: ${barcode}`, 'form-text text-danger')
+        this.chemicalBarcodeTarget.focus()
+      } else {
+        // Other errors
+        this.setFeedbackMessage(`Error checking chemical: ${error.message}`, 'form-text text-danger')
+        this.showToast('Error checking chemical: ' + error.message, 'danger')
+      }
     }
   }
 
-  handleMassInput() {
+  async handleMassInput() {
     const massField = this.chemicalMassTarget
     let rawMass = massField.value.trim()
 
     if (!rawMass || !this.selectedWell) return
 
-    // Convert from balance units (100s of μg) to mg by dividing by 10
-    const massInMg = parseFloat(rawMass) / 10
+    // Convert from balance units (g) to mg by multiplying by 1000
+    const massInMg = parseFloat(rawMass) * 1000
     massField.value = massInMg.toFixed(4)
 
-    // Store mass data
+    // Store mass data locally first (in mg for consistency)
     if (this.wellData[this.selectedWell]) {
-      this.wellData[this.selectedWell].mass = parseFloat(rawMass)
+      this.wellData[this.selectedWell].mass = massInMg
 
-      // Mark well as filled
-      this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
-        el.classList.add('filled')
-        el.classList.remove('valid', 'error')
-      })
+      // Save to database immediately
+      try {
+        await this.saveWellToDatabase(this.selectedWell, this.wellData[this.selectedWell])
 
-      // Clear feedback text after successful weighing
-      this.chemicalFeedbackTarget.textContent = ''
-      this.chemicalFeedbackTarget.className = 'form-text'
+        // Mark well as filled only after successful save
+        this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
+          el.classList.add('filled')
+          el.classList.remove('valid', 'error')
+        })
 
-      this.updateWellsFilledCount()
-      this.showToast(`Well ${this.selectedWell} filled with ${massInMg.toFixed(2)} mg`, 'success')
+        // Clear feedback text after successful weighing
+        this.setFeedbackMessage('', 'form-text')
 
-      // Auto-advance to next available well
-      this.advanceToNextWell()
+        this.updateWellsFilledCount()
+        this.showToast(`Well ${this.selectedWell} saved with ${massInMg.toFixed(2)} mg`, 'success')
+
+        // Auto-advance to next available well
+        this.advanceToNextWell()
+      } catch (error) {
+        console.error('Error saving well:', error)
+        this.showToast(`Error saving well ${this.selectedWell}: ${error.message}`, 'danger')
+        // Don't advance to next well if save failed
+      }
     }
+  }
+
+  async saveWellToDatabase(wellPosition, wellData) {
+    const response = await fetch(this.saveWellUrlValue, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': this.csrfTokenValue
+      },
+      body: JSON.stringify({
+        barcode: this.currentPlate,
+        well_position: wellPosition,
+        well_data: wellData
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.error || 'Unknown error occurred')
+    }
+
+    return data
   }
 
   advanceToNextWell() {
@@ -407,7 +593,8 @@ export default class extends Controller {
   updateWellsFilledCount() {
     const filledCount = Object.keys(this.wellData).length
     this.wellsFilledCountTarget.textContent = filledCount
-    this.savePlateBtnTarget.disabled = filledCount === 0
+    // Enable save button as soon as a plate is loaded (wells are saved individually)
+    this.savePlateBtnTarget.disabled = !this.currentPlate
   }
 
   showToast(message, type = 'info') {
@@ -444,6 +631,12 @@ export default class extends Controller {
     toast.addEventListener('hidden.bs.toast', () => {
       toast.remove()
     })
+  }
+
+  setFeedbackMessage(message, className = 'form-text', allowMultiLine = false) {
+    this.chemicalFeedbackTarget.textContent = message
+    this.chemicalFeedbackTarget.className = className
+    this.chemicalFeedbackTarget.style.whiteSpace = allowMultiLine ? 'pre-line' : 'normal'
   }
 
   getToastIcon(type) {

@@ -6,6 +6,8 @@
      data-plate-builder-check-chemical-cas-url-value="<%= check_chemical_cas_plates_path %>"
      data-plate-builder-create-from-builder-url-value="<%= create_from_builder_plates_path %>"
      data-plate-builder-chemical-search-url-value="<%= search_chemicals_path %>"
+     data-plate-builder-load-for-builder-url-value="<%= load_for_builder_plates_path(':barcode') %>"
+     data-plate-builder-save-well-url-value="<%= save_well_from_builder_plates_path %>"
      data-plate-builder-csrf-token-value="<%= form_authenticity_token %>">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Plate Builder</h1>
@@ -44,7 +46,7 @@
                       disabled
                       data-plate-builder-target="savePlateBtn"
                       data-action="click->plate-builder#savePlate">
-                <i class="bi bi-check-lg"></i> Save Plate
+                <i class="bi bi-eye"></i> View Plate
               </button>
             </div>
             <div class="form-text mb-3">Click on wells in the main grid to add chemicals</div>
@@ -52,6 +54,7 @@
             <div class="text-muted small">
               <div>Wells filled: <span data-plate-builder-target="wellsFilledCount">0</span> / 96</div>
               <div>Current plate: <span data-plate-builder-target="currentPlateBarcode">—</span></div>
+              <div data-plate-builder-target="plateStatus" style="display: none;"></div>
             </div>
           </div>
         </div>
@@ -77,18 +80,18 @@
 
           <!-- Mass Input (initially hidden) -->
           <div class="mb-3" data-plate-builder-target="massInputSection" style="display: none;">
-            <label for="chemical-mass" class="form-label">Mass (from balance) <span class="text-danger">*</span></label>
+            <label for="chemical-mass" class="form-label">Mass (from balance in g) <span class="text-danger">*</span></label>
             <div class="input-group">
               <input type="text" 
                      class="form-control" 
                      id="chemical-mass" 
-                     placeholder="Enter mass from balance..." 
+                     placeholder="Enter mass from balance (g)..." 
                      data-plate-builder-target="chemicalMass"
                      data-action="keypress->plate-builder#chemicalMassKeypress">
-              <span class="input-group-text">mg</span>
+              <span class="input-group-text">g</span>
             </div>
             <div class="form-text">
-              Press button on balance to transfer mass reading<br>
+              Press button on balance to transfer mass reading (g)<br>
             </div>
           </div>
 

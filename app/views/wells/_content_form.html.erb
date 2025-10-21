@@ -56,6 +56,11 @@
                   Volume: <%= content.display_volume %>
                 </div>
               <% end %>
+              <% if content.mass.present? %>
+                <div class="small text-muted">
+                  Mass: <%= content.display_mass %>
+                </div>
+              <% end %>
               <% if content.stock_solution? && content.contentable.stock_solution_components.any? %>
                 <div class="small text-muted">
                   <%= content.contentable.component_summary %>
