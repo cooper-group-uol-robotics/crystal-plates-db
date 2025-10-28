@@ -31,7 +31,9 @@ class Setting < ApplicationRecord
 
     # Unit cell conversion API settings
     def conventional_cell_api_endpoint
-      get("conventional_cell_api_endpoint", "http://localhost:3001")
+      endpoint = get("conventional_cell_api_endpoint", "http://localhost:3001")
+      return "" if endpoint == "not_configured"
+      endpoint
     end
 
     def conventional_cell_api_timeout

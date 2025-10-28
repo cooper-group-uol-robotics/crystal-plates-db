@@ -223,18 +223,18 @@ class PlatesController < ApplicationController
         if is_existing_plate && existing_plate_id
           # Update existing plate
           @plate = Plate.find(existing_plate_id)
-          
+
           # Clear existing chemical well contents for this plate
           @plate.wells.includes(:well_contents).each do |well|
-            well.well_contents.where(contentable_type: 'Chemical').destroy_all
+            well.well_contents.where(contentable_type: "Chemical").destroy_all
           end
         else
           # Check if plate with this barcode already exists (for new plates)
           existing_plate = Plate.find_by(barcode: barcode)
           if existing_plate
-            render json: { 
-              success: false, 
-              error: "Plate with barcode #{barcode} already exists" 
+            render json: {
+              success: false,
+              error: "Plate with barcode #{barcode} already exists"
             }, status: :unprocessable_entity
             return
           end
@@ -242,30 +242,30 @@ class PlatesController < ApplicationController
           # Create new plate
           @plate = Plate.create!(barcode: barcode)
         end
-        
+
         # Process well data (same logic for new and existing plates)
         well_data.each do |well_key, well_info|
-          next unless well_info['chemical_id'].present? && well_info['mass'].present?
-          
+          next unless well_info["chemical_id"].present? && well_info["mass"].present?
+
           # Parse well position (e.g., "A1" -> row 1, column 1)
           row_letter = well_key[0]
           column_number = well_key[1..-1].to_i
-          row_number = row_letter.ord - 'A'.ord + 1
-          
+          row_number = row_letter.ord - "A".ord + 1
+
           # Find the well
           well = @plate.wells.find_by(well_row: row_number, well_column: column_number, subwell: 1)
           next unless well
-          
+
           # Find the chemical
-          chemical = Chemical.find_by(id: well_info['chemical_id'])
+          chemical = Chemical.find_by(id: well_info["chemical_id"])
           next unless chemical
-          
+
           # Mass is now sent in mg from frontend (balance outputs g, converted to mg in JS)
-          mass_in_mg = well_info['mass'].to_f
-          
+          mass_in_mg = well_info["mass"].to_f
+
           # Find mg unit
-          mg_unit = Unit.find_by(symbol: 'mg')
-          
+          mg_unit = Unit.find_by(symbol: "mg")
+
           # Create well content
           well.well_contents.create!(
             contentable: chemical,
@@ -276,17 +276,17 @@ class PlatesController < ApplicationController
       end
 
       action_message = is_existing_plate ? "updated" : "created"
-      render json: { 
-        success: true, 
+      render json: {
+        success: true,
         plate_id: @plate.id,
         redirect_url: plate_path(@plate),
         message: "Plate #{action_message} successfully"
       }
     rescue => e
       action_message = is_existing_plate ? "updating" : "creating"
-      render json: { 
-        success: false, 
-        error: "Error #{action_message} plate: #{e.message}" 
+      render json: {
+        success: false,
+        error: "Error #{action_message} plate: #{e.message}"
       }, status: :unprocessable_entity
     end
   end
@@ -294,21 +294,21 @@ class PlatesController < ApplicationController
   # GET /plates/check_chemical_cas
   def check_chemical_cas
     chemical_id = params[:chemical_id]
-    
+
     chemical = Chemical.find_by(id: chemical_id)
     if chemical.nil?
-      render json: { found: false, error: 'Chemical not found' }
+      render json: { found: false, error: "Chemical not found" }
       return
     end
 
     # Check if this CAS number has been used in any well content
     cas_used = false
     conflicts = []
-    
+
     if chemical.cas.present?
       # Find all chemicals with the same CAS number
       same_cas_chemicals = Chemical.where(cas: chemical.cas)
-      
+
       # Find specific well contents that use chemicals with this CAS number
       conflicting_contents = WellContent.joins("JOIN chemicals ON well_contents.contentable_type = 'Chemical' AND well_contents.contentable_id = chemicals.id")
                                       .joins("JOIN wells ON well_contents.well_id = wells.id")
@@ -318,13 +318,13 @@ class PlatesController < ApplicationController
                                       .limit(5) # Limit to avoid too much data
 
       cas_used = conflicting_contents.exists?
-      
+
       if cas_used
         conflicts = conflicting_contents.map do |content|
           well = content.well
           plate = well.plate
           chemical_used = content.contentable
-          
+
           {
             plate_barcode: plate.barcode,
             plate_name: plate.name,
@@ -337,7 +337,7 @@ class PlatesController < ApplicationController
       end
     end
 
-    render json: { 
+    render json: {
       found: true,
       cas_used: cas_used,
       conflicts: conflicts,
@@ -353,37 +353,37 @@ class PlatesController < ApplicationController
   # GET /plates/load_for_builder/:barcode
   def load_for_builder
     barcode = params[:barcode]&.strip
-    
+
     if barcode.blank?
-      render json: { 
-        found: false, 
-        error: "Barcode is required" 
+      render json: {
+        found: false,
+        error: "Barcode is required"
       }, status: :bad_request
       return
     end
 
     plate = Plate.find_by(barcode: barcode)
-    
+
     if plate.nil?
-      render json: { 
-        found: false, 
-        message: "No existing plate found with barcode #{barcode}" 
+      render json: {
+        found: false,
+        message: "No existing plate found with barcode #{barcode}"
       }
       return
     end
 
     # Load well data with contents
     wells_data = {}
-    plate.wells.includes(well_contents: [:contentable, :mass_unit]).each do |well|
+    plate.wells.includes(well_contents: [ :contentable, :mass_unit ]).each do |well|
       well_position = "#{('A'.ord + well.well_row - 1).chr}#{well.well_column}"
-      
+
       # Only include wells that have chemical contents
       chemical_content = well.well_contents.find { |wc| wc.chemical? }
       next unless chemical_content
-      
+
       chemical = chemical_content.contentable
       next unless chemical
-      
+
       wells_data[well_position] = {
         chemical_id: chemical.id,
         chemical_name: chemical.name,
@@ -393,7 +393,7 @@ class PlatesController < ApplicationController
       }
     end
 
-    render json: { 
+    render json: {
       found: true,
       plate: {
         id: plate.id,
@@ -413,9 +413,9 @@ class PlatesController < ApplicationController
     well_data = params[:well_data] || {}
 
     if barcode.blank? || well_position.blank?
-      render json: { 
-        success: false, 
-        error: "Barcode and well position are required" 
+      render json: {
+        success: false,
+        error: "Barcode and well position are required"
       }, status: :bad_request
       return
     end
@@ -431,38 +431,38 @@ class PlatesController < ApplicationController
         # Parse well position (e.g., "A1" -> row 1, column 1)
         row_letter = well_position[0]
         column_number = well_position[1..-1].to_i
-        row_number = row_letter.ord - 'A'.ord + 1
+        row_number = row_letter.ord - "A".ord + 1
 
         # Find the well
         well = plate.wells.find_by(well_row: row_number, well_column: column_number, subwell: 1)
         unless well
-          render json: { 
-            success: false, 
-            error: "Well #{well_position} not found on plate" 
+          render json: {
+            success: false,
+            error: "Well #{well_position} not found on plate"
           }, status: :not_found
           return
         end
 
         # Clear existing chemical contents for this well
-        well.well_contents.where(contentable_type: 'Chemical').destroy_all
+        well.well_contents.where(contentable_type: "Chemical").destroy_all
 
         # Add new content if provided
-        if well_data['chemical_id'].present? && well_data['mass'].present?
+        if well_data["chemical_id"].present? && well_data["mass"].present?
           # Find the chemical
-          chemical = Chemical.find_by(id: well_data['chemical_id'])
+          chemical = Chemical.find_by(id: well_data["chemical_id"])
           unless chemical
-            render json: { 
-              success: false, 
-              error: "Chemical not found" 
+            render json: {
+              success: false,
+              error: "Chemical not found"
             }, status: :not_found
             return
           end
 
           # Mass is now sent in mg from frontend (balance outputs g, converted to mg in JS)
-          mass_in_mg = well_data['mass'].to_f
+          mass_in_mg = well_data["mass"].to_f
 
           # Find mg unit
-          mg_unit = Unit.find_by(symbol: 'mg')
+          mg_unit = Unit.find_by(symbol: "mg")
 
           # Create well content
           well.well_contents.create!(
@@ -473,14 +473,14 @@ class PlatesController < ApplicationController
         end
       end
 
-      render json: { 
+      render json: {
         success: true,
         message: "Well #{well_position} saved successfully"
       }
     rescue => e
-      render json: { 
-        success: false, 
-        error: "Error saving well: #{e.message}" 
+      render json: {
+        success: false,
+        error: "Error saving well: #{e.message}"
       }, status: :unprocessable_entity
     end
   end
@@ -520,12 +520,12 @@ class PlatesController < ApplicationController
     require "csv"
 
     csv_data = generate_plate_contents_csv(@plate)
-    
+
     filename = "#{@plate.barcode}_contents_#{Date.current.strftime('%Y%m%d')}.csv"
-    
+
     respond_to do |format|
       format.csv do
-        send_data csv_data, filename: filename, type: 'text/csv'
+        send_data csv_data, filename: filename, type: "text/csv"
       end
     end
   end
@@ -606,14 +606,14 @@ class PlatesController < ApplicationController
 
       # Process dual header CSV format only
       csv_rows = csv.to_a
-      return { success_count: 0, errors: ["CSV file is empty"] } if csv_rows.empty?
+      return { success_count: 0, errors: [ "CSV file is empty" ] } if csv_rows.empty?
 
       # Validate that we have dual headers
       unless detect_dual_headers(csv_rows)
         results[:errors] << "Invalid CSV format. Please use the dual header format with 'Chemical Barcode' in the first row and 'Stock Solution ID' in the second row."
         return results
       end
-      
+
       results.merge!(process_dual_header_csv(csv_rows))
       results
     end
@@ -623,44 +623,44 @@ class PlatesController < ApplicationController
 
       first_row = csv_rows[0]
       second_row = csv_rows[1]
-      
+
       # Check if first row contains "Chemical Barcode" and second contains "Stock Solution ID"
       first_has_chemical_header = first_row.any? { |cell| cell&.downcase&.include?("chemical") || cell&.downcase&.include?("barcode") }
       second_has_stock_header = second_row.any? { |cell| cell&.downcase&.include?("stock") || cell&.downcase&.include?("solution") }
-      
+
       first_has_chemical_header && second_has_stock_header
     end
 
     def process_dual_header_csv(csv_rows)
       results = { success_count: 0, errors: [] }
-      
+
       chemical_header_row = csv_rows[0][1..-1] # Skip first column (well labels)
       stock_solution_header_row = csv_rows[1][1..-1] # Skip first column (well labels)
       data_rows = csv_rows[2..-1] # Data starts from third row
-      
+
       # Build content mapping for each column
       content_mapping = {}
-      
+
       chemical_header_row.each_with_index do |barcode, index|
         next if barcode.nil? || barcode.strip.empty?
-        
+
         chemical = Chemical.find_by(barcode: barcode.strip)
         if chemical
-          content_mapping[index] = { 
-            type: 'Chemical', 
-            object: chemical, 
-            default_unit: 'mg',
-            identifier: barcode.strip 
+          content_mapping[index] = {
+            type: "Chemical",
+            object: chemical,
+            default_unit: "mg",
+            identifier: barcode.strip
           }
         else
           results[:errors] << "Chemical not found for barcode: #{barcode}"
         end
       end
-      
+
       stock_solution_header_row.each_with_index do |solution_id, index|
         next if solution_id.nil? || solution_id.strip.empty?
         next if content_mapping[index] # Chemical already mapped to this column
-        
+
         # Try to find stock solution by ID first, then by name
         stock_solution = nil
         if solution_id.match?(/^\d+$/) # If it's just a number, treat as ID
@@ -669,21 +669,21 @@ class PlatesController < ApplicationController
           # Try to find by name (case insensitive)
           stock_solution = StockSolution.find_by("name ILIKE ?", solution_id.strip)
         end
-        
+
         if stock_solution
-          content_mapping[index] = { 
-            type: 'StockSolution', 
-            object: stock_solution, 
-            default_unit: 'μL',
-            identifier: solution_id.strip 
+          content_mapping[index] = {
+            type: "StockSolution",
+            object: stock_solution,
+            default_unit: "μL",
+            identifier: solution_id.strip
           }
         else
           results[:errors] << "Stock solution not found: #{solution_id}"
         end
       end
-      
+
       return results if content_mapping.empty?
-      
+
       # Process data rows
       data_rows.each do |row|
         well_label = row[0]&.strip
@@ -725,7 +725,7 @@ class PlatesController < ApplicationController
           end
         end
       end
-      
+
       results
     end
 
@@ -751,14 +751,14 @@ class PlatesController < ApplicationController
 
     def generate_plate_contents_csv(plate)
       require "csv"
-      
+
       # Get all wells with their contents
-      wells = plate.wells.includes(well_contents: [:contentable, :unit, :mass_unit]).order(:well_row, :well_column, :subwell)
-      
+      wells = plate.wells.includes(well_contents: [ :contentable, :unit, :mass_unit ]).order(:well_row, :well_column, :subwell)
+
       # Collect all chemicals and stock solutions used across the plate
       chemicals = Set.new
       stock_solutions = Set.new
-      
+
       wells.each do |well|
         well.well_contents.each do |content|
           if content.chemical? && content.contentable.present?
@@ -768,25 +768,25 @@ class PlatesController < ApplicationController
           end
         end
       end
-      
+
       chemicals = chemicals.to_a.compact.sort_by { |c| c.barcode || "" }
       stock_solutions = stock_solutions.to_a.compact.sort_by { |s| s.id || 0 }
-      
+
       CSV.generate do |csv|
         # Always use dual header format with labels
         # First header row: Chemical barcodes with label
-        chemical_header = ["Chemical Barcode"] + chemicals.map { |c| c.barcode || "UNKNOWN" } + Array.new(stock_solutions.length, "")
+        chemical_header = [ "Chemical Barcode" ] + chemicals.map { |c| c.barcode || "UNKNOWN" } + Array.new(stock_solutions.length, "")
         csv << chemical_header
-        
+
         # Second header row: Stock solution IDs with label
-        stock_solution_header = ["Stock Solution ID"] + Array.new(chemicals.length, "") + stock_solutions.map { |s| s.id || "UNKNOWN" }
+        stock_solution_header = [ "Stock Solution ID" ] + Array.new(chemicals.length, "") + stock_solutions.map { |s| s.id || "UNKNOWN" }
         csv << stock_solution_header
-        
+
         # Data rows
         wells.each do |well|
           well_label = well.subwell == 1 ? well.well_label : "#{well.well_label}.#{well.subwell}"
-          row_data = [well_label]
-          
+          row_data = [ well_label ]
+
           # Add chemical amounts (in mg)
           chemicals.each do |chemical|
             content = well.well_contents.find { |wc| wc.contentable == chemical }
@@ -794,21 +794,21 @@ class PlatesController < ApplicationController
               # Convert to mg if needed
               amount = content.mass
               unit_symbol = content.mass_unit&.symbol&.downcase
-              
+
               case unit_symbol
               when "g"
                 amount *= 1000 # g to mg
               when "kg"
                 amount *= 1_000_000 # kg to mg
-              # mg is default, no conversion needed
+                # mg is default, no conversion needed
               end
-              
+
               row_data << amount.to_s
             else
               row_data << ""
             end
           end
-          
+
           # Add stock solution volumes (in µL)
           stock_solutions.each do |stock_solution|
             content = well.well_contents.find { |wc| wc.contentable == stock_solution }
@@ -816,7 +816,7 @@ class PlatesController < ApplicationController
               # Convert to µL if needed
               amount = content.volume
               unit_symbol = content.unit&.symbol&.downcase
-              
+
               case unit_symbol
               when "ml", "mL"
                 amount *= 1000 # mL to µL
@@ -824,17 +824,17 @@ class PlatesController < ApplicationController
                 amount *= 1_000_000 # L to µL
               when "nl"
                 amount /= 1000 # nL to µL
-              # µL is default, no conversion needed
+                # µL is default, no conversion needed
               end
-              
+
               row_data << amount.to_s
             else
               row_data << ""
             end
           end
-          
+
           csv << row_data
         end
       end
     end
-  end
+end

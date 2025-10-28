@@ -3,7 +3,7 @@ class WellContent < ApplicationRecord
   belongs_to :contentable, polymorphic: true
   belongs_to :stock_solution, optional: true  # Keep for backward compatibility
   belongs_to :unit, optional: true
-  belongs_to :mass_unit, class_name: 'Unit', optional: true
+  belongs_to :mass_unit, class_name: "Unit", optional: true
 
   validates :contentable, presence: true
   validate :contentable_must_be_valid_type
@@ -98,7 +98,7 @@ class WellContent < ApplicationRecord
     unless has_volume? || has_mass?
       errors.add(:base, "Must specify either volume or mass")
     end
-    
+
     if has_volume? && has_mass?
       errors.add(:base, "Cannot specify both volume and mass")
     end

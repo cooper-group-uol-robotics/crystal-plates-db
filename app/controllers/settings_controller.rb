@@ -47,11 +47,11 @@ class SettingsController < ApplicationController
   def test_sciformation_cookie
     # Use the cookie from the request if provided, otherwise use the settings cookie
     cookie = params[:cookie].presence || Setting.sciformation_cookie
-    
+
     if cookie.blank?
-      render json: { 
-        success: false, 
-        message: "Sciformation cookie not configured. Please set a valid cookie value in the settings." 
+      render json: {
+        success: false,
+        message: "Sciformation cookie not configured. Please set a valid cookie value in the settings."
       }
       return
     end
@@ -76,34 +76,34 @@ class SettingsController < ApplicationController
         "format" => "json",
         "query" => "[0]",
         "crit0" => "department",
-        "op0" => "OP_IN_NUM", 
+        "op0" => "OP_IN_NUM",
         "val0" => "124"
       }
       request.set_form_data(form_data)
 
       response = http.request(request)
-      
+
       if response.code.to_i == 200
-        render json: { 
-          success: true, 
-          message: "Sciformation cookie is valid and API is accessible (HTTP #{response.code})" 
+        render json: {
+          success: true,
+          message: "Sciformation cookie is valid and API is accessible (HTTP #{response.code})"
         }
       else
-        render json: { 
-          success: false, 
-          message: "Sciformation API returned HTTP #{response.code}. Cookie may be invalid or expired." 
+        render json: {
+          success: false,
+          message: "Sciformation API returned HTTP #{response.code}. Cookie may be invalid or expired."
         }
       end
 
     rescue Net::TimeoutError => e
-      render json: { 
-        success: false, 
-        message: "Connection timeout - Sciformation may be slow or unavailable" 
+      render json: {
+        success: false,
+        message: "Connection timeout - Sciformation may be slow or unavailable"
       }
     rescue => e
-      render json: { 
-        success: false, 
-        message: "Error testing Sciformation cookie: #{e.message}" 
+      render json: {
+        success: false,
+        message: "Error testing Sciformation cookie: #{e.message}"
       }
     end
   end

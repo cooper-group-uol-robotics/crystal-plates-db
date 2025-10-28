@@ -225,4 +225,95 @@ class PlateTest < ActiveSupport::TestCase
       assert_includes error_message, @plate1.barcode
     end
   end
+
+  # Test well identifier parsing
+  test "should parse simple well identifiers correctly" do
+    # Test basic formats
+    parsed = Plate.parse_well_identifier("A1")
+    assert_equal({ row: 1, column: 1, subwell: 1 }, parsed)
+
+    parsed = Plate.parse_well_identifier("B2")
+    assert_equal({ row: 2, column: 2, subwell: 1 }, parsed)
+
+    parsed = Plate.parse_well_identifier("H12")
+    assert_equal({ row: 8, column: 12, subwell: 1 }, parsed)
+  end
+
+  test "should parse well identifiers with subwells correctly" do
+    parsed = Plate.parse_well_identifier("A1_2")
+    assert_equal({ row: 1, column: 1, subwell: 2 }, parsed)
+
+    parsed = Plate.parse_well_identifier("B3_5")
+    assert_equal({ row: 2, column: 3, subwell: 5 }, parsed)
+
+    parsed = Plate.parse_well_identifier("H12_10")
+    assert_equal({ row: 8, column: 12, subwell: 10 }, parsed)
+  end
+
+  test "should handle case insensitivity and whitespace in well identifiers" do
+    parsed = Plate.parse_well_identifier("a1")
+    assert_equal({ row: 1, column: 1, subwell: 1 }, parsed)
+
+    parsed = Plate.parse_well_identifier(" B2 ")
+    assert_equal({ row: 2, column: 2, subwell: 1 }, parsed)
+
+    parsed = Plate.parse_well_identifier("  h12_3  ")
+    assert_equal({ row: 8, column: 12, subwell: 3 }, parsed)
+  end
+
+  test "should return nil for invalid well identifiers" do
+    assert_nil Plate.parse_well_identifier("")
+    assert_nil Plate.parse_well_identifier(nil)
+    assert_nil Plate.parse_well_identifier("INVALID")
+    assert_nil Plate.parse_well_identifier("123")
+    assert_nil Plate.parse_well_identifier("AA1")
+    assert_nil Plate.parse_well_identifier("A")
+    assert_nil Plate.parse_well_identifier("1A")
+    assert_nil Plate.parse_well_identifier("A0")
+    assert_nil Plate.parse_well_identifier("A1_0")
+    assert_nil Plate.parse_well_identifier("A1_")
+    assert_nil Plate.parse_well_identifier("A_1")
+  end
+
+  test "should find well by identifier" do
+    # Create wells for testing since fixtures don't trigger callbacks
+    @plate1.wells.find_or_create_by!(well_row: 1, well_column: 1, subwell: 1)
+    @plate1.wells.find_or_create_by!(well_row: 2, well_column: 2, subwell: 1)
+
+    # Find an existing well (A1 should correspond to row 1, column 1, subwell 1)
+    well = @plate1.find_well_by_identifier("A1")
+    assert_not_nil well
+    assert_equal 1, well.well_row
+    assert_equal 1, well.well_column
+    assert_equal 1, well.subwell
+
+    # Test another position
+    well = @plate1.find_well_by_identifier("B2")
+    assert_not_nil well
+    assert_equal 2, well.well_row
+    assert_equal 2, well.well_column
+    assert_equal 1, well.subwell
+  end
+
+  test "should return nil when finding non-existent well by identifier" do
+    # Try to find a well that doesn't exist (beyond the plate dimensions)
+    well = @plate1.find_well_by_identifier("Z99")
+    assert_nil well
+
+    # Try with invalid identifier
+    well = @plate1.find_well_by_identifier("INVALID")
+    assert_nil well
+  end
+
+  test "should find well with subwell by identifier" do
+    # First create a well with a subwell if it doesn't exist
+    @plate1.wells.find_or_create_by(well_row: 3, well_column: 4, subwell: 2)
+
+    # Now find it by identifier
+    well = @plate1.find_well_by_identifier("C4_2")
+    assert_not_nil well
+    assert_equal 3, well.well_row
+    assert_equal 4, well.well_column
+    assert_equal 2, well.subwell
+  end
 end

@@ -127,7 +127,7 @@ class ChemicalsController < ApplicationController
       # Use settings cookie by default, but allow override if cookie parameter is provided
       result = Chemical.fetch_from_sciformation(cookie: cookie.presence, barcode: barcode)
       Rails.logger.info "fetch_from_sciformation returned: #{result.inspect}"
-      
+
       Rails.logger.info "Sending response to client..."
       render json: result
       Rails.logger.info "Response sent successfully"
@@ -170,7 +170,7 @@ class ChemicalsController < ApplicationController
   # GET /chemicals/search
   def search
     query = params[:q]&.strip
-    exact_only = params[:exact_only] == 'true'
+    exact_only = params[:exact_only] == "true"
 
     if query.blank? || query.length < 2
       render json: []
@@ -183,7 +183,7 @@ class ChemicalsController < ApplicationController
     else
       # First try exact barcode match, then fall back to substring search
       exact_barcode_match = Chemical.where(barcode: query).limit(1)
-      
+
       if exact_barcode_match.exists?
         chemicals = exact_barcode_match
       else

@@ -77,6 +77,38 @@ class Api::V1::PxrdPatternsController < Api::V1::BaseController
     render json: { message: "PXRD pattern successfully deleted" }
   end
 
+  # POST /api/v1/pxrd_patterns/plate/:barcode/well/:well_string
+  def upload_to_well
+    @plate = Plate.find_by(barcode: params[:barcode])
+    unless @plate
+      render json: {
+        error: "Plate not found",
+        details: [ "No plate found with barcode '#{params[:barcode]}'" ]
+      }, status: :not_found
+      return
+    end
+
+    @well = @plate.find_well_by_identifier(params[:well_string])
+    unless @well
+      render json: {
+        error: "Well not found",
+        details: [ "No well found with identifier '#{params[:well_string]}' on plate '#{params[:barcode]}'" ]
+      }, status: :not_found
+      return
+    end
+
+    @pxrd_pattern = @well.pxrd_patterns.build(pxrd_pattern_params)
+
+    if @pxrd_pattern.save
+      render json: format_pxrd_pattern_detailed(@pxrd_pattern), status: :created
+    else
+      render json: {
+        error: "Failed to create PXRD pattern",
+        details: @pxrd_pattern.errors.full_messages
+      }, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def set_well

@@ -782,6 +782,89 @@ Points of Interest are markers placed on images to identify features like crysta
   }
   ```
 
+### Upload PXRD Pattern to Well (Human-Readable Identifier)
+- **POST** `/api/v1/pxrd_patterns/plate/:barcode/well/:well_string`
+- **Description**: Upload a PXRD pattern to a specific well using human-readable identifiers
+- **URL Parameters**:
+  - `barcode`: Plate barcode (e.g., "PLATE001", "60123456")
+  - `well_string`: Human-readable well identifier (e.g., "A1", "H12", "B2_3" for B2 subwell 3)
+- **Content-Type**: `multipart/form-data`
+- **Body Parameters**:
+  ```
+  pxrd_pattern[title]: (string) Title or description of the pattern
+  pxrd_pattern[pxrd_data_file]: (file) PXRD data file in XRDML format
+  ```
+- **Well Identifier Format**:
+  - Basic wells: `A1`, `B2`, `H12` (letter + number)
+  - Subwells: `A1_2`, `B3_5`, `H12_10` (letter + number + underscore + subwell number)
+  - Case insensitive: `a1` = `A1`
+  - Whitespace is ignored: ` A1 ` = `A1`
+- **Response**: Created PXRD pattern object with well and plate information
+- **Error Responses**:
+  - `404` if plate barcode not found
+  - `404` if well identifier not found on plate
+  - `422` if validation errors occur
+- **Examples**:
+  ```bash
+  # Upload to well A1
+  curl -X POST http://localhost:3000/api/v1/pxrd_patterns/plate/PLATE001/well/A1 \
+    -F "pxrd_pattern[title]=Crystal formation A1 - Day 3" \
+    -F "pxrd_pattern[pxrd_data_file]=@/path/to/pattern.xrdml"
+
+  # Upload to well B3, subwell 2
+  curl -X POST http://localhost:3000/api/v1/pxrd_patterns/plate/60123456/well/B3_2 \
+    -F "pxrd_pattern[title]=Crystallization attempt B3:2" \
+    -F "pxrd_pattern[pxrd_data_file]=@/path/to/data.xrdml"
+  ```
+- **Example Success Response**:
+  ```json
+  {
+    "id": 42,
+    "title": "Crystal formation A1 - Day 3",
+    "well_id": 123,
+    "well_label": "A1",
+    "plate_barcode": "PLATE001",
+    "measured_at": "2025-07-19T15:30:00Z",
+    "file_attached": true,
+    "file_url": "http://localhost:3000/rails/active_storage/blobs/xyz789.xrdml",
+    "file_size": 47234,
+    "created_at": "2025-10-28T14:22:00Z",
+    "updated_at": "2025-10-28T14:22:00Z",
+    "well": {
+      "id": 123,
+      "label": "A1",
+      "row": 1,
+      "column": 1,
+      "subwell": 1,
+      "plate": {
+        "id": 15,
+        "barcode": "PLATE001",
+        "name": "Test Plate for Crystallization"
+      }
+    },
+    "file_metadata": {
+      "filename": "pattern.xrdml",
+      "content_type": "application/xml",
+      "byte_size": 47234,
+      "created_at": "2025-10-28T14:22:00Z"
+    }
+  }
+  ```
+- **Example Error Responses**:
+  ```json
+  // Plate not found
+  {
+    "error": "Plate not found",
+    "details": ["No plate found with barcode 'INVALID_PLATE'"]
+  }
+
+  // Well not found
+  {
+    "error": "Well not found", 
+    "details": ["No well found with identifier 'Z99' on plate 'PLATE001'"]
+  }
+  ```
+
 ### Update PXRD Pattern
 - **PUT/PATCH** `/api/v1/pxrd_patterns/:id`
 - **Description**: Update PXRD pattern information (title only, file cannot be changed)
@@ -1440,10 +1523,20 @@ curl http://localhost:3000/api/v1/wells/123/images
 
 ### Upload and work with PXRD patterns
 ```bash
-# Upload PXRD pattern to a well
+# Upload PXRD pattern to a well (using well ID)
 curl -X POST http://localhost:3000/api/v1/wells/123/pxrd_patterns \
   -F "pxrd_pattern[title]=Crystal formation day 5" \
   -F "pxrd_pattern[pxrd_data_file]=@/path/to/diffraction.xrdml"
+
+# Upload PXRD pattern using human-readable well identifier
+curl -X POST http://localhost:3000/api/v1/pxrd_patterns/plate/PLATE001/well/A1 \
+  -F "pxrd_pattern[title]=Crystal A1 - Day 5" \
+  -F "pxrd_pattern[pxrd_data_file]=@/path/to/diffraction.xrdml"
+
+# Upload PXRD pattern to subwell using human-readable identifier
+curl -X POST http://localhost:3000/api/v1/pxrd_patterns/plate/60123456/well/H12_3 \
+  -F "pxrd_pattern[title]=Crystal H12 subwell 3 - Final check" \
+  -F "pxrd_pattern[pxrd_data_file]=@/path/to/final.xrdml"
 
 # Get all PXRD patterns for a well
 curl http://localhost:3000/api/v1/wells/123/pxrd_patterns

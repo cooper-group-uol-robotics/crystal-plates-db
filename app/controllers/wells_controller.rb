@@ -44,11 +44,11 @@ class WellsController < ApplicationController
 
     well_ids = params[:well_ids] || params["well_ids"]
     volume_with_unit = params[:volume_with_unit] || params["volume_with_unit"]
-    
+
     # Support both new polymorphic approach and legacy stock solution approach
     contentable_type = params[:contentable_type] || params["contentable_type"]
     contentable_id = params[:contentable_id] || params["contentable_id"]
-    
+
     # Legacy stock solution support
     stock_solution_id = params[:stock_solution_id] || params["stock_solution_id"]
 
@@ -64,10 +64,10 @@ class WellsController < ApplicationController
     if contentable_type.present? && contentable_id.present?
       # New polymorphic approach
       case contentable_type
-      when 'StockSolution'
+      when "StockSolution"
         contentable = StockSolution.find_by(id: contentable_id)
         content_type_name = "stock solution"
-      when 'Chemical'
+      when "Chemical"
         contentable = Chemical.find_by(id: contentable_id)
         content_type_name = "chemical"
       else
@@ -78,7 +78,7 @@ class WellsController < ApplicationController
       # Legacy stock solution support
       contentable = StockSolution.find_by(id: stock_solution_id)
       content_type_name = "stock solution"
-      contentable_type = 'StockSolution'
+      contentable_type = "StockSolution"
     else
       render json: { status: "error", message: "No content selected" }, status: 400
       return
@@ -91,7 +91,7 @@ class WellsController < ApplicationController
 
     success_count = 0
     error_wells = []
-    
+
     well_ids.each do |well_id|
       well = Well.find_by(id: well_id)
       if well.nil?
@@ -109,7 +109,7 @@ class WellsController < ApplicationController
       # Create well content with polymorphic association
       well_content = well.well_contents.build(contentable: contentable)
       well_content.volume_with_unit = volume_with_unit if volume_with_unit.present?
-      
+
       if well_content.save
         success_count += 1
       else

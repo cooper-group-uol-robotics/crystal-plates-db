@@ -33,10 +33,10 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
   # POST /api/v1/wells/:well_id/scxrd_datasets or POST /api/v1/scxrd_datasets (standalone)
   def create
     dataset_params = scxrd_dataset_params
-    
+
     # Convert unit cell parameters to primitive if provided
     dataset_params = ensure_primitive_cell_params(dataset_params)
-    
+
     if @well
       @scxrd_dataset = @well.scxrd_datasets.build(dataset_params)
     else
@@ -59,10 +59,10 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
   # PATCH/PUT /api/v1/wells/:well_id/scxrd_datasets/:id
   def update
     dataset_params = scxrd_dataset_params
-    
+
     # Convert unit cell parameters to primitive if provided
     dataset_params = ensure_primitive_cell_params(dataset_params)
-    
+
     if @scxrd_dataset.update(dataset_params)
       render json: {
         message: "SCXRD dataset updated successfully",
@@ -254,7 +254,7 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
     # Check if unit cell parameters are provided
     if params[:primitive_a].present? && params[:primitive_b].present? && params[:primitive_c].present? &&
        params[:primitive_alpha].present? && params[:primitive_beta].present? && params[:primitive_gamma].present?
-      
+
       original_a = params[:primitive_a].to_f
       original_b = params[:primitive_b].to_f
       original_c = params[:primitive_c].to_f

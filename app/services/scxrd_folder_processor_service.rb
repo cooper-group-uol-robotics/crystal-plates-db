@@ -121,7 +121,7 @@ class ScxrdFolderProcessorService
 
     # Apply filtering with fallback strategy
     # 1. First, exclude both wit_* and pre_* files
-    rodhypix_files = all_rodhypix_files.reject { |file| 
+    rodhypix_files = all_rodhypix_files.reject { |file|
       basename = File.basename(file)
       basename.start_with?("pre_") || basename.start_with?("wit_")
     }
@@ -129,7 +129,7 @@ class ScxrdFolderProcessorService
     # 2. If no files found, try including wit_* files (but still exclude pre_*)
     if rodhypix_files.empty?
       Rails.logger.info "SCXRD: No frames found excluding wit_* and pre_*, trying to include wit_* files"
-      rodhypix_files = all_rodhypix_files.reject { |file| 
+      rodhypix_files = all_rodhypix_files.reject { |file|
         basename = File.basename(file)
         basename.start_with?("pre_")
       }
@@ -144,7 +144,7 @@ class ScxrdFolderProcessorService
     # Log the filtering result
     excluded_wit_files = all_rodhypix_files.select { |file| File.basename(file).start_with?("wit_") }
     excluded_pre_files = all_rodhypix_files.select { |file| File.basename(file).start_with?("pre_") }
-    
+
     if rodhypix_files == all_rodhypix_files
       Rails.logger.info "SCXRD: Found #{rodhypix_files.length} diffraction images (using all files including #{excluded_pre_files.length} pre_* and #{excluded_wit_files.length} wit_* files)"
     elsif excluded_wit_files.any? && rodhypix_files.any? { |file| File.basename(file).start_with?("wit_") }
@@ -264,20 +264,20 @@ class ScxrdFolderProcessorService
 
   def parse_all_crystal_ini_files(crystal_ini_files)
     Rails.logger.info "SCXRD: Starting to parse all #{crystal_ini_files.count} crystal.ini files"
-    
+
     parsed_metadata = []
-    
+
     # Parse each file and collect metadata with file info
     crystal_ini_files.each do |file_path|
       filename = File.basename(file_path)
-      
+
       begin
         # Get file modification time for conflict resolution
         modification_time = File.mtime(file_path)
         Rails.logger.info "SCXRD: Parsing #{filename} (modified: #{modification_time})"
-        
+
         file_metadata = parse_crystal_ini_file(file_path)
-        
+
         if file_metadata
           parsed_metadata << {
             filename: filename,
@@ -293,36 +293,36 @@ class ScxrdFolderProcessorService
         Rails.logger.error "SCXRD: Error processing #{filename}: #{e.message}"
       end
     end
-    
+
     return nil if parsed_metadata.empty?
-    
+
     # Sort by modification time (most recent first) for conflict resolution
     parsed_metadata.sort_by! { |item| -item[:modification_time].to_i }
-    
+
     Rails.logger.info "SCXRD: Parsed #{parsed_metadata.count} files successfully"
     parsed_metadata.each do |item|
       Rails.logger.info "SCXRD: - #{item[:filename]} (#{item[:modification_time]})"
     end
-    
+
     # Merge all metadata, with most recent taking precedence for conflicts
     merged_metadata = merge_crystal_metadata(parsed_metadata)
-    
+
     Rails.logger.info "SCXRD: Final merged metadata: #{merged_metadata.inspect}"
     merged_metadata
   end
-  
+
   def merge_crystal_metadata(parsed_metadata_array)
     Rails.logger.info "SCXRD: Merging metadata from #{parsed_metadata_array.count} files"
-    
+
     merged = {}
     conflict_resolution = {}
-    
+
     # Process files in reverse order (oldest first), so newer files overwrite conflicts
     parsed_metadata_array.reverse.each do |item|
       filename = item[:filename]
       file_metadata = item[:metadata]
       modification_time = item[:modification_time]
-      
+
       file_metadata.each do |key, value|
         if merged.key?(key) && merged[key] != value
           # Conflict detected - log it and update tracking
@@ -333,11 +333,11 @@ class ScxrdFolderProcessorService
         elsif !merged.key?(key)
           conflict_resolution[key] = filename
         end
-        
+
         merged[key] = value
       end
     end
-    
+
     # Log final resolution summary
     if conflict_resolution.any?
       Rails.logger.info "SCXRD: Final metadata sources:"
@@ -345,7 +345,7 @@ class ScxrdFolderProcessorService
         Rails.logger.info "SCXRD: - #{key}: #{merged[key]} (from #{source_file})"
       end
     end
-    
+
     merged
   end
 
@@ -646,13 +646,13 @@ class ScxrdFolderProcessorService
       # Find the .res file with the largest file size
       largest_file = res_files.max_by { |file| File.size(file) }
       largest_size = File.size(largest_file)
-      
+
       Rails.logger.info "SCXRD: File sizes:"
       res_files.each do |file|
         size = File.size(file)
         Rails.logger.info "SCXRD: - #{File.basename(file)}: #{number_to_human_size(size)}"
       end
-      
+
       structure_file = largest_file
       Rails.logger.info "SCXRD: Using largest structure file: #{File.basename(structure_file)} (#{number_to_human_size(largest_size)})"
 

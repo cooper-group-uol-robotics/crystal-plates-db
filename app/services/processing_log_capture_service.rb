@@ -8,7 +8,7 @@ class ProcessingLogCaptureService
   def capture_logs(&block)
     @logs.clear
     log_buffer = StringIO.new
-    
+
     # Create a custom logger that captures SCXRD logs
     custom_logger = Logger.new(log_buffer)
     custom_logger.level = Rails.logger.level
@@ -23,14 +23,14 @@ class ProcessingLogCaptureService
 
     # Create a multi-logger that sends to both original and our custom logger
     original_rails_logger = Rails.logger
-    multi_logger = MultiLogger.new([original_rails_logger, custom_logger])
-    
+    multi_logger = MultiLogger.new([ original_rails_logger, custom_logger ])
+
     # Temporarily replace Rails logger
     Rails.logger = multi_logger
-    
+
     begin
       result = yield
-      [result, @logs.join("\n")]
+      [ result, @logs.join("\n") ]
     ensure
       # Restore original logger
       Rails.logger = original_rails_logger

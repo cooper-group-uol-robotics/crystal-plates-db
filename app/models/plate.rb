@@ -162,6 +162,50 @@ class Plate < ApplicationRecord
         wells.maximum(:subwell) || 1
     end
 
+    # Find a well by human-readable identifier (e.g., "A1", "H12", "B2_3" for B2 subwell 3)
+    def find_well_by_identifier(well_string)
+        parsed = self.class.parse_well_identifier(well_string)
+        return nil unless parsed
+
+        wells.find_by(
+            well_row: parsed[:row],
+            well_column: parsed[:column],
+            subwell: parsed[:subwell]
+        )
+    end
+
+    # Parse human-readable well identifiers
+    # Supports formats: A1, B12, H5_2 (H5 subwell 2), C3_10 (C3 subwell 10)
+    def self.parse_well_identifier(well_string)
+        return nil if well_string.blank?
+
+        # Remove spaces and convert to uppercase
+        clean_string = well_string.strip.upcase
+
+        # Match patterns like A1, H12, B2_3
+        match = clean_string.match(/^([A-Z])(\d+)(?:_(\d+))?$/)
+        return nil unless match
+
+        row_letter = match[1]
+        column_str = match[2]
+        subwell_str = match[3] || "1"
+
+        # Convert letter to number (A=1, B=2, etc.)
+        row_number = row_letter.ord - "A".ord + 1
+
+        # Parse column and subwell
+        column = column_str.to_i
+        subwell = subwell_str.to_i
+
+        # Basic validation
+        return nil if row_number < 1 || column < 1 || subwell < 1
+
+        {
+            row: row_number,
+            column: column,
+            subwell: subwell
+        }
+    end
 
     private
 

@@ -12,7 +12,7 @@ class G6DistanceServiceTest < ActiveSupport::TestCase
   end
 
   test "enabled? returns false when API endpoint is not configured" do
-    Setting.set("conventional_cell_api_endpoint", "")
+    Setting.set("conventional_cell_api_endpoint", "not_configured")
     refute G6DistanceService.enabled?
   end
 
@@ -56,7 +56,7 @@ class G6DistanceServiceTest < ActiveSupport::TestCase
   end
 
   test "calculate_distances returns nil when API is disabled" do
-    Setting.set("conventional_cell_api_endpoint", "")
+    Setting.set("conventional_cell_api_endpoint", "not_configured")
 
     reference_cell = {
       a: 10.0, b: 10.0, c: 10.0,
@@ -114,7 +114,7 @@ class G6DistanceServiceTest < ActiveSupport::TestCase
   end
 
   test "api_available? returns false when API is disabled" do
-    Setting.set("conventional_cell_api_endpoint", "")
+    Setting.set("conventional_cell_api_endpoint", "not_configured")
     refute G6DistanceService.api_available?
   end
 end

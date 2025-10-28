@@ -8,13 +8,13 @@ class ScxrdArchiveProcessingJob < ApplicationJob
 
     # Capture processing logs
     log_capture_service = ProcessingLogCaptureService.new
-    
+
     begin
       result, captured_logs = log_capture_service.capture_logs do
         archive_start_time = Time.current
         Rails.logger.info "SCXRD Job: Starting processing for dataset #{dataset.id}"
 
-        # Download and extract the archive (same logic as controller)
+      # Download and extract the archive (same logic as controller)
       archive_blob = dataset.archive.blob
       archive_file = dataset.archive.download
 
@@ -228,7 +228,7 @@ class ScxrdArchiveProcessingJob < ApplicationJob
 
       "processing_completed" # Return a value for the captured logs
       end
-      
+
       # Save the captured logs to the database
       dataset.processing_log = captured_logs
       dataset.save!
@@ -238,7 +238,7 @@ class ScxrdArchiveProcessingJob < ApplicationJob
         "This might indicate an incomplete or corrupted archive upload",
         "Archive content should include all expected SCXRD files"
       ].join("\n")
-      
+
       Rails.logger.error error_logs
 
       # Mark dataset as having an error and save error logs
@@ -253,9 +253,9 @@ class ScxrdArchiveProcessingJob < ApplicationJob
         "SCXRD Archive Processing Job: #{e.class} - #{e.message}",
         e.backtrace.join("\n")
       ].join("\n")
-      
+
       Rails.logger.error error_logs
-      
+
       # Save error logs to dataset
       if dataset
         dataset.update(processing_log: error_logs)

@@ -36,7 +36,7 @@ class PrimitiveCellService
           # The lepage API returns conventional cells, but we want the primitive one
           # The primitive cell is typically the first entry or the one with bravais "aP"
           primitive_cell = find_primitive_cell(response.body)
-          
+
           if primitive_cell
             Rails.logger.debug "PrimitiveCellService: Found primitive cell: #{primitive_cell}"
             primitive_cell
@@ -58,12 +58,12 @@ class PrimitiveCellService
     # Returns true if the cell is already primitive (within tolerance)
     def is_primitive?(a, b, c, alpha, beta, gamma, tolerance: 1e-6)
       return false unless enabled?
-      
+
       primitive_cell = convert_to_primitive(a, b, c, alpha, beta, gamma)
       return false unless primitive_cell
 
       # Compare the original cell with the primitive result
-      original_params = [a.to_f, b.to_f, c.to_f, alpha.to_f, beta.to_f, gamma.to_f]
+      original_params = [ a.to_f, b.to_f, c.to_f, alpha.to_f, beta.to_f, gamma.to_f ]
       primitive_params = [
         primitive_cell[:a], primitive_cell[:b], primitive_cell[:c],
         primitive_cell[:alpha], primitive_cell[:beta], primitive_cell[:gamma]
@@ -83,7 +83,7 @@ class PrimitiveCellService
 
       # First try to convert to primitive
       primitive_cell = convert_to_primitive(a, b, c, alpha, beta, gamma)
-      
+
       if primitive_cell
         primitive_cell
       else
@@ -133,7 +133,7 @@ class PrimitiveCellService
     end
 
     def valid_unit_cell?(a, b, c, alpha, beta, gamma)
-      [a, b, c, alpha, beta, gamma].all? { |param| param.present? && param.to_f > 0 }
+      [ a, b, c, alpha, beta, gamma ].all? { |param| param.present? && param.to_f > 0 }
     end
 
     def find_primitive_cell(lepage_response)
