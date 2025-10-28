@@ -27,13 +27,23 @@
           <!-- Plate Barcode Input -->
           <div class="mb-3">
             <label for="plate-barcode" class="form-label">Plate Barcode <span class="text-danger">*</span></label>
-            <input type="text" 
-                   class="form-control" 
-                   id="plate-barcode" 
-                   placeholder="Scan plate barcode..." 
-                   autofocus
-                   data-plate-builder-target="plateBarcode"
-                   data-action="keypress->plate-builder#plateBarcodeKeypress">
+            <div class="input-group">
+              <input type="text" 
+                     class="form-control" 
+                     id="plate-barcode" 
+                     placeholder="Scan plate barcode..." 
+                     autofocus
+                     data-plate-builder-target="plateBarcode"
+                     data-action="keypress->plate-builder#plateBarcodeKeypress">
+              <button type="button" 
+                      class="btn btn-outline-secondary" 
+                      data-plate-builder-target="resetBtn"
+                      data-action="click->plate-builder#resetPlateBuilder"
+                      style="display: none;"
+                      title="Start over with new plate">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </div>
             <div class="form-text">Scan or enter the plate barcode to begin</div>
           </div>
 

@@ -39,6 +39,75 @@ class SettingsController < ApplicationController
     render json: { success: false, message: "Error testing unit cell conversion API: #{e.message}" }
   end
 
+  def get_sciformation_cookie
+    cookie = Setting.sciformation_cookie
+    render json: { cookie: cookie }
+  end
+
+  def test_sciformation_cookie
+    # Use the cookie from the request if provided, otherwise use the settings cookie
+    cookie = params[:cookie].presence || Setting.sciformation_cookie
+    
+    if cookie.blank?
+      render json: { 
+        success: false, 
+        message: "Sciformation cookie not configured. Please set a valid cookie value in the settings." 
+      }
+      return
+    end
+
+    # Test a simple request to Sciformation to verify the cookie works
+    begin
+      require "net/http"
+      require "uri"
+
+      uri = URI("https://sciformation.liverpool.ac.uk/performSearch")
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      http.read_timeout = 10
+      http.open_timeout = 5
+
+      request = Net::HTTP::Post.new(uri)
+      request["Cookie"] = "SCIFORMATION=#{cookie}"
+
+      # Test with a minimal search that should return quickly
+      form_data = {
+        "table" => "CdbContainer",
+        "format" => "json",
+        "query" => "[0]",
+        "crit0" => "department",
+        "op0" => "OP_IN_NUM", 
+        "val0" => "124"
+      }
+      request.set_form_data(form_data)
+
+      response = http.request(request)
+      
+      if response.code.to_i == 200
+        render json: { 
+          success: true, 
+          message: "Sciformation cookie is valid and API is accessible (HTTP #{response.code})" 
+        }
+      else
+        render json: { 
+          success: false, 
+          message: "Sciformation API returned HTTP #{response.code}. Cookie may be invalid or expired." 
+        }
+      end
+
+    rescue Net::TimeoutError => e
+      render json: { 
+        success: false, 
+        message: "Connection timeout - Sciformation may be slow or unavailable" 
+      }
+    rescue => e
+      render json: { 
+        success: false, 
+        message: "Error testing Sciformation cookie: #{e.message}" 
+      }
+    end
+  end
+
   def test_connection
     endpoint = params[:endpoint] || Setting.segmentation_api_endpoint
     timeout = params[:timeout]&.to_i || Setting.segmentation_api_timeout
@@ -103,7 +172,8 @@ class SettingsController < ApplicationController
       :auto_segment_point_type,
       :conventional_cell_api_endpoint,
       :conventional_cell_api_timeout,
-      :conventional_cell_max_delta
+      :conventional_cell_max_delta,
+      :sciformation_cookie
     )
   end
 end

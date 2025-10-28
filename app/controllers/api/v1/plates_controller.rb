@@ -157,12 +157,35 @@ module Api::V1
         current_location: plate.current_location ? location_json(plate.current_location) : nil
       }
       if include_wells
-        result[:wells] = plate.wells.map do |well|
+        # Preload associations for better performance
+        wells_with_contents = plate.wells.includes(:well_contents => [:contentable, :unit, :mass_unit])
+        
+        result[:wells] = wells_with_contents.map do |well|
           {
-        id: well.id,
-        well_row: well.well_row,
-        well_column: well.well_column,
-        position: "#{('A'.ord + well.well_row - 1).chr}#{well.well_column}"
+            id: well.id,
+            well_row: well.well_row,
+            well_column: well.well_column,
+            position: "#{('A'.ord + well.well_row - 1).chr}#{well.well_column}",
+            subwell: well.subwell,
+            coordinates: well.has_coordinates? ? {
+              x_mm: well.x_mm,
+              y_mm: well.y_mm,
+              z_mm: well.z_mm
+            } : nil,
+            contents: well.well_contents.map do |content|
+              {
+                id: content.id,
+                type: content.contentable_type.downcase,
+                name: content.content_name,
+                description: content.content_description,
+                volume: content.volume,
+                volume_unit: content.unit ? { id: content.unit.id, symbol: content.unit.symbol, name: content.unit.name } : nil,
+                mass: content.mass,
+                mass_unit: content.mass_unit ? { id: content.mass_unit.id, symbol: content.mass_unit.symbol, name: content.mass_unit.name } : nil,
+                display_amount: content.display_amount,
+                contentable: content_details(content.contentable)
+              }
+            end
           }
         end
       else
@@ -230,6 +253,38 @@ module Api::V1
     def calculate_real_coordinate(pixel_value, reference_mm, pixel_size_mm)
       return nil if reference_mm.nil? || pixel_size_mm.nil?
       reference_mm + (pixel_value * pixel_size_mm)
+    end
+
+    def content_details(contentable)
+      return nil unless contentable
+
+      case contentable
+      when Chemical
+        {
+          id: contentable.id,
+          name: contentable.name,
+          sciformation_id: contentable.sciformation_id,
+          cas: contentable.cas,
+          smiles: contentable.smiles,
+          storage: contentable.storage,
+          barcode: contentable.barcode,
+          amount: contentable.amount
+        }
+      when StockSolution
+        {
+          id: contentable.id,
+          name: contentable.name,
+          display_name: contentable.display_name,
+          description: contentable.description,
+          components_count: contentable.total_components,
+          component_summary: contentable.component_summary
+        }
+      else
+        {
+          id: contentable.id,
+          name: contentable.respond_to?(:name) ? contentable.name : contentable.to_s
+        }
+      end
     end
   end
 end

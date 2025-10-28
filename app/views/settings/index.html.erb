@@ -156,6 +156,40 @@
               </div>
             </div>
 
+            <!-- Sciformation API Settings -->
+            <h4 class="mt-4 mb-3">
+              <i class="bi bi-database"></i> Sciformation Integration
+            </h4>
+
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <label for="sciformation_cookie" class="form-label">
+                  Sciformation Cookie
+                  <small class="text-muted">*</small>
+                </label>
+                <div class="input-group">
+                  <%= form.password_field "settings[sciformation_cookie]", 
+                      value: (@settings['sciformation_cookie']&.value == 'not_configured') ? '' : @settings['sciformation_cookie']&.value,
+                      class: "form-control",
+                      id: "sciformation_cookie",
+                      placeholder: "Enter cookie value (without SCIFORMATION= prefix)",
+                      autocomplete: "off" %>
+                  <button type="button" id="toggle-sciformation-visibility" class="btn btn-outline-secondary">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  <button type="button" id="test-sciformation-cookie" class="btn btn-outline-secondary">
+                    <i class="bi bi-wifi"></i> Test Cookie
+                  </button>
+                </div>
+                <div id="sciformation-cookie-status" class="mt-2"></div>
+                <div class="form-text">
+                  <%= @settings['sciformation_cookie']&.description %>
+                  <br><strong>Note:</strong> This cookie is used for all Sciformation API requests. 
+                  You can find this value in your browser's developer tools when logged into Sciformation.
+                </div>
+              </div>
+            </div>
+
             <!-- Action Buttons -->
             <div class="row mt-4">
               <div class="col-12">
@@ -203,6 +237,14 @@
             The unit cell conversion API converts primitive unit cells to conventional unit cells using 
             crystallographic symmetry analysis. This provides better visualization of 
             crystal structures by showing the most symmetric representation.
+          </p>
+
+          <h6>Sciformation Integration</h6>
+          <p class="small text-muted">
+            The Sciformation cookie is required to fetch chemical data from the Sciformation 
+            database. To get your cookie value, log into Sciformation in your browser, 
+            then check the developer tools (F12) → Application → Cookies → find the 
+            "SCIFORMATION" cookie value.
           </p>
 
           <h6>Testing Connection</h6>
@@ -359,8 +401,84 @@ function initializeSettingsPage() {
         if (conventionalCellEndpoint) conventionalCellEndpoint.value = 'http://localhost:3001';
         if (conventionalCellTimeout) conventionalCellTimeout.value = '5';
         if (conventionalCellMaxDelta) conventionalCellMaxDelta.value = '1.0';
+
+        const sciformationCookie = document.getElementById('sciformation_cookie');
+        if (sciformationCookie) sciformationCookie.value = '';
       }
     });
+  }
+
+  // Sciformation cookie visibility toggle
+  const toggleSciformationVisibilityButton = document.getElementById('toggle-sciformation-visibility');
+  const sciformationCookieInput = document.getElementById('sciformation_cookie');
+
+  if (toggleSciformationVisibilityButton && sciformationCookieInput) {
+    toggleSciformationVisibilityButton.addEventListener('click', function() {
+      if (sciformationCookieInput.type === 'password') {
+        sciformationCookieInput.type = 'text';
+        toggleSciformationVisibilityButton.innerHTML = '<i class="bi bi-eye-slash"></i>';
+      } else {
+        sciformationCookieInput.type = 'password';
+        toggleSciformationVisibilityButton.innerHTML = '<i class="bi bi-eye"></i>';
+      }
+    });
+  }
+
+  // Sciformation cookie test functionality
+  const testSciformationCookieButton = document.getElementById('test-sciformation-cookie');
+  const sciformationCookieStatusDiv = document.getElementById('sciformation-cookie-status');
+
+  if (testSciformationCookieButton) {
+    testSciformationCookieButton.addEventListener('click', function() {
+      const cookieValue = sciformationCookieInput.value;
+
+      if (!cookieValue || cookieValue.trim() === '') {
+        showSciformationCookieStatus('Please enter a cookie value first', 'danger');
+        return;
+      }
+
+      // Show loading state
+      testSciformationCookieButton.disabled = true;
+      testSciformationCookieButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Testing...';
+      sciformationCookieStatusDiv.innerHTML = '<div class="alert alert-info">Testing Sciformation cookie...</div>';
+
+      // Make test request
+      fetch('/settings/test_sciformation_cookie', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+          cookie: cookieValue
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showSciformationCookieStatus(data.message, 'success');
+        } else {
+          showSciformationCookieStatus(data.message, 'danger');
+        }
+      })
+      .catch(error => {
+        showSciformationCookieStatus('Test request failed: ' + error.message, 'danger');
+      })
+      .finally(() => {
+        // Restore button state
+        testSciformationCookieButton.disabled = false;
+        testSciformationCookieButton.innerHTML = '<i class="bi bi-wifi"></i> Test Cookie';
+      });
+    });
+  }
+
+  function showSciformationCookieStatus(message, type) {
+    if (sciformationCookieStatusDiv) {
+      sciformationCookieStatusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>`;
+    }
   }
 }
 

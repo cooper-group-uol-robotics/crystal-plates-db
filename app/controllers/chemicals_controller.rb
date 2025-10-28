@@ -88,28 +88,52 @@ class ChemicalsController < ApplicationController
 
   # DELETE /chemicals/1 or /chemicals/1.json
   def destroy
+    unless @chemical.can_be_deleted?
+      respond_to do |format|
+        format.html { redirect_to chemicals_path, alert: "Cannot delete chemical that is used in wells or stock solutions." }
+        format.json { render json: { error: "Cannot delete chemical that is used in wells or stock solutions." }, status: :unprocessable_entity }
+      end
+      return
+    end
+
     @chemical.destroy!
 
     respond_to do |format|
       format.html { redirect_to chemicals_path, status: :see_other, notice: "Chemical was successfully deleted." }
       format.json { head :no_content }
     end
+  rescue ActiveRecord::RecordNotDestroyed => e
+    respond_to do |format|
+      format.html { redirect_to chemicals_path, alert: "Failed to delete chemical: #{e.message}" }
+      format.json { render json: { error: "Failed to delete chemical: #{e.message}" }, status: :unprocessable_entity }
+    end
   end
 
   # POST /chemicals/import_from_sciformation
   def import_from_sciformation
     cookie = params[:sciformation_cookie]
+    barcode = params[:barcode]
+
+    Rails.logger.info "Import request received - cookie present: #{cookie.present?}, barcode: '#{barcode}'"
 
     if cookie.blank?
+      Rails.logger.warn "Import failed - no cookie provided"
       render json: { success: false, error: "Sciformation cookie is required" }, status: :bad_request
       return
     end
 
     begin
-      result = Chemical.fetch_from_sciformation(cookie: cookie)
+      Rails.logger.info "Calling Chemical.fetch_from_sciformation..."
+      # Use settings cookie by default, but allow override if cookie parameter is provided
+      result = Chemical.fetch_from_sciformation(cookie: cookie.presence, barcode: barcode)
+      Rails.logger.info "fetch_from_sciformation returned: #{result.inspect}"
+      
+      Rails.logger.info "Sending response to client..."
       render json: result
+      Rails.logger.info "Response sent successfully"
     rescue => e
       Rails.logger.error "Sciformation import error: #{e.message}"
+      Rails.logger.error "Backtrace: #{e.backtrace.join("\n")}"
       render json: { success: false, error: e.message }, status: :internal_server_error
     end
   end
@@ -133,7 +157,13 @@ class ChemicalsController < ApplicationController
       result = Chemical.fetch_from_sciformation(cookie: cookie)
       redirect_to chemicals_path, notice: "Import completed: #{result[:imported]} chemicals imported"
     else
-      redirect_to chemicals_path, alert: "Authentication failed - no cookie received"
+      # Try using the settings cookie if no cookie parameter provided
+      result = Chemical.fetch_from_sciformation
+      if result[:success]
+        redirect_to chemicals_path, notice: "Import completed: #{result[:imported]} chemicals imported"
+      else
+        redirect_to chemicals_path, alert: "Authentication failed - #{result[:error]}"
+      end
     end
   end
 

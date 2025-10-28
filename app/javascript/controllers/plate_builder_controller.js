@@ -5,7 +5,8 @@ export default class extends Controller {
     "plateBarcode", "plateGrid", "plateGridPlaceholder", "mainGrid",
     "chemicalPanel", "selectedWellLabel", "chemicalBarcode", "chemicalFeedback",
     "massInputSection", "chemicalMass", "chemicalInfo", "chemicalName", "chemicalCas",
-    "wellsFilledCount", "currentPlateBarcode", "savePlateBtn", "screenFlash", "plateStatus"
+    "wellsFilledCount", "currentPlateBarcode", "savePlateBtn", "screenFlash", "plateStatus",
+    "resetBtn"
   ]
 
   static values = {
@@ -229,6 +230,12 @@ export default class extends Controller {
       this.plateGridPlaceholderTarget.style.display = 'none'
       this.updateWellsFilledCount()
 
+      // Disable the plate barcode field and automatically select first well
+      this.plateBarcodeTarget.disabled = true
+      this.plateBarcodeTarget.classList.add('disabled')
+      this.resetBtnTarget.style.display = 'block'
+      this.autoSelectFirstWell()
+
     } catch (error) {
       console.error('Error checking for existing plate:', error)
       // Fall back to new plate behavior
@@ -247,6 +254,12 @@ export default class extends Controller {
       this.plateStatusTarget.className = 'text-success'
       this.plateStatusTarget.style.display = 'block'
       this.savePlateBtnTarget.innerHTML = '<i class="bi bi-check-lg"></i> Save Plate'
+
+      // Disable the plate barcode field and automatically select first well
+      this.plateBarcodeTarget.disabled = true
+      this.plateBarcodeTarget.classList.add('disabled')
+      this.resetBtnTarget.style.display = 'block'
+      this.autoSelectFirstWell()
 
       this.showToast('Plate barcode scanned successfully', 'success')
     }
@@ -558,6 +571,62 @@ export default class extends Controller {
     // All wells are filled - cancel selection and show completion message
     this.cancelWellSelection()
     this.showToast('All wells are filled! Ready to save plate.', 'info')
+  }
+
+  autoSelectFirstWell() {
+    // Automatically select well A1 after plate barcode is scanned
+    this.setSelectedWell('A1')
+    console.log('Automatically selected well A1 for chemical scanning')
+  }
+
+  resetPlateBuilder() {
+    // Reset the entire plate builder to start over
+    console.log('Resetting plate builder')
+
+    // Re-enable and clear the plate barcode field
+    this.plateBarcodeTarget.disabled = false
+    this.plateBarcodeTarget.classList.remove('disabled')
+    this.plateBarcodeTarget.value = ''
+    this.plateBarcodeTarget.focus()
+
+    // Hide the reset button
+    this.resetBtnTarget.style.display = 'none'
+
+    // Reset state variables
+    this.currentPlate = null
+    this.existingPlateId = null
+    this.isExistingPlate = false
+    this.selectedWell = null
+    this.wellData = {}
+
+    // Hide plate grid and show placeholder
+    this.plateGridTarget.style.display = 'none'
+    this.plateGridPlaceholderTarget.style.display = 'block'
+
+    // Disable main grid
+    this.mainGridTarget.classList.add('plate-disabled')
+
+    // Hide chemical panel
+    this.chemicalPanelTarget.style.display = 'none'
+
+    // Clear current plate barcode display
+    this.currentPlateBarcodeTarget.textContent = ''
+
+    // Hide plate status
+    this.plateStatusTarget.style.display = 'none'
+
+    // Reset all wells in the grid
+    this.element.querySelectorAll('[data-well-id]').forEach(el => {
+      el.classList.remove('filled', 'valid', 'error', 'selected')
+    })
+
+    // Reset wells filled count
+    this.updateWellsFilledCount()
+
+    // Reset save button
+    this.savePlateBtnTarget.innerHTML = '<i class="bi bi-check-lg"></i> Save Plate'
+
+    this.showToast('Plate builder reset - ready for new plate', 'info')
   }
 
   showChemicalInfo(name, cas) {

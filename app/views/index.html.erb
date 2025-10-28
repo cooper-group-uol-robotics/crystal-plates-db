@@ -250,8 +250,13 @@ async function startImport() {
 
 async function getCookieAndImport() {
   try {
-    // Get the SCIFORMATION cookie from user
-    const cookie = getSciFormationCookie();
+    // First check if cookie is configured in settings
+    let cookie = await checkSettingsCookie();
+    
+    // If no cookie in settings, prompt the user
+    if (!cookie) {
+      cookie = getSciFormationCookie();
+    }
     
     if (!cookie) {
       showError("Import cancelled - no cookie provided.");
@@ -267,8 +272,43 @@ async function getCookieAndImport() {
   }
 }
 
+async function checkSettingsCookie() {
+  try {
+    const response = await fetch('/api/v1/settings/sciformation_cookie', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': getCSRFToken()
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      // Return the cookie if it exists and is not empty
+      if (data.cookie && data.cookie.trim() !== '') {
+        return data.cookie.trim();
+      }
+    }
+  } catch (error) {
+    console.log("Could not retrieve cookie from settings, will prompt user:", error);
+  }
+  return null;
+}
+
 function getSciFormationCookie() {
-  const cookie = prompt("Paste your SCIFORMATION cookie value here:");
+  const useSettings = confirm(`Sciformation cookie is not configured in settings.
+
+Would you like to:
+- Click OK to go to Settings page and configure it permanently (recommended)
+- Click Cancel to enter it now (temporary)`);
+
+  if (useSettings) {
+    // Redirect to settings page
+    window.location.href = '/settings';
+    return null;
+  }
+
+  const cookie = prompt("Paste your SCIFORMATION cookie value here (consider configuring in Settings for permanent use):");
   return cookie ? cookie.trim() : null;
 }
 

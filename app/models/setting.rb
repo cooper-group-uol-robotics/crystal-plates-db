@@ -41,6 +41,13 @@ class Setting < ApplicationRecord
     def conventional_cell_max_delta
       get("conventional_cell_max_delta", "1.0").to_f
     end
+
+    # Sciformation API settings
+    def sciformation_cookie
+      cookie = get("sciformation_cookie", "")
+      return "" if cookie == "not_configured"
+      cookie
+    end
   end
 
   # Initialize default settings
@@ -75,6 +82,11 @@ class Setting < ApplicationRecord
         key: "conventional_cell_max_delta",
         value: "1.0",
         description: "Maximum delta parameter for unit cell conversion tolerance"
+      },
+      {
+        key: "sciformation_cookie",
+        value: "not_configured",
+        description: "Cookie value for Sciformation API authentication (without SCIFORMATION= prefix)"
       }
     ].each do |setting_data|
       setting = find_or_initialize_by(key: setting_data[:key])
