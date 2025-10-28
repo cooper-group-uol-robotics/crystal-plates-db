@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to data-controller="well-modal"
 export default class extends Controller {
-    static targets = ["modal", "title", "contentForm", "imagesContent", "pxrdContent", "scxrdContent"]
+    static targets = ["modal", "title", "contentForm", "imagesContent", "pxrdContent", "scxrdContent", "calorimetryContent"]
     static values = {
         wellId: Number,
         wellLabel: String
@@ -62,10 +62,12 @@ export default class extends Controller {
 
         if (wellId && wellId > 0) {
             this.loadContentForm()
-            // Load other tabs in background
+            // Load images in background
             this.loadImagesInBackground()
-            this.loadPxrdInBackground()
-            this.loadScxrdInBackground()
+            // Set up placeholder content for PXRD, SCXRD, and calorimetry tabs
+            this.setupPxrdPlaceholder()
+            this.setupScxrdPlaceholder()
+            this.setupCalorimetryPlaceholder()
         } else {
             console.error("Invalid well ID for loading content:", this.wellIdValue)
             if (this.hasContentFormTarget) {
@@ -202,6 +204,14 @@ export default class extends Controller {
             console.log("Images loaded successfully")
 
             this.imagesContentTarget.innerHTML = html
+
+            // Execute any script tags in the loaded content
+            this.executeScripts(this.imagesContentTarget)
+
+            // Process the new content to ensure Stimulus controllers are connected
+            if (this.application && this.application.elementObserver) {
+                this.application.elementObserver.processTree(this.imagesContentTarget)
+            }
         } catch (error) {
             console.error("Failed to load images:", error)
             this.imagesContentTarget.innerHTML = `
@@ -217,16 +227,41 @@ export default class extends Controller {
         if (!this.hasPxrdContentTarget || !this.wellIdValue) return
 
         try {
-            // This would need to be implemented in the controller
-            // For now, just show a placeholder
             this.pxrdContentTarget.innerHTML = `
-        <div class="text-center text-muted py-4">
-          <i class="fas fa-chart-line fa-2x mb-2"></i>
-          <div>PXRD data will be loaded when tab is selected</div>
+        <div class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+            <span class="visually-hidden">Loading PXRD patterns...</span>
+          </div>
+          <div class="text-muted">Loading PXRD patterns...</div>
         </div>
       `
+
+            console.log("Fetching PXRD data for well:", this.wellIdValue)
+            const response = await fetch(`/wells/${this.wellIdValue}/pxrd_patterns`)
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+            }
+
+            const html = await response.text()
+            console.log("PXRD data loaded successfully")
+
+            this.pxrdContentTarget.innerHTML = html
+
+            // Execute any script tags in the loaded content
+            this.executeScripts(this.pxrdContentTarget)
+
+            // Process the new content to ensure Stimulus controllers are connected
+            if (this.application && this.application.elementObserver) {
+                this.application.elementObserver.processTree(this.pxrdContentTarget)
+            }
         } catch (error) {
             console.error("Failed to load PXRD data:", error)
+            this.pxrdContentTarget.innerHTML = `
+        <div class="alert alert-warning">
+          Failed to load PXRD patterns: ${error.message}
+        </div>
+      `
         }
     }
 
@@ -235,17 +270,119 @@ export default class extends Controller {
         if (!this.hasScxrdContentTarget || !this.wellIdValue) return
 
         try {
-            // This would need to be implemented in the controller
-            // For now, just show a placeholder
             this.scxrdContentTarget.innerHTML = `
-        <div class="text-center text-muted py-4">
-          <i class="fas fa-atom fa-2x mb-2"></i>
-          <div>SCXRD data will be loaded when tab is selected</div>
+        <div class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+            <span class="visually-hidden">Loading SCXRD datasets...</span>
+          </div>
+          <div class="text-muted">Loading SCXRD datasets...</div>
         </div>
       `
+
+            console.log("Fetching SCXRD data for well:", this.wellIdValue)
+            const response = await fetch(`/wells/${this.wellIdValue}/scxrd_datasets`)
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+            }
+
+            const html = await response.text()
+            console.log("SCXRD data loaded successfully")
+
+            this.scxrdContentTarget.innerHTML = html
+
+            // Execute any script tags in the loaded content
+            this.executeScripts(this.scxrdContentTarget)
+
+            // Process the new content to ensure Stimulus controllers are connected
+            if (this.application && this.application.elementObserver) {
+                this.application.elementObserver.processTree(this.scxrdContentTarget)
+            }
         } catch (error) {
             console.error("Failed to load SCXRD data:", error)
+            this.scxrdContentTarget.innerHTML = `
+        <div class="alert alert-warning">
+          Failed to load SCXRD datasets: ${error.message}
+        </div>
+      `
         }
+    }
+
+    // Set up PXRD placeholder content
+    setupPxrdPlaceholder() {
+        if (!this.hasPxrdContentTarget) return
+
+        this.pxrdContentTarget.innerHTML = `
+      <div class="text-center text-muted py-4">
+        <i class="fas fa-chart-line fa-3x mb-3 text-secondary"></i>
+        <div class="h5">PXRD Patterns</div>
+        <div>Click to load powder X-ray diffraction patterns for this well</div>
+      </div>
+    `
+    }
+
+    // Set up SCXRD placeholder content
+    setupScxrdPlaceholder() {
+        if (!this.hasScxrdContentTarget) return
+
+        this.scxrdContentTarget.innerHTML = `
+      <div class="text-center text-muted py-4">
+        <i class="fas fa-atom fa-3x mb-3 text-secondary"></i>
+        <div class="h5">SCXRD Datasets</div>
+        <div>Click to load single crystal X-ray diffraction datasets for this well</div>
+      </div>
+    `
+    }
+
+    // Set up Calorimetry placeholder content
+    setupCalorimetryPlaceholder() {
+        if (!this.hasCalorimetryContentTarget) return
+
+        this.calorimetryContentTarget.innerHTML = `
+      <div class="text-center text-muted py-4">
+        <i class="fas fa-thermometer-half fa-3x mb-3 text-secondary"></i>
+        <div class="h5">Calorimetry Data</div>
+        <div>Calorimetry data functionality coming soon</div>
+      </div>
+    `
+    }
+
+    // Execute script tags in dynamically loaded content
+    executeScripts(container) {
+        const scripts = container.querySelectorAll('script')
+        scripts.forEach(script => {
+            try {
+                if (script.type === 'module' || script.type === 'text/javascript' || !script.type) {
+                    // Create a new script element to ensure proper execution
+                    const newScript = document.createElement('script')
+
+                    if (script.type) {
+                        newScript.type = script.type
+                    }
+
+                    if (script.src) {
+                        // For external scripts
+                        newScript.src = script.src
+                        newScript.async = true
+                    } else {
+                        // For inline scripts
+                        newScript.textContent = script.innerHTML
+                    }
+
+                    // Add to head to execute, then remove
+                    document.head.appendChild(newScript)
+
+                    // Clean up after execution (slight delay for modules)
+                    setTimeout(() => {
+                        if (newScript.parentNode) {
+                            newScript.parentNode.removeChild(newScript)
+                        }
+                    }, script.type === 'module' ? 1000 : 100)
+                }
+            } catch (error) {
+                console.error('Error executing script in loaded content:', error, script)
+            }
+        })
     }
 
     // Reset modal content
@@ -262,6 +399,9 @@ export default class extends Controller {
         }
         if (this.hasScxrdContentTarget) {
             this.scxrdContentTarget.innerHTML = ""
+        }
+        if (this.hasCalorimetryContentTarget) {
+            this.calorimetryContentTarget.innerHTML = ""
         }
 
         // Reset values
@@ -281,10 +421,23 @@ export default class extends Controller {
                 }
                 break
             case 'pxrd':
-                // Load PXRD data when tab is clicked
+                // Load PXRD data when tab is clicked if not already loaded
+                if (!this.pxrdContentTarget.innerHTML.trim() ||
+                    this.pxrdContentTarget.innerHTML.includes('Click to load powder') ||
+                    this.pxrdContentTarget.innerHTML.includes('spinner-border')) {
+                    this.loadPxrdInBackground()
+                }
                 break
             case 'scxrd':
-                // Load SCXRD data when tab is clicked
+                // Load SCXRD data when tab is clicked if not already loaded
+                if (!this.scxrdContentTarget.innerHTML.trim() ||
+                    this.scxrdContentTarget.innerHTML.includes('Click to load single crystal') ||
+                    this.scxrdContentTarget.innerHTML.includes('spinner-border')) {
+                    this.loadScxrdInBackground()
+                }
+                break
+            case 'calorimetry':
+                // Calorimetry data - just show placeholder for now
                 break
         }
     }
