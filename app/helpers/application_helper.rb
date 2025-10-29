@@ -55,30 +55,25 @@ module ApplicationHelper
   def g6_comparison_button(dataset, options = {})
     return "" unless dataset.has_primitive_cell?
 
-    button_class = options[:class] || "btn btn-outline-info btn-sm"
-    button_id = "g6-compare-#{dataset.id}"
+    button_class = options[:class] || "btn btn-outline-info btn-sm similarity-button"
+    button_id = "similarity-btn-#{dataset.id}"
 
-    # Get the count of similar datasets (with default tolerance)
-    similar_count = dataset.similar_datasets_count_by_g6
+    # Initial loading state - similarity counts will be loaded by the Stimulus controller
+    button_text = content_tag(:i, "", class: "bi bi-box-seam me-1") +
+                 content_tag(:span, "Loading...", class: "similarity-text")
 
-    if similar_count > 0
-      button_text = content_tag(:i, "", class: "bi bi-box-seam me-1") +
-                   "#{similar_count} similar unit cells"
-      button_class += " has-matches"
-    else
-      button_text = content_tag(:i, "", class: "bi bi-box-seam me-1") +
-                   "No similar unit cells"
-    end
+    # Determine modal target based on context (if we're in a well context, use the well-specific modal)
+    modal_target = options[:well_context] ? "#wellG6ComparisonModal" : "#g6ComparisonModal"
 
     content_tag(:button, button_text.html_safe,
                 id: button_id,
                 class: button_class,
+                type: "button",
                 data: {
                   dataset_id: dataset.id,
-                  bs_toggle: "modal",
-                  bs_target: "#g6ComparisonModal"
-                },
-                onclick: "loadG6Comparison(#{dataset.id})")
+                  g6_comparison_target: "similarityButton",
+                  action: "click->g6-comparison#loadG6Comparison"
+                })
   end
 
   # Helper method to determine CSS class for log lines based on content

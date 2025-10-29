@@ -2,6 +2,7 @@
 
 <%# SCXRD Gallery for well modal %>
 
+<div data-controller="g6-comparison">
   <% if @scxrd_datasets.any? %>
     <!-- Dataset Header (similar to index page) -->
     <% dataset = @scxrd_datasets.first %>
@@ -39,7 +40,7 @@
           <div class="text-end">
             <div class="d-flex align-items-center gap-2">
               <% if dataset.has_primitive_cell? %>
-                <%= g6_comparison_button(dataset) %>
+                <%= g6_comparison_button(dataset, well_context: true) %>
               <% end %>
               <div class="btn-group btn-group-sm">
                 <%= link_to well_scxrd_dataset_path(@well, dataset), 
@@ -103,12 +104,68 @@
       </div>
     <% end %>
 
-    <!-- G6 comparison modal is now handled at the page level to avoid nested modal issues -->
+    <!-- G6 Unit Cell Comparison Modal for Well Modal -->
+    <div class="modal fade" id="wellG6ComparisonModal" tabindex="-1" aria-labelledby="wellG6ComparisonModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="wellG6ComparisonModalLabel">
+              <i class="bi bi-box-seam me-2"></i>Unit Cell Analysis
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <!-- G6 Tolerance Control -->
+            <div class="mb-3">
+              <div class="row align-items-center">
+                <div class="col-auto">
+                  <label for="g6Tolerance" class="form-label me-2">G6 Tolerance:</label>
+                  <input type="number" id="g6Tolerance" class="form-control d-inline-block" 
+                         style="width: 80px;" value="10.0" step="0.1" min="0.1"
+                         data-g6-comparison-target="toleranceInput">
+                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" 
+                          data-action="click->g6-comparison#updateG6Comparison">Update</button>
+                </div>
+              </div>
+            </div>
 
-<% else %>
-  <div class="alert alert-info text-center">
-    <h6>No SCXRD Datasets</h6>
-    <p>No single crystal X-ray diffraction datasets have been uploaded for this well yet.</p>
-    <a href="<%= new_well_scxrd_dataset_path(@well) %>" class="btn btn-primary">Add First SCXRD Dataset</a>
-  </div>
-<% end %>
+            <!-- Local Database Comparison -->
+            <div data-g6-comparison-target="g6Content">
+              <div class="text-center py-4">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Searching for similar unit cells...</p>
+              </div>
+            </div>
+
+            <!-- CSD Search Results -->
+            <div class="mt-4">
+              <h6 class="border-bottom pb-2">
+                <i class="bi bi-globe me-2"></i>Cambridge Structural Database Results
+              </h6>
+              <div data-g6-comparison-target="csdContent">
+                <div class="text-center py-3">
+                  <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <p class="mt-2 mb-0">Searching CSD...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <% else %>
+    <div class="alert alert-info text-center">
+      <h6>No SCXRD Datasets</h6>
+      <p>No single crystal X-ray diffraction datasets have been uploaded for this well yet.</p>
+      <a href="<%= new_well_scxrd_dataset_path(@well) %>" class="btn btn-primary">Add First SCXRD Dataset</a>
+    </div>
+  <% end %>
+</div>

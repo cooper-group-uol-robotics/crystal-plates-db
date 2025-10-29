@@ -28,6 +28,12 @@ export default class extends Controller {
 
     // Called when modal is shown
     onModalShown(event) {
+        // Only handle events from the actual well modal, not nested modals
+        if (event.target !== this.modalTarget) {
+            console.log("Ignoring modal shown event from nested modal:", event.target.id)
+            return
+        }
+
         console.log("Well modal shown event:", event)
 
         // Get the button that triggered the modal
@@ -82,6 +88,12 @@ export default class extends Controller {
 
     // Called when modal is hidden
     onModalHidden(event) {
+        // Only handle events from the actual well modal, not nested modals
+        if (event.target !== this.modalTarget) {
+            console.log("Ignoring modal hidden event from nested modal:", event.target.id)
+            return
+        }
+
         console.log("Well modal hidden")
         this.resetModal()
     }
@@ -209,9 +221,7 @@ export default class extends Controller {
             this.executeScripts(this.imagesContentTarget)
 
             // Process the new content to ensure Stimulus controllers are connected
-            if (this.application && this.application.elementObserver) {
-                this.application.elementObserver.processTree(this.imagesContentTarget)
-            }
+            this.processNewContent(this.imagesContentTarget)
         } catch (error) {
             console.error("Failed to load images:", error)
             this.imagesContentTarget.innerHTML = `
@@ -252,9 +262,7 @@ export default class extends Controller {
             this.executeScripts(this.pxrdContentTarget)
 
             // Process the new content to ensure Stimulus controllers are connected
-            if (this.application && this.application.elementObserver) {
-                this.application.elementObserver.processTree(this.pxrdContentTarget)
-            }
+            this.processNewContent(this.pxrdContentTarget)
         } catch (error) {
             console.error("Failed to load PXRD data:", error)
             this.pxrdContentTarget.innerHTML = `
@@ -295,9 +303,7 @@ export default class extends Controller {
             this.executeScripts(this.scxrdContentTarget)
 
             // Process the new content to ensure Stimulus controllers are connected
-            if (this.application && this.application.elementObserver) {
-                this.application.elementObserver.processTree(this.scxrdContentTarget)
-            }
+            this.processNewContent(this.scxrdContentTarget)
         } catch (error) {
             console.error("Failed to load SCXRD data:", error)
             this.scxrdContentTarget.innerHTML = `
@@ -439,6 +445,35 @@ export default class extends Controller {
             case 'calorimetry':
                 // Calorimetry data - just show placeholder for now
                 break
+        }
+    }
+
+    // Process new content to ensure Stimulus controllers are connected
+    processNewContent(container) {
+        // Multiple approaches to ensure Stimulus detects new controllers
+        if (window.Stimulus) {
+            try {
+                // Method 1: Use application.elementObserver if available (Stimulus 3.x)
+                if (window.Stimulus.elementObserver && window.Stimulus.elementObserver.processTree) {
+                    window.Stimulus.elementObserver.processTree(container)
+                }
+                // Method 2: Use application.start() which should scan for new elements
+                else if (window.Stimulus.start) {
+                    // This will re-scan the entire document, less efficient but more reliable
+                    window.Stimulus.start()
+                }
+                // Method 3: Try to manually trigger controller detection
+                else if (window.Stimulus.application) {
+                    // Dispatch a custom event to trigger Stimulus to re-scan
+                    container.dispatchEvent(new CustomEvent('stimulus:load', { bubbles: true }))
+                }
+
+                console.log("Processed new content for Stimulus controllers")
+            } catch (error) {
+                console.warn("Error processing new content for Stimulus:", error)
+            }
+        } else {
+            console.warn("Stimulus not available for processing new content")
         }
     }
 }

@@ -35,14 +35,29 @@ class ScxrdFolderProcessorService
     # Extract all diffraction images first
     extract_all_diffraction_images
 
-    # Find peak table file (*peakhunt.tabbin) - exclude files starting with 'pre_'
-    peak_table_pattern = File.join(@folder_path, "**", "*peakhunt.tabbin")
+    # Find peak table file (*.tabbin) - exclude files starting with 'pre_'
+    peak_table_pattern = File.join(@folder_path, "**", "*.tabbin")
     all_peak_table_files = Dir.glob(peak_table_pattern, File::FNM_CASEFOLD)
     peak_table_files = all_peak_table_files.reject { |file| File.basename(file).start_with?("pre_") }
 
     if peak_table_files.any?
-      peak_table_file = peak_table_files.first
-      Rails.logger.info "SCXRD: Found peak table file: #{peak_table_file}"
+      # Prefer *_peakhunt.tabbin files first
+      peakhunt_files = peak_table_files.select { |file| File.basename(file).end_with?("_peakhunt.tabbin") }
+      
+      # Fall back to *_proffitpeak.tabbin files
+      proffitpeak_files = peak_table_files.select { |file| File.basename(file).end_with?("_proffitpeak.tabbin") }
+      
+      # Choose the preferred file
+      if peakhunt_files.any?
+        peak_table_file = peakhunt_files.first
+        Rails.logger.info "SCXRD: Found preferred peakhunt peak table file: #{peak_table_file}"
+      elsif proffitpeak_files.any?
+        peak_table_file = proffitpeak_files.first
+        Rails.logger.info "SCXRD: Found fallback proffitpeak peak table file: #{peak_table_file}"
+      else
+        peak_table_file = peak_table_files.first
+        Rails.logger.info "SCXRD: Found generic peak table file: #{peak_table_file}"
+      end
 
       if File.exist?(peak_table_file)
         @peak_table_data = File.binread(peak_table_file)
@@ -480,13 +495,23 @@ class ScxrdFolderProcessorService
     Rails.logger.info "SCXRD: Using cmdscript.mac file: #{cmdscript_file}"
 
     begin
-      # Read the first line of the file
-      first_line = File.open(cmdscript_file, "r") { |f| f.readline.strip }
-      Rails.logger.info "SCXRD: First line: '#{first_line}'"
+      # Read all lines of the file to search for the coordinate pattern
+      content = File.read(cmdscript_file, encoding: "UTF-8")
+      Rails.logger.info "SCXRD: Read cmdscript.mac file (#{content.lines.count} lines)"
 
-      # Parse the coordinates from the line format:
+      # Search through all lines for the coordinate pattern:
       # xx xtalcheck move x 48.25 y 1.33 z 0.08
-      if first_line =~ /x\s+([\d.-]+)\s+y\s+([\d.-]+)\s+z\s+([\d.-]+)/
+      coordinate_line = nil
+      content.each_line.with_index do |line, index|
+        clean_line = line.strip
+        if clean_line =~ /xx\s+xtalcheck\s+move\s+x\s+([\d.-]+)\s+y\s+([\d.-]+)\s+z\s+([\d.-]+)/
+          coordinate_line = clean_line
+          Rails.logger.info "SCXRD: Found coordinate line at line #{index + 1}: '#{coordinate_line}'"
+          break
+        end
+      end
+
+      if coordinate_line && coordinate_line =~ /x\s+([\d.-]+)\s+y\s+([\d.-]+)\s+z\s+([\d.-]+)/
         x_coord = $1.to_f
         y_coord = $2.to_f
         z_coord = $3.to_f
@@ -500,7 +525,7 @@ class ScxrdFolderProcessorService
         Rails.logger.info "SCXRD: Parsed coordinates: x=#{x_coord}, y=#{y_coord}, z=#{z_coord}"
         coordinates
       else
-        Rails.logger.warn "SCXRD: Could not parse coordinates from line: '#{first_line}'"
+        Rails.logger.warn "SCXRD: Could not find coordinate pattern 'xx xtalcheck move x ... y ... z ...' in file"
         nil
       end
 
