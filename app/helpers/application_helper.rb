@@ -40,7 +40,7 @@ module ApplicationHelper
       "α=#{number_with_precision(display_cell[:alpha], precision: angle_precision)}°",
       "β=#{number_with_precision(display_cell[:beta], precision: angle_precision)}°",
       "γ=#{number_with_precision(display_cell[:gamma], precision: angle_precision)}°"
-    ].join(" ")
+    ].join("&nbsp;")
 
     if show_bravais && display_cell[:bravais].present?
       bravais_badge = content_tag(:span, display_cell[:bravais],

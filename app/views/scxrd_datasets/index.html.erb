@@ -160,8 +160,7 @@
                   <% end %>
                   <strong>Measured:</strong> <%= (dataset.measured_at || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
                   <% if dataset.has_primitive_cell? %>
-                    | <strong>Unit Cell:</strong> 
-                    <%= format_unit_cell(dataset) %>
+                    | <strong>Unit Cell:</strong> <%= format_unit_cell(dataset) %>
                   <% end %>
                 </div>
               </div>
