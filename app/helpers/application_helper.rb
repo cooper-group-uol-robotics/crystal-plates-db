@@ -93,10 +93,10 @@ module ApplicationHelper
   end
 
   # Helper for styling processing log lines based on log level
-  def log_line_class(line)
-    case line.downcase
-    when /\berror\b/
-      "error"
+  def log_level_badge_class(level)
+    case level.to_s.downcase
+    when /\berror\b/, /\bfatal\b/
+      "danger"
     when /\bwarn\b/
       "warn"
     when /\binfo\b/
@@ -105,6 +105,20 @@ module ApplicationHelper
       "debug"
     else
       "default"
+    end
+  end
+
+  def time_duration_in_words(seconds)
+    return "0s" if seconds <= 0
+    
+    if seconds < 60
+      "#{seconds.round}s"
+    elsif seconds < 3600
+      minutes = (seconds / 60).round
+      "#{minutes}m"
+    else
+      hours = (seconds / 3600).round(1)
+      "#{hours}h"
     end
   end
 end

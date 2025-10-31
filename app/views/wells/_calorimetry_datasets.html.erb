@@ -1,0 +1,429 @@
+<div class="calorimetry-datasets-content" data-well-id="<%= well.id %>">
+  <% if @calorimetry_datasets.any? %>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="mb-0">Calorimetry Datasets (<%= @calorimetry_datasets.count %>)</h6>
+      <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#newCalorimetryDataset<%= well.id %>" aria-expanded="false">
+        <i class="fas fa-plus"></i> Add Dataset
+      </button>
+    </div>
+
+    <!-- New Dataset Form -->
+    <div class="collapse mb-3" id="newCalorimetryDataset<%= well.id %>">
+      <div class="card card-body">
+        <form id="calorimetryDatasetForm<%= well.id %>" data-well-id="<%= well.id %>">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Dataset Name</label>
+                <input type="text" class="form-control" name="name" required placeholder="e.g., Processing Run 1">
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Source Video</label>
+                <select class="form-select" name="calorimetry_video_id" required>
+                  <option value="">Select a video...</option>
+                  <% @available_videos.each do |video| %>
+                    <option value="<%= video.id %>" data-plate="<%= video.plate.barcode %>">
+                      <%= video.name %> (<%= video.plate.barcode %>)
+                    </option>
+                  <% end %>
+                </select>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Well Position in Video</label>
+                <div class="row">
+                  <div class="col-6">
+                    <input type="number" class="form-control" name="pixel_x" placeholder="X coordinate" required>
+                  </div>
+                  <div class="col-6">
+                    <input type="number" class="form-control" name="pixel_y" placeholder="Y coordinate" required>
+                  </div>
+                </div>
+                <div class="form-text">Pixel coordinates of well center in video</div>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Mask Diameter (pixels)</label>
+                <input type="number" class="form-control" name="mask_diameter_pixels" placeholder="e.g., 50" required>
+                <div class="form-text">Diameter of circular mask for temperature extraction</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Temperature Data File</label>
+            <input type="file" class="form-control" name="data_file" accept=".csv,.json" required>
+            <div class="form-text">
+              Upload CSV or JSON file with time vs temperature data. 
+              <a href="#" data-bs-toggle="modal" data-bs-target="#dataFormatHelp<%= well.id %>">View format examples</a>
+            </div>
+          </div>
+          
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#newCalorimetryDataset<%= well.id %>">Cancel</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-cog"></i> Create Dataset
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Existing Datasets -->
+    <div class="row">
+      <% @calorimetry_datasets.each do |dataset| %>
+        <div class="col-md-6 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="card-title mb-1"><%= dataset.name %></h6>
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-ellipsis-v"></i>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="viewDatasetChart(<%= dataset.id %>)">
+                      <i class="fas fa-chart-line"></i> View Chart
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="downloadDatasetData(<%= dataset.id %>)">
+                      <i class="fas fa-download"></i> Download Data
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteDataset(<%= dataset.id %>)">
+                      <i class="fas fa-trash"></i> Delete
+                    </a></li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div class="row text-center mb-2">
+                <div class="col-4">
+                  <div class="small text-muted">Data Points</div>
+                  <div class="h6 mb-0">
+                    <span class="badge bg-<%= dataset.datapoint_count > 0 ? 'success' : 'secondary' %>">
+                      <%= number_with_delimiter(dataset.datapoint_count) %>
+                    </span>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="small text-muted">Duration</div>
+                  <div class="h6 mb-0">
+                    <% if dataset.duration_seconds > 0 %>
+                      <%= time_duration_in_words(dataset.duration_seconds) %>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="small text-muted">Temperature Range</div>
+                  <div class="h6 mb-0">
+                    <% temp_range = dataset.temperature_range %>
+                    <% if temp_range[0] && temp_range[1] %>
+                      <%= sprintf("%.1f°C", temp_range[0]) %> - <%= sprintf("%.1f°C", temp_range[1]) %>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              
+              <hr class="my-2">
+              
+              <div class="small">
+                <div class="row">
+                  <div class="col-6">
+                    <strong>Source:</strong><br>
+                    <span class="text-muted"><%= dataset.calorimetry_video.name %></span>
+                  </div>
+                  <div class="col-6">
+                    <strong>Processing:</strong><br>
+                    <span class="text-muted">
+                      (<%= dataset.pixel_x %>, <%= dataset.pixel_y %>) • ⌀<%= dataset.mask_diameter_pixels %>px
+                    </span>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <strong>Processed:</strong> 
+                  <span class="text-muted"><%= time_ago_in_words(dataset.processed_at) %> ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <!-- No datasets state -->
+    <div class="text-center py-4">
+      <div class="mb-3">
+        <i class="fas fa-thermometer-half fa-3x text-muted"></i>
+      </div>
+      <h6 class="text-muted">No Calorimetry Datasets</h6>
+      <p class="text-muted small">Process calorimetry videos to extract temperature time series for this well.</p>
+      
+      <% if @available_videos.any? %>
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#newCalorimetryDataset<%= well.id %>" aria-expanded="false">
+          <i class="fas fa-plus"></i> Create First Dataset
+        </button>
+        
+        <!-- New Dataset Form (same as above) -->
+        <div class="collapse mt-3" id="newCalorimetryDataset<%= well.id %>">
+          <div class="card card-body text-start">
+            <form id="calorimetryDatasetForm<%= well.id %>" data-well-id="<%= well.id %>">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label">Dataset Name</label>
+                    <input type="text" class="form-control" name="name" required placeholder="e.g., Processing Run 1">
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">Source Video</label>
+                    <select class="form-select" name="calorimetry_video_id" required>
+                      <option value="">Select a video...</option>
+                      <% @available_videos.each do |video| %>
+                        <option value="<%= video.id %>" data-plate="<%= video.plate.barcode %>">
+                          <%= video.name %> (<%= video.plate.barcode %>)
+                        </option>
+                      <% end %>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label">Well Position in Video</label>
+                    <div class="row">
+                      <div class="col-6">
+                        <input type="number" class="form-control" name="pixel_x" placeholder="X coordinate" required>
+                      </div>
+                      <div class="col-6">
+                        <input type="number" class="form-control" name="pixel_y" placeholder="Y coordinate" required>
+                      </div>
+                    </div>
+                    <div class="form-text">Pixel coordinates of well center in video</div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">Mask Diameter (pixels)</label>
+                    <input type="number" class="form-control" name="mask_diameter_pixels" placeholder="e.g., 50" required>
+                    <div class="form-text">Diameter of circular mask for temperature extraction</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#newCalorimetryDataset<%= well.id %>">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-cog"></i> Create Dataset
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      <% else %>
+        <div class="alert alert-info">
+          <div class="small">
+            <strong>No calorimetry videos available</strong><br>
+            <%= link_to "Upload a calorimetry video", calorimetry_videos_path, class: "alert-link" %> first, then return to process this well.
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<!-- JavaScript for calorimetry dataset management -->
+<script>
+// Handle dataset form submission
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('calorimetryDatasetForm<%= well.id %>');
+  if (form) {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      const wellId = form.dataset.wellId;
+      
+      // Add well_id to form data
+      formData.append('well_id', wellId);
+      
+      try {
+        const response = await fetch(`/api/v1/wells/${wellId}/calorimetry_datasets`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({
+            calorimetry_dataset: {
+              name: formData.get('name'),
+              calorimetry_video_id: formData.get('calorimetry_video_id'),
+              pixel_x: formData.get('pixel_x'),
+              pixel_y: formData.get('pixel_y'),
+              mask_diameter_pixels: formData.get('mask_diameter_pixels'),
+              processed_at: new Date().toISOString()
+            }
+          })
+        });
+        
+        if (response.ok) {
+          // Reload the calorimetry content
+          const wellModalController = document.querySelector('[data-controller="well-modal"]');
+          if (wellModalController && wellModalController.stimulusController) {
+            await wellModalController.stimulusController.loadCalorimetryInBackground();
+          }
+          
+          // Show success message
+          showNotification('Dataset created successfully!', 'success');
+        } else {
+          const errorData = await response.json();
+          showNotification(`Error: ${errorData.error || 'Failed to create dataset'}`, 'error');
+        }
+      } catch (error) {
+        console.error('Error creating dataset:', error);
+        showNotification('Error creating dataset', 'error');
+      }
+    });
+  }
+});
+
+// Utility functions for dataset actions
+function viewDatasetChart(datasetId) {
+  // Open modal with temperature chart
+  console.log('View chart for dataset:', datasetId);
+  // TODO: Implement chart viewing
+}
+
+function downloadDatasetData(datasetId) {
+  // Download CSV or JSON data
+  window.location.href = `/api/v1/calorimetry_datasets/${datasetId}/datapoints`;
+}
+
+function deleteDataset(datasetId) {
+  if (confirm('Are you sure you want to delete this dataset? This action cannot be undone.')) {
+    fetch(`/api/v1/calorimetry_datasets/${datasetId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      }
+    }).then(response => {
+      if (response.ok) {
+        // Reload the calorimetry content
+        const wellModalController = document.querySelector('[data-controller="well-modal"]');
+        if (wellModalController && wellModalController.stimulusController) {
+          wellModalController.stimulusController.loadCalorimetryInBackground();
+        }
+        showNotification('Dataset deleted successfully!', 'success');
+      } else {
+        showNotification('Error deleting dataset', 'error');
+      }
+    });
+  }
+}
+
+// Simple notification function
+function showNotification(message, type) {
+  const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+  const notification = document.createElement('div');
+  notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.innerHTML = `
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+// Helper function for duration formatting
+function timeDurationInWords(seconds) {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  return `${Math.round(seconds / 3600)}h`;
+}
+</script>
+
+<!-- Data Format Help Modal -->
+<div class="modal fade" id="dataFormatHelp<%= well.id %>" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Temperature Data File Formats</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <h6>CSV Format Examples</h6>
+        <p>Your CSV file should have columns for time and temperature. We support various column names:</p>
+        
+        <div class="row">
+          <div class="col-md-6">
+            <strong>With headers:</strong>
+            <pre class="bg-light p-2 rounded"><code>time,temperature
+0.0,25.3
+0.033,25.4
+0.066,25.6
+0.1,25.8</code></pre>
+          </div>
+          <div class="col-md-6">
+            <strong>Alternative headers:</strong>
+            <pre class="bg-light p-2 rounded"><code>timestamp_seconds,temp
+0.0,25.3
+0.033,25.4
+0.066,25.6
+0.1,25.8</code></pre>
+          </div>
+        </div>
+        
+        <div class="mb-3">
+          <strong>Without headers (first column = time, second = temperature):</strong>
+          <pre class="bg-light p-2 rounded"><code>0.0,25.3
+0.033,25.4
+0.066,25.6
+0.1,25.8</code></pre>
+        </div>
+        
+        <h6>JSON Format Examples</h6>
+        
+        <div class="row">
+          <div class="col-md-6">
+            <strong>Array of objects:</strong>
+            <pre class="bg-light p-2 rounded"><code>[
+  {"time": 0.0, "temperature": 25.3},
+  {"time": 0.033, "temperature": 25.4},
+  {"time": 0.066, "temperature": 25.6}
+]</code></pre>
+          </div>
+          <div class="col-md-6">
+            <strong>Separate arrays:</strong>
+            <pre class="bg-light p-2 rounded"><code>{
+  "times": [0.0, 0.033, 0.066, 0.1],
+  "temperatures": [25.3, 25.4, 25.6, 25.8]
+}</code></pre>
+          </div>
+        </div>
+        
+        <div class="alert alert-info">
+          <strong>Supported column names:</strong>
+          <ul class="mb-0">
+            <li><strong>Time:</strong> time, timestamp, timestamp_seconds</li>
+            <li><strong>Temperature:</strong> temperature, temp</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

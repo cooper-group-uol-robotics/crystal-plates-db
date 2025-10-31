@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  well: one
+  calorimetry_video: one
+  name: MyString
+  pixel_x: 1
+  pixel_y: 1
+  mask_diameter_pixels: 1
+  processed_at: 2025-10-31 10:33:09
+
+two:
+  well: two
+  calorimetry_video: two
+  name: MyString
+  pixel_x: 1
+  pixel_y: 1
+  mask_diameter_pixels: 1
+  processed_at: 2025-10-31 10:33:09

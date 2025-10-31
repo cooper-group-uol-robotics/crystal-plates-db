@@ -1,0 +1,156 @@
+<% content_for :title, "Edit Calorimetry Video" %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Edit Calorimetry Video</h2>
+        <div>
+          <%= link_to "View", @calorimetry_video, class: "btn btn-secondary me-2" %>
+          <%= link_to "Back to Videos", calorimetry_videos_path, class: "btn btn-secondary" %>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-body">
+              <%= form_with model: @calorimetry_video, local: true, multipart: true, class: "needs-validation", novalidate: true do |form| %>
+                <% if @calorimetry_video.errors.any? %>
+                  <div class="alert alert-danger" role="alert">
+                    <h4>Please fix the following errors:</h4>
+                    <ul class="mb-0">
+                      <% @calorimetry_video.errors.full_messages.each do |message| %>
+                        <li><%= message %></li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% end %>
+
+                <div class="mb-3">
+                  <%= form.label :name, class: "form-label" %>
+                  <%= form.text_field :name, class: "form-control #{'is-invalid' if @calorimetry_video.errors[:name].any?}", required: true %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:name].first if @calorimetry_video.errors[:name].any? %>
+                  </div>
+                  <div class="form-text">A descriptive name for this calorimetry video</div>
+                </div>
+
+                <div class="mb-3">
+                  <%= form.label :plate_id, "Plate", class: "form-label" %>
+                  <%= form.select :plate_id, 
+                        options_from_collection_for_select(@plates, :id, :display_name, @calorimetry_video.plate_id),
+                        { prompt: "Select a plate..." },
+                        { class: "form-select #{'is-invalid' if @calorimetry_video.errors[:plate].any?}", required: true } %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:plate].first if @calorimetry_video.errors[:plate].any? %>
+                  </div>
+                  <div class="form-text">The plate that this video shows</div>
+                </div>
+
+                <div class="mb-3">
+                  <%= form.label :recorded_at, "Recorded At", class: "form-label" %>
+                  <%= form.datetime_local_field :recorded_at, 
+                        class: "form-control #{'is-invalid' if @calorimetry_video.errors[:recorded_at].any?}", 
+                        required: true,
+                        value: @calorimetry_video.recorded_at&.strftime("%Y-%m-%dT%H:%M") %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:recorded_at].first if @calorimetry_video.errors[:recorded_at].any? %>
+                  </div>
+                  <div class="form-text">When this video was recorded</div>
+                </div>
+
+                <div class="mb-3">
+                  <%= form.label :description, class: "form-label" %>
+                  <%= form.text_area :description, 
+                        class: "form-control #{'is-invalid' if @calorimetry_video.errors[:description].any?}", 
+                        rows: 3 %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:description].first if @calorimetry_video.errors[:description].any? %>
+                  </div>
+                  <div class="form-text">Optional description or notes about this video</div>
+                </div>
+
+                <div class="mb-4">
+                  <%= form.label :video_file, "Video File", class: "form-label" %>
+                  <% if @calorimetry_video.video_file.attached? %>
+                    <div class="mb-2">
+                      <span class="badge bg-success me-2">Current: <%= @calorimetry_video.video_file.filename %></span>
+                      <small class="text-muted">(<%= number_to_human_size(@calorimetry_video.video_file.byte_size) %>)</small>
+                    </div>
+                  <% end %>
+                  <%= form.file_field :video_file, 
+                        class: "form-control #{'is-invalid' if @calorimetry_video.errors[:video_file].any?}", 
+                        accept: "video/*" %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:video_file].first if @calorimetry_video.errors[:video_file].any? %>
+                  </div>
+                  <div class="form-text">
+                    Leave empty to keep current file. Upload a new file to replace it.
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                  <%= link_to "Cancel", @calorimetry_video, class: "btn btn-secondary" %>
+                  <%= form.submit "Update Video", class: "btn btn-primary" %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-header">
+              <h5 class="mb-0">Current Video Info</h5>
+            </div>
+            <div class="card-body">
+              <dl class="row">
+                <dt class="col-sm-4">Created:</dt>
+                <dd class="col-sm-8"><%= time_ago_in_words(@calorimetry_video.created_at) %> ago</dd>
+                
+                <dt class="col-sm-4">Updated:</dt>
+                <dd class="col-sm-8"><%= time_ago_in_words(@calorimetry_video.updated_at) %> ago</dd>
+                
+                <dt class="col-sm-4">Datasets:</dt>
+                <dd class="col-sm-8">
+                  <span class="badge bg-info">
+                    <%= @calorimetry_video.calorimetry_datasets.count %> dataset<%= 's' unless @calorimetry_video.calorimetry_datasets.count == 1 %>
+                  </span>
+                </dd>
+              </dl>
+              
+              <% if @calorimetry_video.calorimetry_datasets.any? %>
+                <div class="alert alert-warning">
+                  <small>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    This video has processed datasets. Changing the video file may affect existing data.
+                  </small>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Bootstrap form validation
+(function() {
+  'use strict';
+  window.addEventListener('load', function() {
+    var forms = document.getElementsByClassName('needs-validation');
+    var validation = Array.prototype.filter.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
+        if (form.checkValidity() === false) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  }, false);
+})();
+</script>

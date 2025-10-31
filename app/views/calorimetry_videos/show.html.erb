@@ -1,0 +1,162 @@
+<% content_for :title, @calorimetry_video.name %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><%= @calorimetry_video.name %></h2>
+        <div class="btn-group" role="group">
+          <%= link_to "Edit", edit_calorimetry_video_path(@calorimetry_video), class: "btn btn-secondary" %>
+          <%= link_to "Back to Videos", calorimetry_videos_path, class: "btn btn-secondary" %>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card mb-4">
+            <div class="card-header">
+              <h5 class="mb-0">Video Information</h5>
+            </div>
+            <div class="card-body">
+              <dl class="row">
+                <dt class="col-sm-3">Name:</dt>
+                <dd class="col-sm-9"><%= @calorimetry_video.name %></dd>
+                
+                <dt class="col-sm-3">Plate:</dt>
+                <dd class="col-sm-9">
+                  <%= link_to @calorimetry_video.plate.barcode, plate_path(@calorimetry_video.plate), class: "text-decoration-none" %>
+                  <% if @calorimetry_video.plate.name.present? %>
+                    <br><small class="text-muted"><%= @calorimetry_video.plate.name %></small>
+                  <% end %>
+                </dd>
+                
+                <dt class="col-sm-3">Recorded:</dt>
+                <dd class="col-sm-9">
+                  <%= @calorimetry_video.recorded_at.strftime("%B %d, %Y at %l:%M %p") %>
+                  <br><small class="text-muted"><%= time_ago_in_words(@calorimetry_video.recorded_at) %> ago</small>
+                </dd>
+                
+                <% if @calorimetry_video.description.present? %>
+                  <dt class="col-sm-3">Description:</dt>
+                  <dd class="col-sm-9"><%= simple_format(@calorimetry_video.description) %></dd>
+                <% end %>
+                
+                <dt class="col-sm-3">Video File:</dt>
+                <dd class="col-sm-9">
+                  <% if @calorimetry_video.video_file.attached? %>
+                    <span class="badge bg-success me-2">
+                      <i class="fas fa-video"></i>
+                      <%= @calorimetry_video.video_file.filename %>
+                    </span>
+                    <br><small class="text-muted">
+                      <%= number_to_human_size(@calorimetry_video.video_file.byte_size) %> • 
+                      <%= @calorimetry_video.video_file.content_type %>
+                    </small>
+                  <% else %>
+                    <span class="badge bg-warning">No file attached</span>
+                  <% end %>
+                </dd>
+                
+                <dt class="col-sm-3">Datasets:</dt>
+                <dd class="col-sm-9">
+                  <span class="badge bg-info">
+                    <%= @datasets.count %> dataset<%= 's' unless @datasets.count == 1 %>
+                  </span>
+                </dd>
+              </dl>
+            </div>
+          </div>
+          
+          <% if @calorimetry_video.video_file.attached? %>
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Video Preview</h5>
+              </div>
+              <div class="card-body">
+                <video controls class="w-100" style="max-height: 400px;">
+                  <source src="<%= url_for(@calorimetry_video.video_file) %>" type="<%= @calorimetry_video.video_file.content_type %>">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Processed Datasets</h5>
+              <small class="text-muted"><%= @datasets.count %> total</small>
+            </div>
+            <div class="card-body">
+              <% if @datasets.any? %>
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Dataset</th>
+                        <th>Well</th>
+                        <th>Processing</th>
+                        <th>Data Points</th>
+                        <th>Processed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% @datasets.each do |dataset| %>
+                        <tr>
+                          <td>
+                            <strong><%= dataset.name %></strong>
+                          </td>
+                          <td>
+                            <%= link_to dataset.well.position, well_path(dataset.well), class: "text-decoration-none" %>
+                          </td>
+                          <td>
+                            <small class="text-muted">
+                              (<%= dataset.pixel_x %>, <%= dataset.pixel_y %>)<br>
+                              ⌀ <%= dataset.mask_diameter_pixels %>px
+                            </small>
+                          </td>
+                          <td>
+                            <span class="badge bg-<%= dataset.datapoint_count > 0 ? 'success' : 'secondary' %>">
+                              <%= number_with_delimiter(dataset.datapoint_count) %>
+                            </span>
+                          </td>
+                          <td>
+                            <small class="text-muted">
+                              <%= time_ago_in_words(dataset.processed_at) %> ago
+                            </small>
+                          </td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </div>
+              <% else %>
+                <div class="text-center py-4">
+                  <div class="mb-3">
+                    <i class="fas fa-chart-line fa-2x text-muted"></i>
+                  </div>
+                  <h6 class="text-muted">No Processed Datasets</h6>
+                  <p class="text-muted small">
+                    Process individual wells from this video to extract temperature time series data.
+                  </p>
+                  <div class="alert alert-info">
+                    <small>
+                      <strong>Next Steps:</strong>
+                      <ol class="text-start mb-0">
+                        <li>Go to a well's calorimetry tab</li>
+                        <li>Select this video as source</li>
+                        <li>Set pixel coordinates and mask diameter</li>
+                        <li>Process to extract temperature data</li>
+                      </ol>
+                    </small>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

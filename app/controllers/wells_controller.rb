@@ -280,6 +280,17 @@ class WellsController < ApplicationController
     render json: { success: false, message: "Error updating content" }, status: 500
   end
 
+  def calorimetry_datasets
+    @well = Well.find(params[:id])
+    @calorimetry_datasets = @well.calorimetry_datasets.recent.includes(:calorimetry_video)
+    @available_videos = CalorimetryVideo.recent.includes(:plate)
+    
+    respond_to do |format|
+      format.html { render partial: "wells/calorimetry_datasets", locals: { well: @well } }
+      format.json { render json: @calorimetry_datasets }
+    end
+  end
+
   def remove_content
     @well = Well.find(params[:id])
     content = @well.well_contents.find(params[:content_id])

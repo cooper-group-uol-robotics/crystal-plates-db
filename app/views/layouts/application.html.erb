@@ -70,7 +70,7 @@
               <%= link_to "SCXRD Datasets", scxrd_datasets_path, class: "nav-link #{'active' if controller_name == 'scxrd_datasets' && params[:well_id].blank?}" %>
             </li>
             <li class="nav-item">
-              <%= link_to "Calorimetry Data", "#", class: "nav-link disabled", title: "Coming soon" %>
+              <%= link_to "Calorimetry Data", calorimetry_videos_path, class: "nav-link #{'active' if controller_name == 'calorimetry_videos'}" %>
             </li>
           </ul>
           <ul class="navbar-nav">

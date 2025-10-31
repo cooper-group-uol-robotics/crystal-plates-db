@@ -1,0 +1,137 @@
+<% content_for :title, "Upload Calorimetry Video" %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Upload Calorimetry Video</h2>
+        <%= link_to "Back to Videos", calorimetry_videos_path, class: "btn btn-secondary" %>
+      </div>
+
+      <div class="row">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-body">
+              <%= form_with model: @calorimetry_video, local: true, multipart: true, class: "needs-validation", novalidate: true do |form| %>
+                <% if @calorimetry_video.errors.any? %>
+                  <div class="alert alert-danger" role="alert">
+                    <h4>Please fix the following errors:</h4>
+                    <ul class="mb-0">
+                      <% @calorimetry_video.errors.full_messages.each do |message| %>
+                        <li><%= message %></li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% end %>
+
+                <div class="mb-3">
+                  <%= form.label :name, class: "form-label" %>
+                  <%= form.text_field :name, class: "form-control #{'is-invalid' if @calorimetry_video.errors[:name].any?}", required: true %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:name].first if @calorimetry_video.errors[:name].any? %>
+                  </div>
+                  <div class="form-text">A descriptive name for this calorimetry video</div>
+                </div>
+
+                <div class="mb-3">
+                  <%= form.label :plate_id, "Plate", class: "form-label" %>
+                  <%= form.select :plate_id, 
+                        options_from_collection_for_select(@plates, :id, :display_name, @calorimetry_video.plate_id),
+                        { prompt: "Select a plate..." },
+                        { class: "form-select #{'is-invalid' if @calorimetry_video.errors[:plate].any?}", required: true } %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:plate].first if @calorimetry_video.errors[:plate].any? %>
+                  </div>
+                  <div class="form-text">The plate that this video shows</div>
+                </div>
+
+                <div class="mb-3">
+                  <%= form.label :recorded_at, "Recorded At", class: "form-label" %>
+                  <%= form.datetime_local_field :recorded_at, 
+                        class: "form-control #{'is-invalid' if @calorimetry_video.errors[:recorded_at].any?}", 
+                        required: true,
+                        value: @calorimetry_video.recorded_at&.strftime("%Y-%m-%dT%H:%M") %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:recorded_at].first if @calorimetry_video.errors[:recorded_at].any? %>
+                  </div>
+                  <div class="form-text">When this video was recorded</div>
+                </div>
+
+                <div class="mb-3">
+                  <%= form.label :description, class: "form-label" %>
+                  <%= form.text_area :description, 
+                        class: "form-control #{'is-invalid' if @calorimetry_video.errors[:description].any?}", 
+                        rows: 3 %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:description].first if @calorimetry_video.errors[:description].any? %>
+                  </div>
+                  <div class="form-text">Optional description or notes about this video</div>
+                </div>
+
+                <div class="mb-4">
+                  <%= form.label :video_file, "Video File", class: "form-label" %>
+                  <%= form.file_field :video_file, 
+                        class: "form-control #{'is-invalid' if @calorimetry_video.errors[:video_file].any?}", 
+                        accept: "video/*" %>
+                  <div class="invalid-feedback">
+                    <%= @calorimetry_video.errors[:video_file].first if @calorimetry_video.errors[:video_file].any? %>
+                  </div>
+                  <div class="form-text">
+                    Upload the calorimetry video file. Supported formats: MP4, AVI, MOV, etc.
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                  <%= link_to "Cancel", calorimetry_videos_path, class: "btn btn-secondary" %>
+                  <%= form.submit "Upload Video", class: "btn btn-primary" %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-header">
+              <h5 class="mb-0">About Calorimetry Videos</h5>
+            </div>
+            <div class="card-body">
+              <p class="card-text">
+                Calorimetry videos record temperature changes across a plate over time. 
+                After uploading, you can process individual wells to extract temperature 
+                time series data.
+              </p>
+              <hr>
+              <h6>Next Steps:</h6>
+              <ol class="small">
+                <li>Upload your video file</li>
+                <li>View the video details page</li>
+                <li>Process individual wells to extract temperature data</li>
+                <li>View and analyze the temperature time series</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Bootstrap form validation
+(function() {
+  'use strict';
+  window.addEventListener('load', function() {
+    var forms = document.getElementsByClassName('needs-validation');
+    var validation = Array.prototype.filter.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
+        if (form.checkValidity() === false) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  }, false);
+})();
+</script>

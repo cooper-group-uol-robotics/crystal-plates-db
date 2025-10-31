@@ -74,6 +74,9 @@ export default class extends Controller {
             this.setupPxrdPlaceholder()
             this.setupScxrdPlaceholder()
             this.setupCalorimetryPlaceholder()
+
+            // Load calorimetry data in background
+            this.loadCalorimetryInBackground()
         } else {
             console.error("Invalid well ID for loading content:", this.wellIdValue)
             if (this.hasContentFormTarget) {
@@ -309,6 +312,47 @@ export default class extends Controller {
             this.scxrdContentTarget.innerHTML = `
         <div class="alert alert-warning">
           Failed to load SCXRD datasets: ${error.message}
+        </div>
+      `
+        }
+    }
+
+    // Load Calorimetry data in background
+    async loadCalorimetryInBackground() {
+        if (!this.hasCalorimetryContentTarget || !this.wellIdValue) return
+
+        try {
+            this.calorimetryContentTarget.innerHTML = `
+        <div class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+            <span class="visually-hidden">Loading calorimetry datasets...</span>
+          </div>
+          <div class="text-muted">Loading calorimetry datasets...</div>
+        </div>
+      `
+
+            console.log("Fetching calorimetry data for well:", this.wellIdValue)
+            const response = await fetch(`/wells/${this.wellIdValue}/calorimetry_datasets`)
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+            }
+
+            const html = await response.text()
+            console.log("Calorimetry data loaded successfully")
+
+            this.calorimetryContentTarget.innerHTML = html
+
+            // Execute any script tags in the loaded content
+            this.executeScripts(this.calorimetryContentTarget)
+
+            // Process the new content to ensure Stimulus controllers are connected
+            this.processNewContent(this.calorimetryContentTarget)
+        } catch (error) {
+            console.error("Failed to load calorimetry data:", error)
+            this.calorimetryContentTarget.innerHTML = `
+        <div class="alert alert-warning">
+          Failed to load calorimetry datasets: ${error.message}
         </div>
       `
         }

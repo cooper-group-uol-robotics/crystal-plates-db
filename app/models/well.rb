@@ -15,6 +15,8 @@ class Well < ApplicationRecord
   has_many :pxrd_patterns, dependent: :destroy
 
   has_many :scxrd_datasets, dependent: :destroy
+  
+  has_many :calorimetry_datasets, dependent: :destroy
 
   validates :well_row, :well_column, presence: true
   validates :subwell, presence: true, numericality: { greater_than: 0 }

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_27_170202) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_31_103342) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -37,6 +37,40 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_170202) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "calorimetry_datapoints", force: :cascade do |t|
+    t.integer "calorimetry_dataset_id", null: false
+    t.decimal "timestamp_seconds", precision: 8, scale: 3, null: false
+    t.decimal "temperature", precision: 8, scale: 3, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["calorimetry_dataset_id", "timestamp_seconds"], name: "index_calorimetry_datapoints_on_dataset_and_timestamp"
+    t.index ["calorimetry_dataset_id"], name: "index_calorimetry_datapoints_on_calorimetry_dataset_id"
+  end
+
+  create_table "calorimetry_datasets", force: :cascade do |t|
+    t.integer "well_id", null: false
+    t.integer "calorimetry_video_id", null: false
+    t.string "name"
+    t.integer "pixel_x"
+    t.integer "pixel_y"
+    t.integer "mask_diameter_pixels"
+    t.datetime "processed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["calorimetry_video_id"], name: "index_calorimetry_datasets_on_calorimetry_video_id"
+    t.index ["well_id"], name: "index_calorimetry_datasets_on_well_id"
+  end
+
+  create_table "calorimetry_videos", force: :cascade do |t|
+    t.integer "plate_id", null: false
+    t.string "name"
+    t.text "description"
+    t.datetime "recorded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["plate_id"], name: "index_calorimetry_videos_on_plate_id"
   end
 
   create_table "chemicals", force: :cascade do |t|
@@ -261,6 +295,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_170202) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "calorimetry_datapoints", "calorimetry_datasets"
+  add_foreign_key "calorimetry_datasets", "calorimetry_videos"
+  add_foreign_key "calorimetry_datasets", "wells"
+  add_foreign_key "calorimetry_videos", "plates"
   add_foreign_key "diffraction_images", "scxrd_datasets"
   add_foreign_key "images", "wells"
   add_foreign_key "plate_locations", "locations"

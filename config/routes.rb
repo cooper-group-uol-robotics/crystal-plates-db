@@ -31,6 +31,7 @@ Rails.application.routes.draw do
       get :images
       get :content_form
       get :spatial_correlations
+      get :calorimetry_datasets
       patch :update_content
       delete "content/:content_id", to: "wells#remove_content", as: "remove_content"
     end
@@ -62,6 +63,9 @@ Rails.application.routes.draw do
       get :plot
     end
   end
+
+  # Calorimetry routes
+  resources :calorimetry_videos
 
   # Standalone SCXRD dataset routes - all individual dataset operations
   resources :scxrd_datasets, only: [ :index, :show, :new, :create, :edit, :update, :destroy ] do
@@ -136,6 +140,7 @@ Rails.application.routes.draw do
           get :location_history
           get :points_of_interest
         end
+        resources :calorimetry_videos, only: [ :index, :create ]
         resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
           resources :images, only: [ :index, :show, :create, :update, :destroy ] do
             resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
@@ -147,6 +152,7 @@ Rails.application.routes.draw do
               get :search
             end
           end
+          resources :calorimetry_datasets, only: [ :index, :create ]
         end
       end
 
@@ -173,6 +179,7 @@ Rails.application.routes.draw do
             get :search
           end
         end
+        resources :calorimetry_datasets, only: [ :index, :create ]
       end
 
       # Standalone PXRD pattern routes
@@ -201,6 +208,16 @@ Rails.application.routes.draw do
             get :parsed_image_data
             get :download
           end
+        end
+      end
+
+      # Standalone Calorimetry routes
+      resources :calorimetry_videos, only: [ :index, :show, :create, :update, :destroy ]
+      
+      resources :calorimetry_datasets, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          get :datapoints
+          post :parse_data_file
         end
       end
 
