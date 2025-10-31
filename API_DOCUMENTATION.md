@@ -20,6 +20,7 @@ The Crystal Plates Database provides a comprehensive REST API alongside the web 
 - [Points of Interest API](#points-of-interest-api)
 - [PXRD Patterns API](#pxrd-patterns-api)
 - [SCXRD Datasets API](#scxrd-datasets-api)
+- [Calorimetry API](#calorimetry-api)
 - [Utility Endpoints](#utility-endpoints)
 - [Example API Usage](#example-api-usage)
 - [Error Codes](#error-codes)
@@ -1418,6 +1419,534 @@ curl -X PATCH http://localhost:3000/api/v1/wells/123/scxrd_datasets/456 \
 
 # Delete a dataset
 curl -X DELETE http://localhost:3000/api/v1/wells/123/scxrd_datasets/456
+```
+
+## Calorimetry API
+
+The Calorimetry API provides comprehensive endpoints for managing calorimetry videos and processed temperature time series data. This includes video file management, processing parameter configuration, and retrieval of temperature data points.
+
+### Calorimetry Videos
+
+Calorimetry videos are recordings of plates showing temperature changes over time. Each video is associated with a plate and can have multiple processed datasets for individual wells.
+
+#### List All Calorimetry Videos
+
+**GET** `/api/v1/calorimetry_videos`
+
+List all calorimetry videos across all plates.
+
+**Response Example:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Plate001 Heating Cycle 1",
+    "description": "Initial heating cycle for crystallization screening",
+    "recorded_at": "2025-10-30T14:30:00Z",
+    "plate": {
+      "id": 15,
+      "barcode": "PLATE001",
+      "name": "Crystallization Screen A"
+    },
+    "has_video_file": true,
+    "video_file_info": {
+      "filename": "calorimetry_plate001_001.mp4",
+      "size": 157286400,
+      "content_type": "video/mp4"
+    },
+    "dataset_count": 3,
+    "created_at": "2025-10-30T14:45:00Z",
+    "updated_at": "2025-10-30T15:30:00Z"
+  }
+]
+```
+
+#### List Plate Calorimetry Videos
+
+**GET** `/api/v1/plates/:plate_barcode/calorimetry_videos`
+
+List all calorimetry videos for a specific plate.
+
+**Parameters:**
+- `plate_barcode` (path, required) - Plate barcode (e.g., "PLATE001", "60123456")
+
+**Response:** Array of calorimetry video objects for the plate
+
+#### Get Calorimetry Video Details
+
+**GET** `/api/v1/calorimetry_videos/:id`
+
+Get detailed information about a specific calorimetry video including associated datasets.
+
+**Parameters:**
+- `id` (path, required) - Calorimetry video ID
+
+**Response Example:**
+```json
+{
+  "id": 1,
+  "name": "Plate001 Heating Cycle 1",
+  "description": "Initial heating cycle for crystallization screening",
+  "recorded_at": "2025-10-30T14:30:00Z",
+  "plate": {
+    "id": 15,
+    "barcode": "PLATE001",
+    "name": "Crystallization Screen A"
+  },
+  "has_video_file": true,
+  "video_file_info": {
+    "filename": "calorimetry_plate001_001.mp4",
+    "size": 157286400,
+    "content_type": "video/mp4"
+  },
+  "dataset_count": 3,
+  "datasets": [
+    {
+      "id": 101,
+      "name": "Well A1 Processing",
+      "well": {
+        "id": 1234,
+        "position": "A1",
+        "well_row": 1,
+        "well_column": 1
+      },
+      "pixel_x": 145,
+      "pixel_y": 267,
+      "mask_diameter_pixels": 45,
+      "datapoint_count": 3600,
+      "processed_at": "2025-10-30T15:00:00Z"
+    }
+  ],
+  "created_at": "2025-10-30T14:45:00Z",
+  "updated_at": "2025-10-30T15:30:00Z"
+}
+```
+
+#### Upload Calorimetry Video
+
+**POST** `/api/v1/plates/:plate_barcode/calorimetry_videos`
+
+Upload a new calorimetry video for a specific plate.
+
+**Parameters:**
+- `plate_barcode` (path, required) - Plate barcode
+
+**Content-Type:** `multipart/form-data`
+
+**Body Parameters:**
+```
+calorimetry_video[name]: (string, required) - Descriptive name for the video
+calorimetry_video[description]: (string, optional) - Additional description or notes
+calorimetry_video[recorded_at]: (datetime, required) - When the video was recorded (ISO 8601 format)
+calorimetry_video[video_file]: (file, required) - Video file (MP4, AVI, MOV, etc.)
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3000/api/v1/plates/PLATE001/calorimetry_videos \
+  -F "calorimetry_video[name]=Heating Cycle 1" \
+  -F "calorimetry_video[description]=Initial screening with temperature ramp" \
+  -F "calorimetry_video[recorded_at]=2025-10-30T14:30:00Z" \
+  -F "calorimetry_video[video_file]=@/path/to/video.mp4"
+```
+
+**Success Response (201):**
+```json
+{
+  "data": {
+    "id": 5,
+    "name": "Heating Cycle 1",
+    "description": "Initial screening with temperature ramp",
+    "recorded_at": "2025-10-30T14:30:00Z",
+    "plate": {
+      "id": 15,
+      "barcode": "PLATE001",
+      "name": "Crystallization Screen A"
+    },
+    "has_video_file": true,
+    "video_file_info": {
+      "filename": "video.mp4",
+      "size": 125829120,
+      "content_type": "video/mp4"
+    },
+    "dataset_count": 0,
+    "created_at": "2025-10-30T16:15:00Z",
+    "updated_at": "2025-10-30T16:15:00Z"
+  },
+  "message": "Calorimetry video created successfully"
+}
+```
+
+#### Upload Standalone Calorimetry Video
+
+**POST** `/api/v1/calorimetry_videos`
+
+Upload a calorimetry video not associated with a specific plate initially.
+
+**Content-Type:** `multipart/form-data`
+
+**Body Parameters:**
+```
+calorimetry_video[name]: (string, required) - Descriptive name for the video
+calorimetry_video[description]: (string, optional) - Additional description or notes  
+calorimetry_video[recorded_at]: (datetime, required) - When the video was recorded
+calorimetry_video[plate_id]: (integer, required) - Plate ID to associate with
+calorimetry_video[video_file]: (file, required) - Video file
+```
+
+#### Update Calorimetry Video
+
+**PATCH/PUT** `/api/v1/calorimetry_videos/:id`
+
+Update an existing calorimetry video's metadata or replace the video file.
+
+**Parameters:**
+- `id` (path, required) - Calorimetry video ID
+
+**Content-Type:** `multipart/form-data` or `application/json`
+
+**Body Parameters:** Same as create, all optional
+
+#### Delete Calorimetry Video
+
+**DELETE** `/api/v1/calorimetry_videos/:id`
+
+Delete a calorimetry video and all associated datasets and datapoints.
+
+**Parameters:**
+- `id` (path, required) - Calorimetry video ID
+
+**Response:**
+```json
+{
+  "message": "Calorimetry video deleted successfully"
+}
+```
+
+### Calorimetry Datasets
+
+Calorimetry datasets represent processed temperature time series data extracted from specific wells in calorimetry videos.
+
+#### List All Calorimetry Datasets
+
+**GET** `/api/v1/calorimetry_datasets`
+
+List all calorimetry datasets across all wells.
+
+**Response Example:**
+```json
+[
+  {
+    "id": 101,
+    "name": "Well A1 Processing",
+    "well": {
+      "id": 1234,
+      "position": "A1",
+      "well_row": 1,
+      "well_column": 1
+    },
+    "calorimetry_video": {
+      "id": 1,
+      "name": "Plate001 Heating Cycle 1",
+      "recorded_at": "2025-10-30T14:30:00Z"
+    },
+    "processing_parameters": {
+      "pixel_x": 145,
+      "pixel_y": 267,
+      "mask_diameter_pixels": 45
+    },
+    "datapoint_count": 3600,
+    "temperature_range": [22.5, 85.3],
+    "duration_seconds": 1200,
+    "processed_at": "2025-10-30T15:00:00Z",
+    "created_at": "2025-10-30T15:00:00Z",
+    "updated_at": "2025-10-30T15:00:00Z"
+  }
+]
+```
+
+#### List Well Calorimetry Datasets
+
+**GET** `/api/v1/wells/:well_id/calorimetry_datasets`
+
+List all calorimetry datasets for a specific well.
+
+**Parameters:**
+- `well_id` (path, required) - Well ID
+
+**Response:** Array of calorimetry dataset objects for the well
+
+#### Get Calorimetry Dataset Details
+
+**GET** `/api/v1/calorimetry_datasets/:id`
+
+Get detailed information about a specific calorimetry dataset.
+
+**Parameters:**
+- `id` (path, required) - Calorimetry dataset ID
+
+**Response Example:**
+```json
+{
+  "id": 101,
+  "name": "Well A1 Processing",
+  "well": {
+    "id": 1234,
+    "position": "A1",
+    "well_row": 1,
+    "well_column": 1
+  },
+  "calorimetry_video": {
+    "id": 1,
+    "name": "Plate001 Heating Cycle 1",
+    "recorded_at": "2025-10-30T14:30:00Z"
+  },
+  "processing_parameters": {
+    "pixel_x": 145,
+    "pixel_y": 267,
+    "mask_diameter_pixels": 45
+  },
+  "datapoint_count": 3600,
+  "temperature_range": [22.5, 85.3],
+  "duration_seconds": 1200,
+  "processed_at": "2025-10-30T15:00:00Z",
+  "plate": {
+    "id": 15,
+    "barcode": "PLATE001",
+    "name": "Crystallization Screen A"
+  },
+  "created_at": "2025-10-30T15:00:00Z",
+  "updated_at": "2025-10-30T15:00:00Z"
+}
+```
+
+#### Create Calorimetry Dataset
+
+**POST** `/api/v1/wells/:well_id/calorimetry_datasets`
+
+Create a new calorimetry dataset for a specific well with optional temperature datapoints.
+
+**Parameters:**
+- `well_id` (path, required) - Well ID
+
+**Content-Type:** `application/json`
+
+**Body Parameters:**
+```json
+{
+  "calorimetry_dataset": {
+    "name": "Well A1 Processing Run 2",
+    "calorimetry_video_id": 1,
+    "pixel_x": 145,
+    "pixel_y": 267,
+    "mask_diameter_pixels": 45,
+    "processed_at": "2025-10-30T15:30:00Z"
+  },
+  "datapoints": [
+    {
+      "timestamp_seconds": 0.0,
+      "temperature": 22.5
+    },
+    {
+      "timestamp_seconds": 0.033,
+      "temperature": 22.6
+    }
+  ]
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "data": {
+    "id": 102,
+    "name": "Well A1 Processing Run 2",
+    "well": {
+      "id": 1234,
+      "position": "A1",
+      "well_row": 1,
+      "well_column": 1
+    },
+    "calorimetry_video": {
+      "id": 1,
+      "name": "Plate001 Heating Cycle 1",
+      "recorded_at": "2025-10-30T14:30:00Z"
+    },
+    "processing_parameters": {
+      "pixel_x": 145,
+      "pixel_y": 267,
+      "mask_diameter_pixels": 45
+    },
+    "datapoint_count": 2,
+    "temperature_range": [22.5, 22.6],
+    "duration_seconds": 0.033,
+    "processed_at": "2025-10-30T15:30:00Z",
+    "plate": {
+      "id": 15,
+      "barcode": "PLATE001",
+      "name": "Crystallization Screen A"
+    },
+    "created_at": "2025-10-30T15:35:00Z",
+    "updated_at": "2025-10-30T15:35:00Z"
+  },
+  "message": "Calorimetry dataset created successfully"
+}
+```
+
+#### Create Standalone Calorimetry Dataset
+
+**POST** `/api/v1/calorimetry_datasets`
+
+Create a calorimetry dataset not associated with a specific well initially.
+
+**Body Parameters:** Same as above, but include `well_id` in the dataset object.
+
+#### Update Calorimetry Dataset
+
+**PATCH/PUT** `/api/v1/calorimetry_datasets/:id`
+
+Update an existing calorimetry dataset's metadata or replace datapoints.
+
+**Parameters:**
+- `id` (path, required) - Calorimetry dataset ID
+
+**Body Parameters:** Same as create, all optional. If `datapoints` array is provided, existing datapoints will be replaced.
+
+#### Delete Calorimetry Dataset
+
+**DELETE** `/api/v1/calorimetry_datasets/:id`
+
+Delete a calorimetry dataset and all associated datapoints.
+
+**Parameters:**
+- `id` (path, required) - Calorimetry dataset ID
+
+**Response:**
+```json
+{
+  "message": "Calorimetry dataset deleted successfully"  
+}
+```
+
+### Calorimetry Datapoints
+
+Temperature time series datapoints are the individual measurements extracted from calorimetry videos.
+
+#### Get Dataset Datapoints
+
+**GET** `/api/v1/calorimetry_datasets/:id/datapoints`
+
+Get all temperature datapoints for a specific calorimetry dataset.
+
+**Parameters:**
+- `id` (path, required) - Calorimetry dataset ID
+
+**Query Parameters:**
+- `start_time` (float, optional) - Start time in seconds to filter datapoints
+- `end_time` (float, optional) - End time in seconds to filter datapoints  
+- `max_points` (integer, optional) - Maximum number of points to return (applies decimation for large datasets)
+
+**Response Example:**
+```json
+{
+  "data": [
+    {
+      "timestamp_seconds": 0.0,
+      "temperature": 22.5
+    },
+    {
+      "timestamp_seconds": 0.033,
+      "temperature": 22.6
+    },
+    {
+      "timestamp_seconds": 0.067,
+      "temperature": 22.8
+    }
+  ],
+  "metadata": {
+    "total_points": 3600,
+    "time_range": {
+      "start": 0.0,
+      "end": 1200.0
+    },
+    "temperature_range": [22.5, 85.3],
+    "duration_seconds": 1200.0
+  }
+}
+```
+
+**Example with Filtering:**
+```bash
+# Get datapoints between 60 and 120 seconds
+curl "http://localhost:3000/api/v1/calorimetry_datasets/101/datapoints?start_time=60&end_time=120"
+
+# Get maximum 1000 points (decimated if necessary)
+curl "http://localhost:3000/api/v1/calorimetry_datasets/101/datapoints?max_points=1000"
+```
+
+### Error Responses
+
+**400 Bad Request:**
+```json
+{
+  "error": "Invalid parameters",
+  "details": ["Pixel coordinates must be positive numbers"]
+}
+```
+
+**404 Not Found:**
+```json
+{
+  "error": "Calorimetry video not found"
+}
+```
+
+**422 Unprocessable Entity:**
+```json
+{
+  "error": "Failed to create calorimetry dataset",
+  "details": [
+    "Name can't be blank",
+    "Calorimetry video must exist",
+    "Pixel x must be greater than 0"
+  ]
+}
+```
+
+### Usage Examples
+
+#### Complete Workflow Example
+
+```bash
+# 1. Upload a calorimetry video
+curl -X POST http://localhost:3000/api/v1/plates/PLATE001/calorimetry_videos \
+  -F "calorimetry_video[name]=Heating Cycle 1" \
+  -F "calorimetry_video[recorded_at]=2025-10-30T14:30:00Z" \
+  -F "calorimetry_video[video_file]=@calorimetry_video.mp4"
+
+# 2. Process well A1 from the video (video_id=1, well_id=1234)
+curl -X POST http://localhost:3000/api/v1/wells/1234/calorimetry_datasets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "calorimetry_dataset": {
+      "name": "A1 Temperature Analysis",
+      "calorimetry_video_id": 1,
+      "pixel_x": 145,
+      "pixel_y": 267, 
+      "mask_diameter_pixels": 45,
+      "processed_at": "2025-10-30T15:00:00Z"
+    },
+    "datapoints": [
+      {"timestamp_seconds": 0.0, "temperature": 22.5},
+      {"timestamp_seconds": 0.033, "temperature": 22.6}
+    ]
+  }'
+
+# 3. Retrieve temperature data
+curl http://localhost:3000/api/v1/calorimetry_datasets/101/datapoints
+
+# 4. Get dataset summary
+curl http://localhost:3000/api/v1/calorimetry_datasets/101
 ```
 
 ## Utility Endpoints
