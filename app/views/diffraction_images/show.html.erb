@@ -17,7 +17,7 @@
                [@scxrd_dataset, :diffraction_images],
                class: "btn btn-secondary" %>
     <%= link_to "Back to Dataset", 
-               @scxrd_dataset.well ? [@scxrd_dataset.well, @scxrd_dataset] : @scxrd_dataset,
+               @scxrd_dataset,
                class: "btn btn-outline-secondary" %>
     <%= link_to download_scxrd_dataset_diffraction_image_path(@scxrd_dataset, @diffraction_image), 
                class: "btn btn-success" do %>

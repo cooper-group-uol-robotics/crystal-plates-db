@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Peak Table Parser Service
 # Parses binary peak table files from SCXRD datasets
 # Based on the Python implementation in scripts/rlatt.py
