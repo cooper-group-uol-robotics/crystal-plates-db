@@ -4,10 +4,8 @@
 window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl, wellId, uniqueId = 'scxrd') {
 
 
-  // Use different API endpoints for well-associated vs standalone datasets
-  const apiUrl = (wellId && wellId !== 'null' && wellId !== null)
-    ? `/wells/${wellId}/scxrd_datasets/${datasetId}`
-    : `/scxrd_datasets/${datasetId}`;
+  // Use standalone API endpoint for all datasets
+  const apiUrl = `/scxrd_datasets/${datasetId}`;
 
 
 
@@ -15,7 +13,12 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
   fetch(apiUrl, {
     headers: { 'Accept': 'application/json' }
   })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
     .then(data => {
       // Update diffraction image panel with interactive viewer
       const imagePanel = document.getElementById(`${uniqueId}-diffraction-image-panel`);
@@ -135,7 +138,7 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
               <i class="fas fa-table fa-3x mb-3 text-success"></i>
               <h6>Reciprocal Lattice</h6>
               <p class="text-muted small">Size: ${data.peak_table_size}</p>
-              <a href="/wells/${wellId}/scxrd_datasets/${datasetId}/download_peak_table" 
+              <a href="/scxrd_datasets/${datasetId}/download_peak_table" 
                  class="btn btn-sm btn-success">
                 <i class="fas fa-download me-1"></i>Download
               </a>

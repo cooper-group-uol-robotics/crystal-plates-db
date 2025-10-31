@@ -50,7 +50,7 @@
         <div id="<%= unique_id %>-structure-panel" class="card-body p-0">
           <% if dataset.has_structure_file? %>
             <div class="structure-viewer-container" style="height: 357px; width: 100%;">
-              <% structure_url = well.present? ? structure_file_well_scxrd_dataset_path(well, dataset) : structure_file_scxrd_dataset_path(dataset) %>
+              <% structure_url = structure_file_scxrd_dataset_path(dataset) %>
               <cifview-widget 
                 src="<%= structure_url %>"
                 caption="<%= dataset.structure_file.filename %>"
@@ -99,7 +99,7 @@
           showScxrdDatasetInMain(
             '<%= dataset.id %>', 
             '<%= j(dataset.experiment_name) %>', 
-            '<%= well ? (params[:well_id] ? well_scxrd_dataset_path(well, dataset) : scxrd_dataset_path(dataset)) : scxrd_dataset_path(dataset) %>',
+            '<%= scxrd_dataset_path(dataset) %>',
             <%= well ? well.id : 'null' %>,
             '<%= unique_id %>'  // Pass unique ID for this instance
           );

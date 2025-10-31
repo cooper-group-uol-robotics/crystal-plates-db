@@ -13,7 +13,7 @@ class ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show scxrd_dataset" do
-    get well_scxrd_dataset_path(@well, @scxrd_dataset)
+    get scxrd_dataset_path(@scxrd_dataset)
     assert_response :success
   end
 end

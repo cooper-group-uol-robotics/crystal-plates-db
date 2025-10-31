@@ -8,7 +8,11 @@ class PxrdPatternsController < ApplicationController
       # Well-specific index (existing functionality)
       @well = Well.find(params[:well_id])
       @pxrd_patterns = @well.pxrd_patterns.order(Arel.sql("COALESCE(pxrd_patterns.measured_at, pxrd_patterns.created_at) DESC"))
-      render partial: "pxrd_patterns/gallery", locals: { well: @well }
+      
+      respond_to do |format|
+        format.html { render partial: "pxrd_patterns/gallery", locals: { well: @well } }
+        format.json { render json: @pxrd_patterns }
+      end
     else
       # Global index for all PXRD patterns
       @pxrd_patterns = PxrdPattern.includes(well: :plate)

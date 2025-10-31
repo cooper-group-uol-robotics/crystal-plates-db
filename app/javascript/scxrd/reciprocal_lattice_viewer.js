@@ -158,7 +158,7 @@ class ScxrdReciprocalLatticeViewer {
     this.datasetId = datasetId;
 
     try {
-      const url = `/wells/${wellId}/scxrd_datasets/${datasetId}/peak_table_data`;
+      const url = `/scxrd_datasets/${datasetId}/peak_table_data`;
       console.log(`Fetching from: ${url}`);
       const response = await fetch(url);
 
@@ -907,7 +907,7 @@ class ScxrdReciprocalLatticeViewer {
           </div>
           <div class="col-md-6">
             <h6>Actions</h6>
-            <a href="/wells/${this.wellId}/scxrd_datasets/${this.datasetId}/download_peak_table" 
+            <a href="/scxrd_datasets/${this.datasetId}/download_peak_table" 
                class="btn btn-success btn-sm">
               <i class="fas fa-download me-1"></i>Download Peak Table
             </a>

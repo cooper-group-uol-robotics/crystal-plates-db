@@ -57,11 +57,7 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     // Construct URL for image data endpoint
-    const baseUrl = '<% if @scxrd_dataset.well %>
-      <%= image_data_well_scxrd_dataset_diffraction_image_path(@scxrd_dataset.well, @scxrd_dataset, @diffraction_image) %>
-    <% else %>
-      <%= image_data_scxrd_dataset_diffraction_image_path(@scxrd_dataset, @diffraction_image) %>
-    <% end %>';
+    const baseUrl = '<%= image_data_scxrd_dataset_diffraction_image_path(@scxrd_dataset, @diffraction_image) %>';
     
     const metadata = {
       run_number: <%= @diffraction_image.run_number %>,

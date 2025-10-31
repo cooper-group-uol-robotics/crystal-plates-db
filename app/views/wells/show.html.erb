@@ -43,9 +43,9 @@
                 </small>
               </p>
               <div class="btn-group btn-group-sm" role="group">
-                <%= link_to 'View', [@well, dataset], class: "btn btn-outline-primary" %>
+                <%= link_to 'View', dataset, class: "btn btn-outline-primary" %>
                 <% if dataset.archive.attached? %>
-                  <%= link_to 'Download', download_well_scxrd_dataset_path(@well, dataset), class: "btn btn-outline-success" %>
+                  <%= link_to 'Download', download_scxrd_dataset_path(dataset), class: "btn btn-outline-success" %>
                 <% end %>
               </div>
             </div>

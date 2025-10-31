@@ -23,5 +23,10 @@ module CrystalPlatesDb
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Configure MIME types for WebAssembly files
+    config.before_configuration do
+      Rack::Mime::MIME_TYPES['.wasm'] = 'application/wasm'
+    end
   end
 end

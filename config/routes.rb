@@ -45,24 +45,9 @@ Rails.application.routes.draw do
         end
       end
     end
-    resources :pxrd_patterns
-    resources :scxrd_datasets do
-      member do
-        get :download
-        get :download_peak_table
-        get :crystal_image
-        get :structure_file
-
-        get :image_data
-        get :peak_table_data
-      end
-      resources :diffraction_images, only: [ :index, :show ] do
-        member do
-          get :image_data
-          get :parsed_image_data
-          get :download
-        end
-      end
+  resources :pxrd_patterns, only: [ :index, :new, :create ]
+    resources :scxrd_datasets, only: [ :index, :new, :create ] do
+      # Keep only well-scoped collection operations - no individual dataset member actions
     end
     resources :well_contents do
       collection do
@@ -78,7 +63,7 @@ Rails.application.routes.draw do
     end
   end
 
-  # Standalone SCXRD dataset routes for global index
+  # Standalone SCXRD dataset routes - all individual dataset operations
   resources :scxrd_datasets, only: [ :index, :show, :new, :create, :edit, :update, :destroy ] do
     member do
       get :download
@@ -156,22 +141,10 @@ Rails.application.routes.draw do
             resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
           end
           resources :pxrd_patterns, only: [ :index, :create ]
-          resources :scxrd_datasets, only: [ :index, :show, :create, :update, :destroy ] do
-            member do
-              get :crystal_image
-              get :image_data
-              get :peak_table_data
-            end
+          resources :scxrd_datasets, only: [ :index, :create ] do
             collection do
               get :spatial_correlations
               get :search
-            end
-            resources :diffraction_images, only: [ :index, :show ] do
-              member do
-                get :image_data
-                get :parsed_image_data
-                get :download
-              end
             end
           end
         end
@@ -194,22 +167,10 @@ Rails.application.routes.draw do
           resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
         end
         resources :pxrd_patterns, only: [ :index, :create ]
-        resources :scxrd_datasets, only: [ :index, :show, :create, :update, :destroy ] do
-          member do
-            get :crystal_image
-            get :image_data
-            get :peak_table_data
-          end
+        resources :scxrd_datasets, only: [ :index, :create ] do
           collection do
             get :spatial_correlations
             get :search
-          end
-          resources :diffraction_images, only: [ :index, :show ] do
-            member do
-              get :image_data
-              get :parsed_image_data
-              get :download
-            end
           end
         end
       end
@@ -224,13 +185,22 @@ Rails.application.routes.draw do
         end
       end
 
-      # Standalone SCXRD dataset routes
+      # Standalone SCXRD dataset routes - all individual dataset operations
       resources :scxrd_datasets, only: [ :index, :show, :create, :update, :destroy ] do
         member do
+          get :crystal_image
           get :image_data
+          get :peak_table_data
         end
         collection do
           post :upload_archive
+        end
+        resources :diffraction_images, only: [ :index, :show ] do
+          member do
+            get :image_data
+            get :parsed_image_data
+            get :download
+          end
         end
       end
 

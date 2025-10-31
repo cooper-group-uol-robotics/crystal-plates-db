@@ -12,7 +12,7 @@
           <div>
             <h5 class="mb-1">
               <%= link_to(dataset.experiment_name.presence || "SCXRD Dataset ##{dataset.id}", 
-                         well_scxrd_dataset_path(@well, dataset), 
+                         scxrd_dataset_path(dataset), 
                          class: "text-decoration-none", target: "_blank") %>
             </h5>
             <div class="text-muted small">
@@ -42,7 +42,7 @@
                 <%= g6_comparison_button(dataset, well_context: true) %>
               <% end %>
               <div class="btn-group btn-group-sm">
-                <%= link_to well_scxrd_dataset_path(@well, dataset), 
+                <%= link_to scxrd_dataset_path(dataset), 
                            class: "btn btn-outline-primary btn-sm", target: "_blank" do %>
                   <i class="bi bi-eye"></i> Details
                 <% end %>
@@ -79,7 +79,7 @@
                 <div class="card scxrd-thumbnail <%= 'border-primary' if index == 0 %>" 
                      data-dataset-id="<%= dataset.id %>"
                      style="cursor: pointer; transition: all 0.2s;"
-                     onclick="showScxrdDatasetInMain('<%= dataset.id %>', '<%= j(dataset.experiment_name) %>', '<%= well_scxrd_dataset_path(@well, dataset) %>', '<%= @well.id %>', 'scxrd-<%= @scxrd_datasets.first.id %>-0')">
+                     onclick="showScxrdDatasetInMain('<%= dataset.id %>', '<%= j(dataset.experiment_name) %>', '<%= scxrd_dataset_path(dataset) %>', '<%= @well.id %>', 'scxrd-<%= @scxrd_datasets.first.id %>-0')">
                   <div class="card-body p-2 text-center">
                     <div class="mb-2">
                       <% if dataset.has_first_image? %>

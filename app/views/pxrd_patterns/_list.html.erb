@@ -4,9 +4,9 @@
   <ul>
     <% @well.pxrd_patterns.each do |pattern| %>
       <li>
-        <%= link_to pattern.title.presence || "PXRD Pattern ##{pattern.id}", well_pxrd_pattern_path(@well, pattern) %>
-        (<%= link_to 'Edit', edit_well_pxrd_pattern_path(@well, pattern) %> |
-         <%= link_to 'Delete', well_pxrd_pattern_path(@well, pattern), method: :delete, data: { confirm: 'Are you sure?' } %>)
+        <%= link_to pattern.title.presence || "PXRD Pattern ##{pattern.id}", pxrd_pattern_path(pattern) %>
+        (<%= link_to 'Edit', edit_pxrd_pattern_path(pattern) %> |
+         <%= link_to 'Delete', pxrd_pattern_path(pattern), method: :delete, data: { confirm: 'Are you sure?' } %>)
       </li>
     <% end %>
   </ul>

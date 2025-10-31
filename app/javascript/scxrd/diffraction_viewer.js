@@ -54,14 +54,10 @@ class ScxrdDiffractionViewer {
       let url;
       if (diffractionImageId) {
         // Load specific diffraction image
-        url = wellId && wellId !== 'null' && wellId !== null
-          ? `/wells/${wellId}/scxrd_datasets/${datasetId}/diffraction_images/${diffractionImageId}/image_data`
-          : `/scxrd_datasets/${datasetId}/diffraction_images/${diffractionImageId}/image_data`;
+        url = `/scxrd_datasets/${datasetId}/diffraction_images/${diffractionImageId}/image_data`;
       } else {
-        // Load first/legacy image (backward compatibility)
-        url = wellId && wellId !== 'null' && wellId !== null
-          ? `/wells/${wellId}/scxrd_datasets/${datasetId}/image_data`
-          : `/scxrd_datasets/${datasetId}/image_data`;
+        // Load first/legacy image
+        url = `/scxrd_datasets/${datasetId}/image_data`;
       }
 
       const response = await fetch(url);
@@ -127,7 +123,7 @@ class ScxrdDiffractionViewer {
 
     try {
       const url = wellId && wellId !== 'null' && wellId !== null
-        ? `/wells/${wellId}/scxrd_datasets/${datasetId}/diffraction_images`
+        ? `/scxrd_datasets/${datasetId}/diffraction_images`
         : `/scxrd_datasets/${datasetId}/diffraction_images`;
 
 

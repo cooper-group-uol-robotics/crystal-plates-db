@@ -117,8 +117,8 @@ window.showPxrdPatternInMain = function(patternId, patternTitle, patternUrl) {
       <div class="card-footer">
         <div class="d-flex justify-content-between align-items-center">
           <div class="btn-group btn-group-sm">
-            <%= link_to 'View Full', well_pxrd_pattern_path(@well, selected_pattern), class: 'btn btn-outline-primary', id: 'main-pxrd-view-btn' %>
-            <%= link_to 'Edit', edit_well_pxrd_pattern_path(@well, selected_pattern), class: 'btn btn-outline-secondary', id: 'main-pxrd-edit-btn' %>
+            <%= link_to 'View Full', pxrd_pattern_path(selected_pattern), class: 'btn btn-outline-primary', id: 'main-pxrd-view-btn' %>
+            <%= link_to 'Edit', edit_pxrd_pattern_path(selected_pattern), class: 'btn btn-outline-secondary', id: 'main-pxrd-edit-btn' %>
             <% if selected_pattern.pxrd_data_file.attached? %>
               <a href="<%= url_for(selected_pattern.pxrd_data_file) %>" download="<%= selected_pattern.pxrd_data_file.filename %>" 
                  class="btn btn-outline-success" id="main-pxrd-download-btn" title="Download data file">
@@ -150,7 +150,7 @@ window.showPxrdPatternInMain = function(patternId, patternTitle, patternUrl) {
               <div class="flex-shrink-0 position-relative" style="width: 150px;">
                 <div class="card h-100 pxrd-thumbnail <%= 'border-primary' if index == 0 %>" style="cursor: pointer;" 
                      data-pattern-id="<%= pattern.id %>"
-                     data-pattern-url="<%= well_pxrd_pattern_path(@well, pattern) %>"
+                     data-pattern-url="<%= pxrd_pattern_path(pattern) %>"
                      data-pattern-title="<%= pattern.title.presence || "PXRD Pattern ##{pattern.id}" %>">
                   <div class="card-body p-2" style="height: 120px;">
                     <canvas id="thumb-<%= pattern.id %>" width="130" height="80" style="width: 100%; height: 100%;"></canvas>
@@ -167,10 +167,10 @@ window.showPxrdPatternInMain = function(patternId, patternTitle, patternUrl) {
                   <!-- Actions overlay on hover -->
                   <div class="position-absolute top-0 end-0 p-1 d-none pxrd-actions">
                     <div class="btn-group-vertical btn-group-sm">
-                      <%= link_to well_pxrd_pattern_path(@well, pattern), class: 'btn btn-outline-light btn-sm', title: 'View' do %>
+                      <%= link_to pxrd_pattern_path(pattern), class: 'btn btn-outline-light btn-sm', title: 'View' do %>
                         <i class="bi bi-eye"></i>
                       <% end %>
-                      <%= link_to edit_well_pxrd_pattern_path(@well, pattern), class: 'btn btn-outline-light btn-sm', title: 'Edit' do %>
+                      <%= link_to edit_pxrd_pattern_path(pattern), class: 'btn btn-outline-light btn-sm', title: 'Edit' do %>
                         <i class="bi bi-pencil"></i>
                       <% end %>
                     </div>

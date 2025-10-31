@@ -123,7 +123,7 @@ class ScxrdDatasetsController < ApplicationController
 
     if @well
       @scxrd_dataset = @well.scxrd_datasets.build(scxrd_dataset_params)
-      success_redirect = [ @well, @scxrd_dataset ]
+      success_redirect = @scxrd_dataset  # Always redirect to standalone dataset path
     else
       @scxrd_dataset = ScxrdDataset.new(scxrd_dataset_params)
       success_redirect = @scxrd_dataset
@@ -179,7 +179,7 @@ class ScxrdDatasetsController < ApplicationController
     end
 
     if @scxrd_dataset.update(scxrd_dataset_params)
-      redirect_path = @well ? [ @well, @scxrd_dataset ] : @scxrd_dataset
+      redirect_path = @scxrd_dataset  # Always redirect to standalone dataset path
       notice_text = params[:scxrd_dataset][:compressed_archive].present? ?
         "SCXRD dataset was successfully updated and is being reprocessed." :
         "SCXRD dataset was successfully updated."
@@ -192,7 +192,7 @@ class ScxrdDatasetsController < ApplicationController
 
   def destroy
     @scxrd_dataset.destroy
-    redirect_path = @well ? well_scxrd_datasets_path(@well) : scxrd_datasets_path
+    redirect_path = @well ? plate_path(@well.plate) : scxrd_datasets_path
     redirect_to redirect_path, notice: "SCXRD dataset was successfully deleted."
   end
 
@@ -204,7 +204,7 @@ class ScxrdDatasetsController < ApplicationController
                 type: @scxrd_dataset.archive.content_type,
                 disposition: "attachment"
     else
-      redirect_to [ @well, @scxrd_dataset ], alert: "No archive file attached."
+      redirect_to @scxrd_dataset, alert: "No archive file attached."
     end
   end
 
@@ -215,7 +215,7 @@ class ScxrdDatasetsController < ApplicationController
                 type: @scxrd_dataset.peak_table.content_type,
                 disposition: "attachment"
     else
-      redirect_to [ @well, @scxrd_dataset ], alert: "No peak table available."
+      redirect_to @scxrd_dataset, alert: "No peak table available."
     end
   end
 
