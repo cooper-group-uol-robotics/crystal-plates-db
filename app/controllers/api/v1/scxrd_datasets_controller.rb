@@ -256,40 +256,40 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
     return unless scxrd_dataset.crystal_image.attached?
     return unless processing_result[:crystal_image]
     return unless processing_result[:metadata]
-    
+
     # Check if we have real-world coordinates from cmdscript.mac
     metadata = processing_result[:metadata]
     return unless metadata[:real_world_x_mm] && metadata[:real_world_y_mm] && metadata[:real_world_z_mm]
-    
+
     Rails.logger.info "API SCXRD: Creating well image from crystal image for dataset #{scxrd_dataset.id}"
-    
+
     begin
       # Get image dimensions by analyzing the attached crystal image
       crystal_image_blob = scxrd_dataset.crystal_image.blob
       crystal_image_blob.analyze unless crystal_image_blob.analyzed?
-      
+
       pixel_width = crystal_image_blob.metadata["width"]
-      pixel_height = crystal_image_blob.metadata["height"] 
-      
+      pixel_height = crystal_image_blob.metadata["height"]
+
       unless pixel_width && pixel_height
         Rails.logger.warn "API SCXRD: Could not determine crystal image dimensions, skipping well image creation"
         return
       end
-      
+
       Rails.logger.info "API SCXRD: Crystal image dimensions: #{pixel_width}x#{pixel_height}"
-      
+
       # Calculate reference point using the service method
       # The coordinates from cmdscript.mac refer to the center of the image
       reference_data = ScxrdFolderProcessorService.calculate_well_image_reference_point(
-        metadata[:real_world_x_mm], 
-        metadata[:real_world_y_mm], 
+        metadata[:real_world_x_mm],
+        metadata[:real_world_y_mm],
         metadata[:real_world_z_mm],
-        pixel_width, 
+        pixel_width,
         pixel_height
       )
-      
+
       Rails.logger.info "API SCXRD: Calculated reference point: x=#{reference_data[:reference_x_mm]}, y=#{reference_data[:reference_y_mm]}, z=#{reference_data[:reference_z_mm]}"
-      
+
       # Create the well image
       well_image = scxrd_dataset.well.images.build(
         pixel_size_x_mm: reference_data[:pixel_size_x_mm],
@@ -302,7 +302,7 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
         description: "Crystal image from SCXRD dataset: #{scxrd_dataset.experiment_name}",
         captured_at: scxrd_dataset.measured_at
       )
-      
+
       # Attach the same image data to the well image
       crystal_image_data = processing_result[:crystal_image]
       well_image.file.attach(
@@ -310,13 +310,13 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
         filename: "scxrd_crystal_#{scxrd_dataset.experiment_name}.#{crystal_image_data[:filename].split('.').last}",
         content_type: crystal_image_data[:content_type]
       )
-      
+
       if well_image.save
         Rails.logger.info "API SCXRD: Successfully created well image #{well_image.id} for well #{scxrd_dataset.well.id}"
       else
         Rails.logger.error "API SCXRD: Failed to create well image: #{well_image.errors.full_messages.join(', ')}"
       end
-      
+
     rescue => e
       Rails.logger.error "API SCXRD: Error creating well image from crystal image: #{e.message}"
       Rails.logger.error "API SCXRD: Backtrace: #{e.backtrace.first(3).join("\n")}"
@@ -609,7 +609,7 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
               filename: result[:crystal_image][:filename],
               content_type: result[:crystal_image][:content_type]
             )
-            
+
             # Create well image if dataset is associated with a well and has coordinates
             create_well_image_from_crystal_image(@scxrd_dataset, result)
           elsif result[:crystal_image]

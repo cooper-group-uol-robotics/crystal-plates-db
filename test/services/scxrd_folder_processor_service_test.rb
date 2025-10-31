@@ -16,27 +16,27 @@ class ScxrdFolderProcessorServiceTest < ActiveSupport::TestCase
   test "calculates well image reference point from crystal center coordinates" do
     # Test coordinates from center to top-left conversion
     crystal_center_x = 10.0   # mm
-    crystal_center_y = 20.0   # mm  
+    crystal_center_y = 20.0   # mm
     crystal_center_z = 5.0    # mm
     pixel_width = 1000        # pixels
     pixel_height = 800        # pixels
     pixel_size = 0.000874     # mm/pixel (as specified in requirements)
-    
+
     result = ScxrdFolderProcessorService.calculate_well_image_reference_point(
       crystal_center_x, crystal_center_y, crystal_center_z,
       pixel_width, pixel_height, pixel_size
     )
-    
+
     # Calculate expected values
     half_width_mm = (pixel_width * pixel_size) / 2.0  # (1000 * 0.000874) / 2 = 0.437
     half_height_mm = (pixel_height * pixel_size) / 2.0  # (800 * 0.000874) / 2 = 0.3496
-    
+
     expected_ref_x = crystal_center_x - half_width_mm  # 10.0 - 0.437 = 9.563
     expected_ref_y = crystal_center_y - half_height_mm  # 20.0 - 0.3496 = 19.6504
-    
+
     assert_not_nil result
     assert_equal expected_ref_x, result[:reference_x_mm]
-    assert_equal expected_ref_y, result[:reference_y_mm] 
+    assert_equal expected_ref_y, result[:reference_y_mm]
     assert_equal crystal_center_z, result[:reference_z_mm]
     assert_equal pixel_size, result[:pixel_size_x_mm]
     assert_equal pixel_size, result[:pixel_size_y_mm]

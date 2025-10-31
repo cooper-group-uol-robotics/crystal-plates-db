@@ -26,7 +26,7 @@ module CrystalPlatesDb
 
     # Configure MIME types for WebAssembly files
     config.before_configuration do
-      Rack::Mime::MIME_TYPES['.wasm'] = 'application/wasm'
+      Rack::Mime::MIME_TYPES[".wasm"] = "application/wasm"
     end
   end
 end

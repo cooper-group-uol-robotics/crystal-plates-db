@@ -28,28 +28,28 @@ class ScxrdFolderProcessorService
   end
 
   # Calculate the reference point (top-left) for well image from center coordinates
-  # crystal_center_x_mm: X coordinate of center of crystal image in mm  
+  # crystal_center_x_mm: X coordinate of center of crystal image in mm
   # crystal_center_y_mm: Y coordinate of center of crystal image in mm
   # crystal_center_z_mm: Z coordinate of center of crystal image in mm
   # pixel_width: Width of the image in pixels
-  # pixel_height: Height of the image in pixels  
+  # pixel_height: Height of the image in pixels
   # pixel_size_mm: Size of one pixel in mm (0.000874 as specified)
   # Returns hash with reference_x_mm, reference_y_mm, reference_z_mm for top-left corner
-  def self.calculate_well_image_reference_point(crystal_center_x_mm, crystal_center_y_mm, crystal_center_z_mm, 
+  def self.calculate_well_image_reference_point(crystal_center_x_mm, crystal_center_y_mm, crystal_center_z_mm,
                                                 pixel_width, pixel_height, pixel_size_mm = 0.000874)
     # Calculate half dimensions in mm
     half_width_mm = (pixel_width * pixel_size_mm) / 2.0
     half_height_mm = (pixel_height * pixel_size_mm) / 2.0
-    
+
     # Top-left corner is center minus half dimensions
     # Note: In image coordinates, Y increases downward, so we subtract half height to get top
     reference_x_mm = crystal_center_x_mm - half_width_mm
     reference_y_mm = crystal_center_y_mm - half_height_mm
     reference_z_mm = crystal_center_z_mm  # Z coordinate stays the same
-    
+
     {
       reference_x_mm: reference_x_mm,
-      reference_y_mm: reference_y_mm, 
+      reference_y_mm: reference_y_mm,
       reference_z_mm: reference_z_mm,
       pixel_size_x_mm: pixel_size_mm,
       pixel_size_y_mm: pixel_size_mm
@@ -72,10 +72,10 @@ class ScxrdFolderProcessorService
     if peak_table_files.any?
       # Prefer *_peakhunt.tabbin files first
       peakhunt_files = peak_table_files.select { |file| File.basename(file).end_with?("_peakhunt.tabbin") }
-      
+
       # Fall back to *_proffitpeak.tabbin files
       proffitpeak_files = peak_table_files.select { |file| File.basename(file).end_with?("_proffitpeak.tabbin") }
-      
+
       # Choose the preferred file
       if peakhunt_files.any?
         peak_table_file = peakhunt_files.first
