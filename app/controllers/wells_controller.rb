@@ -284,7 +284,7 @@ class WellsController < ApplicationController
     @well = Well.find(params[:id])
     @calorimetry_datasets = @well.calorimetry_datasets.recent.includes(:calorimetry_video)
     @available_videos = CalorimetryVideo.recent.includes(:plate)
-    
+
     respond_to do |format|
       format.html { render partial: "wells/calorimetry_datasets", locals: { well: @well } }
       format.json { render json: @calorimetry_datasets }

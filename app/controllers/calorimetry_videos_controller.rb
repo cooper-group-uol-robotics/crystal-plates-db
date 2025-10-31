@@ -1,5 +1,5 @@
 class CalorimetryVideosController < ApplicationController
-  before_action :set_calorimetry_video, only: [:show, :edit, :update, :destroy]
+  before_action :set_calorimetry_video, only: [ :show, :edit, :update, :destroy ]
 
   # GET /calorimetry_videos
   def index
@@ -28,7 +28,7 @@ class CalorimetryVideosController < ApplicationController
     @calorimetry_video = CalorimetryVideo.new(calorimetry_video_params)
 
     if @calorimetry_video.save
-      redirect_to @calorimetry_video, notice: 'Calorimetry video was successfully created.'
+      redirect_to @calorimetry_video, notice: "Calorimetry video was successfully created."
     else
       @plates = Plate.order(:name)
       render :new, status: :unprocessable_entity
@@ -38,7 +38,7 @@ class CalorimetryVideosController < ApplicationController
   # PATCH/PUT /calorimetry_videos/1
   def update
     if @calorimetry_video.update(calorimetry_video_params)
-      redirect_to @calorimetry_video, notice: 'Calorimetry video was successfully updated.'
+      redirect_to @calorimetry_video, notice: "Calorimetry video was successfully updated."
     else
       @plates = Plate.order(:name)
       render :edit, status: :unprocessable_entity
@@ -48,7 +48,7 @@ class CalorimetryVideosController < ApplicationController
   # DELETE /calorimetry_videos/1
   def destroy
     @calorimetry_video.destroy
-    redirect_to calorimetry_videos_url, notice: 'Calorimetry video was successfully deleted.'
+    redirect_to calorimetry_videos_url, notice: "Calorimetry video was successfully deleted."
   end
 
   private

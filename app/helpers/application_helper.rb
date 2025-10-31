@@ -110,7 +110,7 @@ module ApplicationHelper
 
   def time_duration_in_words(seconds)
     return "0s" if seconds <= 0
-    
+
     if seconds < 60
       "#{seconds.round}s"
     elsif seconds < 3600

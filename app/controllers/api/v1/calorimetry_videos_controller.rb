@@ -1,6 +1,6 @@
 class Api::V1::CalorimetryVideosController < Api::V1::BaseController
-  before_action :set_plate, only: [:index, :create], if: -> { params[:plate_barcode].present? }
-  before_action :set_calorimetry_video, only: [:show, :update, :destroy]
+  before_action :set_plate, only: [ :index, :create ], if: -> { params[:plate_barcode].present? }
+  before_action :set_calorimetry_video, only: [ :show, :update, :destroy ]
 
   # GET /api/v1/plates/:plate_barcode/calorimetry_videos
   def index
@@ -99,7 +99,7 @@ class Api::V1::CalorimetryVideosController < Api::V1::BaseController
 
   def format_calorimetry_video_detailed(video)
     base_data = format_calorimetry_video(video)
-    
+
     base_data.merge({
       datasets: video.calorimetry_datasets.includes(:well).recent.map do |dataset|
         {

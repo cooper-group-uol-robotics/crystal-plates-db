@@ -8,7 +8,7 @@ class CreateCalorimetryDatapoints < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :calorimetry_datapoints, [:calorimetry_dataset_id, :timestamp_seconds], 
+    add_index :calorimetry_datapoints, [ :calorimetry_dataset_id, :timestamp_seconds ],
               name: 'index_calorimetry_datapoints_on_dataset_and_timestamp'
   end
 end

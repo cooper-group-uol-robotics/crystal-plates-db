@@ -213,11 +213,10 @@ Rails.application.routes.draw do
 
       # Standalone Calorimetry routes
       resources :calorimetry_videos, only: [ :index, :show, :create, :update, :destroy ]
-      
+
       resources :calorimetry_datasets, only: [ :index, :show, :create, :update, :destroy ] do
         member do
           get :datapoints
-          post :parse_data_file
         end
       end
 
