@@ -108,7 +108,7 @@
                             <strong><%= dataset.name %></strong>
                           </td>
                           <td>
-                            <%= link_to dataset.well.position, well_path(dataset.well), class: "text-decoration-none" %>
+                            <%= link_to dataset.well.well_label_with_subwell, well_path(dataset.well), class: "text-decoration-none" %>
                           </td>
                           <td>
                             <small class="text-muted">
