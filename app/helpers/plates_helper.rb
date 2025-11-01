@@ -1,54 +1,55 @@
 module PlatesHelper
   # Dynamic layer system for well visualization
+  # Using matplotlib tab10 colormap for optimal data visualization
   WELL_LAYERS = {
     has_content: {
       name: "Has Content",
       description: "Wells containing chemicals or stock solutions",
       icon: "bi-droplet-fill",
-      color: "#0d6efd",
+      color: "#1f77b4", # tab10 blue
       method: :has_content?
     },
     has_images: {
       name: "Has Images",
       description: "Wells with microscopy images",
       icon: "bi-camera-fill",
-      color: "#198754",
+      color: "#ff7f0e", # tab10 orange
       method: :has_images?
     },
     has_pxrd: {
       name: "Has PXRD",
       description: "Wells with powder X-ray diffraction data",
       icon: "bi-graph-up",
-      color: "#fd7e14",
+      color: "#2ca02c", # tab10 green
       method: :has_pxrd_patterns?
+    },
+    has_calorimetry: {
+      name: "Has Calorimetry",
+      description: "Wells with calorimetry temperature data",
+      icon: "bi-thermometer-half",
+      color: "#9467bd", # tab10 purple
+      method: :has_calorimetry_datasets?
     },
     has_scxrd: {
       name: "Has SCXRD",
       description: "Wells with single crystal X-ray diffraction data",
       icon: "bi-gem",
-      color: "#6f42c1",
+      color: "#d62728", # tab10 red
       method: :has_scxrd_datasets?
     },
     unit_cells_db: {
       name: "Unique in DB",
       description: "Wells with SCXRD unit cells unique within our database",
       icon: "bi-database-fill",
-      color: "#8e44ad",
+      color: "#8c564b", # tab10 brown
       method: :has_db_unique_scxrd_unit_cell?
     },
     unit_cells_csd: {
       name: "Unique in CSD",
       description: "Wells with SCXRD unit cells unique within CSD",
-      icon: "bi-gem",
-      color: "#9b59b6",
+      icon: "bi-database-fill",
+      color: "#e377c2", # tab10 pink
       method: :has_csd_unique_scxrd_unit_cell?
-    },
-    has_calorimetry: {
-      name: "Has Calorimetry",
-      description: "Wells with calorimetry temperature data",
-      icon: "bi-thermometer-half",
-      color: "#dc3545",
-      method: :has_calorimetry_datasets?
     }
   }.freeze
 
@@ -153,12 +154,80 @@ module PlatesHelper
   end
 
   def well_tooltip_text(well)
-    status_parts = []
-    status_parts << "Has images" if well.has_images?
-    status_parts << "Has PXRD" if well.has_pxrd_patterns?
-    status_parts << "Has content" if well.has_content?
-    status_parts << "Empty" if status_parts.empty?
+    tooltip_parts = [ "#{well.well_label_with_subwell}" ]
 
-    "#{well.well_label_with_subwell}: #{status_parts.join(', ')}"
+    # Content information with specific names
+    if well.has_content?
+      content_details = []
+
+      # Add chemical names
+      if well.chemicals.any?
+        chemical_names = well.chemicals.limit(3).pluck(:name)
+        if well.chemicals.count > 3
+          chemical_names << "#{well.chemicals.count - 3} more..."
+        end
+        content_details += chemical_names.map { |name| "Chemical: #{name}" }
+      end
+
+      # Add stock solution names
+      stock_solutions = (well.stock_solutions + well.polymorphic_stock_solutions).uniq
+      if stock_solutions.any?
+        stock_names = stock_solutions.first(3).map(&:display_name)
+        if stock_solutions.count > 3
+          stock_names << "#{stock_solutions.count - 3} more..."
+        end
+        content_details += stock_names.map { |name| "Stock: #{name}" }
+      end
+
+      if content_details.any?
+        tooltip_parts += content_details
+      else
+        tooltip_parts << "Has content"
+      end
+    end
+
+    # Image data with count
+    if well.has_images?
+      image_count = well.images.count
+      tooltip_parts << "#{image_count} image#{'s' if image_count != 1}"
+    end
+
+    # PXRD data with count
+    if well.has_pxrd_patterns?
+      pxrd_count = well.pxrd_patterns.count
+      tooltip_parts << "#{pxrd_count} PXRD pattern#{'s' if pxrd_count != 1}"
+    end
+
+    # SCXRD data with details
+    if well.has_scxrd_datasets?
+      scxrd_count = well.scxrd_datasets.count
+      tooltip_parts << "#{scxrd_count} SCXRD dataset#{'s' if scxrd_count != 1}"
+
+      # Add unit cell info if available
+      if well.has_scxrd_unit_cell?
+        tooltip_parts << "  - Has unit cell parameters"
+
+        if well.has_db_unique_scxrd_unit_cell?
+          tooltip_parts << "  - Unique in database"
+        end
+
+        if well.has_csd_unique_scxrd_unit_cell?
+          tooltip_parts << "  - Unique in CSD"
+        end
+      end
+    end
+
+    # Calorimetry data with count
+    if well.has_calorimetry_datasets?
+      calorimetry_count = well.calorimetry_datasets.count
+      tooltip_parts << "#{calorimetry_count} calorimetry dataset#{'s' if calorimetry_count != 1}"
+    end
+
+    # If completely empty
+    if tooltip_parts.size == 1
+      tooltip_parts << "Empty well"
+    end
+
+    tooltip_parts.join("\n")
   end
 end
