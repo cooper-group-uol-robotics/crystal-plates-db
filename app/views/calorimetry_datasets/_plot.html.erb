@@ -1,0 +1,34 @@
+<%# app/views/calorimetry_datasets/_plot.html.erb %>
+
+<% if calorimetry_dataset.calorimetry_datapoints.any? %>
+  <%
+    canvas_id = local_assigns[:canvas_id] || 'calorimetry-main-plot'
+    is_mini_chart = local_assigns[:mini_chart] || false
+    container_height = is_mini_chart ? '120px' : '400px'
+    container_classes = is_mini_chart ? '' : 'py-4'
+  %>
+  
+  <div class="<%= container_classes %>" style="position: relative; height: <%= container_height %>; width: 100%;">
+    <canvas id="<%= canvas_id %>"></canvas>
+  </div>
+  
+  <script type="module">
+    try {
+      const { renderCalorimetryChart } = await import("calorimetry_chart");
+      
+      // Convert Ruby data to JavaScript format
+      const datapoints = <%= raw calorimetry_dataset.calorimetry_datapoints.order(:timestamp_seconds).map { |dp| { timestamp_seconds: dp.timestamp_seconds, temperature: dp.temperature } }.to_json %>;
+      const title = '<%= j calorimetry_dataset.name.presence || "Dataset ##{calorimetry_dataset.id}" %>';
+      const isMini = <%= is_mini_chart %>;
+      
+      // Render the chart
+      renderCalorimetryChart('<%= canvas_id %>', datapoints, title, isMini);
+    } catch (error) {
+      console.error('Error loading or rendering calorimetry chart:', error);
+    }
+  </script>
+<% else %>
+  <div class="alert alert-warning">
+    <h6>No temperature data available for this dataset</h6>
+  </div>
+<% end %>

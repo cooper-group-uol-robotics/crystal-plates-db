@@ -1,0 +1,85 @@
+<% if @well.present? %>
+  <% content_for :title, "Create Calorimetry Dataset for Well #{@well.well_label_with_subwell}" %>
+<% else %>
+  <% content_for :title, "Create New Calorimetry Dataset" %>
+<% end %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <% if @well.present? %>
+    <h2>Create Calorimetry Dataset for Well <%= @well.well_label_with_subwell %></h2>
+    <%= link_to "Back to Plate", @well.plate, class: "btn btn-outline-secondary" %>
+  <% else %>
+    <h2>Create New Calorimetry Dataset</h2>
+    <%= link_to "Back to All Datasets", calorimetry_datasets_path, class: "btn btn-outline-secondary" %>
+  <% end %>
+</div>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-thermometer-half"></i> Dataset Details
+        </h5>
+        <% if @well.present? %>
+          <small class="text-muted">Plate: <%= @well.plate.barcode %></small>
+        <% end %>
+      </div>
+      <div class="card-body">
+        <%= render 'form', calorimetry_dataset: @calorimetry_dataset %>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="card-title mb-0">
+          <i class="bi bi-info-circle"></i> Processing Information
+        </h6>
+      </div>
+      <div class="card-body">
+        <h6>Dataset Creation Process</h6>
+        <ol class="small">
+          <li><strong>Select Video:</strong> Choose the calorimetry video containing thermal imagery</li>
+          <li><strong>Define Extraction Region:</strong> Specify pixel coordinates and mask size for this well</li>
+          <li><strong>Upload CSV Data:</strong> Provide the processed temperature time series data</li>
+        </ol>
+        
+        <hr>
+        
+        <h6>Video Processing Parameters</h6>
+        <ul class="list-unstyled small">
+          <li><strong>Pixel Coordinates:</strong> X,Y position of well center in the video frame</li>
+          <li><strong>Mask Diameter:</strong> Size of circular region for temperature extraction (pixels)</li>
+        </ul>
+        
+        <% if @well.present? %>
+          <p class="small text-muted mt-3">
+            <strong>Well Association:</strong> This dataset will be linked to well <%= @well.well_label_with_subwell %> 
+            on plate <%= @well.plate.barcode %>.
+          </p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Bootstrap validation
+  (function() {
+    'use strict';
+    window.addEventListener('load', function() {
+      var forms = document.getElementsByClassName('needs-validation');
+      var validation = Array.prototype.filter.call(forms, function(form) {
+        form.addEventListener('submit', function(event) {
+          if (form.checkValidity() === false) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          form.classList.add('was-validated');
+        }, false);
+      });
+    }, false);
+  })();
+</script>

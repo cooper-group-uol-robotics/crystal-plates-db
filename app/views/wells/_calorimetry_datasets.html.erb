@@ -1,301 +1,228 @@
-<div class="calorimetry-datasets-content" data-well-id="<%= well.id %>">
-  <% if @calorimetry_datasets.any? %>
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h6 class="mb-0">Calorimetry Datasets (<%= @calorimetry_datasets.count %>)</h6>
-      <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#newCalorimetryDataset<%= well.id %>" aria-expanded="false">
-        <i class="fas fa-plus"></i> Add Dataset
-      </button>
-    </div>
+<%# app/views/wells/_calorimetry_datasets.html.erb %>
+<script type="module">
+// Define function in global scope for calorimetry dataset switching
+window.showCalorimetryDatasetInMain = function(datasetId, datasetTitle, datasetUrl) {
+  console.log('showCalorimetryDatasetInMain called with:', datasetId, datasetTitle, datasetUrl);
+  
+  // Update the main plot
+  fetch(`/calorimetry_datasets/${datasetId}/plot`)
+    .then(response => response.text())
+    .then(html => {
+      const container = document.getElementById('calorimetry-main-plot-container');
+      container.innerHTML = html;
+      
+      // Execute any scripts that were injected
+      const scripts = container.querySelectorAll('script');
+      scripts.forEach(script => {
+        try {
+          if (script.type === 'module') {
+            // Handle ES module scripts by creating a new script element
+            const moduleScript = document.createElement('script');
+            moduleScript.type = 'module';
+            moduleScript.textContent = script.innerHTML;
+            document.head.appendChild(moduleScript);
+            // Clean up after execution
+            setTimeout(() => moduleScript.remove(), 100);
+          } else {
+            // Use Function constructor for regular scripts
+            new Function(script.innerHTML)();
+          }
+        } catch(e) {
+          console.error('Error executing plot script:', e);
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Error loading plot:', error);
+    });
+    
+  // Update dataset info
+  document.getElementById('current-calorimetry-title').textContent = datasetTitle;
+  
+  // Update action buttons
+  const downloadButton = document.getElementById('main-calorimetry-download-btn');
+  if (downloadButton) {
+    downloadButton.href = `/api/v1/calorimetry_datasets/${datasetId}/datapoints`;
+  }
+  
+  // Update thumbnail highlighting
+  document.querySelectorAll('.calorimetry-thumbnail').forEach(thumb => {
+    thumb.classList.remove('border-primary');
+  });
+  const selectedThumb = document.querySelector(`[data-dataset-id="${datasetId}"]`);
+  if (selectedThumb) {
+    selectedThumb.classList.add('border-primary');
+  }
+};
+</script>
 
-    <!-- New Dataset Form -->
-    <div class="collapse mb-3" id="newCalorimetryDataset<%= well.id %>">
-      <div class="card card-body">
-        <form id="calorimetryDatasetForm<%= well.id %>" data-well-id="<%= well.id %>">
-          <div class="row">
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label">Dataset Name</label>
-                <input type="text" class="form-control" name="name" required placeholder="e.g., Processing Run 1">
-              </div>
-              
-              <div class="mb-3">
-                <label class="form-label">Source Video</label>
-                <select class="form-select" name="calorimetry_video_id" required>
-                  <option value="">Select a video...</option>
-                  <% @available_videos.each do |video| %>
-                    <option value="<%= video.id %>" data-plate="<%= video.plate.barcode %>">
-                      <%= video.name %> (<%= video.plate.barcode %>)
-                    </option>
-                  <% end %>
-                </select>
-              </div>
-            </div>
-            
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label">Well Position in Video</label>
-                <div class="row">
-                  <div class="col-6">
-                    <input type="number" class="form-control" name="pixel_x" placeholder="X coordinate" required>
-                  </div>
-                  <div class="col-6">
-                    <input type="number" class="form-control" name="pixel_y" placeholder="Y coordinate" required>
-                  </div>
-                </div>
-                <div class="form-text">Pixel coordinates of well center in video</div>
-              </div>
-              
-              <div class="mb-3">
-                <label class="form-label">Mask Diameter (pixels)</label>
-                <input type="number" class="form-control" name="mask_diameter_pixels" placeholder="e.g., 50" required>
-                <div class="form-text">Diameter of circular mask for temperature extraction</div>
-              </div>
-            </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Calorimetry Datasets (<%= @calorimetry_datasets.count %>)</h5>
+  <a class="btn btn-primary btn-sm" href="<%= new_well_calorimetry_dataset_path(well) %>" target="_blank">
+    Add Calorimetry Dataset
+  </a>
+</div>
+
+<% if @calorimetry_datasets.any? %>
+  <% selected_dataset = @calorimetry_datasets.first %>
+  
+  <!-- Main Calorimetry Display -->
+  <div class="mb-4">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold">Temperature Viewer</span>
+        <small class="text-muted" id="current-calorimetry-info">
+          <% if selected_dataset.processed_at %>
+            Processed: <%= selected_dataset.processed_at.strftime("%Y-%m-%d %H:%M") %>
+          <% elsif selected_dataset.created_at %>
+            Created: <%= selected_dataset.created_at.strftime("%Y-%m-%d %H:%M") %>
+          <% end %>
+        </small>
+      </div>
+      <div class="card-body p-0">
+        <div class="position-relative">
+          <div id="calorimetry-main-plot-container" style="min-height: 400px; background: #f8f9fa;">
+            <%= render partial: 'calorimetry_datasets/plot', locals: { calorimetry_dataset: selected_dataset } %>
           </div>
           
-          <div class="d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#newCalorimetryDataset<%= well.id %>">Cancel</button>
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-cog"></i> Create Dataset
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Existing Datasets -->
-    <div class="row">
-      <% @calorimetry_datasets.each do |dataset| %>
-        <div class="col-md-6 mb-3">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start mb-2">
-                <h6 class="card-title mb-1"><%= dataset.name %></h6>
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-ellipsis-v"></i>
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="viewDatasetChart(<%= dataset.id %>)">
-                      <i class="fas fa-chart-line"></i> View Chart
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" onclick="downloadDatasetData(<%= dataset.id %>)">
-                      <i class="fas fa-download"></i> Download Data
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteDataset(<%= dataset.id %>)">
-                      <i class="fas fa-trash"></i> Delete
-                    </a></li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div class="row text-center mb-2">
-                <div class="col-4">
-                  <div class="small text-muted">Data Points</div>
-                  <div class="h6 mb-0">
-                    <span class="badge bg-<%= dataset.datapoint_count > 0 ? 'success' : 'secondary' %>">
-                      <%= number_with_delimiter(dataset.datapoint_count) %>
-                    </span>
-                  </div>
-                </div>
-                <div class="col-4">
-                  <div class="small text-muted">Duration</div>
-                  <div class="h6 mb-0">
-                    <% if dataset.duration_seconds > 0 %>
-                      <%= time_duration_in_words(dataset.duration_seconds) %>
-                    <% else %>
-                      <span class="text-muted">-</span>
-                    <% end %>
-                  </div>
-                </div>
-                <div class="col-4">
-                  <div class="small text-muted">Temperature Range</div>
-                  <div class="h6 mb-0">
-                    <% temp_range = dataset.temperature_range %>
-                    <% if temp_range[0] && temp_range[1] %>
-                      <%= sprintf("%.1f°C", temp_range[0]) %> - <%= sprintf("%.1f°C", temp_range[1]) %>
-                    <% else %>
-                      <span class="text-muted">-</span>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-              
-              <hr class="my-2">
-              
-              <div class="small">
-                <div class="row">
-                  <div class="col-6">
-                    <strong>Source:</strong><br>
-                    <span class="text-muted"><%= dataset.calorimetry_video.name %></span>
-                  </div>
-                  <div class="col-6">
-                    <strong>Processing:</strong><br>
-                    <span class="text-muted">
-                      (<%= dataset.pixel_x %>, <%= dataset.pixel_y %>) • ⌀<%= dataset.mask_diameter_pixels %>px
-                    </span>
-                  </div>
-                </div>
-                <div class="mt-2">
-                  <strong>Processed:</strong> 
-                  <span class="text-muted"><%= time_ago_in_words(dataset.processed_at) %> ago</span>
-                </div>
-              </div>
-            </div>
+          <!-- Temperature Info Overlay -->
+          <div class="position-absolute bottom-0 start-0 bg-dark bg-opacity-75 text-white p-2 m-2 rounded" id="calorimetry-info-overlay">
+            <small>
+              Points: <%= number_with_delimiter(selected_dataset.datapoint_count) %> |
+              <% temp_range = selected_dataset.temperature_range %>
+              <% if temp_range[0] && temp_range[1] %>
+                Range: <%= sprintf("%.1f°C - %.1f°C", temp_range[0], temp_range[1]) %> |
+              <% end %>
+              Duration: <%= time_duration_in_words(selected_dataset.duration_seconds) %>
+            </small>
           </div>
         </div>
-      <% end %>
-    </div>
-  <% else %>
-    <!-- No datasets state -->
-    <div class="text-center py-4">
-      <div class="mb-3">
-        <i class="fas fa-thermometer-half fa-3x text-muted"></i>
       </div>
-      <h6 class="text-muted">No Calorimetry Datasets</h6>
-      <p class="text-muted small">Process calorimetry videos to extract temperature time series for this well.</p>
-      
-      <% if @available_videos.any? %>
-        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#newCalorimetryDataset<%= well.id %>" aria-expanded="false">
-          <i class="fas fa-plus"></i> Create First Dataset
-        </button>
-        
-        <!-- New Dataset Form (same as above) -->
-        <div class="collapse mt-3" id="newCalorimetryDataset<%= well.id %>">
-          <div class="card card-body text-start">
-            <form id="calorimetryDatasetForm<%= well.id %>" data-well-id="<%= well.id %>">
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label class="form-label">Dataset Name</label>
-                    <input type="text" class="form-control" name="name" required placeholder="e.g., Processing Run 1">
-                  </div>
-                  
-                  <div class="mb-3">
-                    <label class="form-label">Source Video</label>
-                    <select class="form-select" name="calorimetry_video_id" required>
-                      <option value="">Select a video...</option>
-                      <% @available_videos.each do |video| %>
-                        <option value="<%= video.id %>" data-plate="<%= video.plate.barcode %>">
-                          <%= video.name %> (<%= video.plate.barcode %>)
-                        </option>
-                      <% end %>
-                    </select>
+      <div class="card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="btn-group btn-group-sm">
+            <a href="/api/v1/calorimetry_datasets/<%= selected_dataset.id %>/datapoints" 
+               class="btn btn-outline-success" id="main-calorimetry-download-btn" title="Download temperature data">
+              <i class="bi bi-download"></i> Download CSV
+            </a>
+            <button type="button" class="btn btn-outline-danger" 
+                    onclick="deleteCalorimetryDataset(<%= selected_dataset.id %>)" 
+                    title="Delete dataset">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </div>
+          <small class="text-muted" id="current-calorimetry-title">
+            <%= selected_dataset.name.presence || "Calorimetry Dataset ##{selected_dataset.id}" %>
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Calorimetry Datasets Thumbnail Gallery -->
+  <div class="mb-3">
+    <h6 class="text-muted">All Datasets (<%= @calorimetry_datasets.count %>)</h6>
+    <div class="border rounded p-2" style="background: #f8f9fa;">
+      <div class="d-flex overflow-auto gap-2 p-2" style="scroll-behavior: smooth;">
+        <% @calorimetry_datasets.each_with_index do |dataset, index| %>
+          <% if dataset.datapoint_count > 0 %>
+            <div class="flex-shrink-0 position-relative" style="width: 150px;">
+              <div class="card h-100 calorimetry-thumbnail <%= 'border-primary' if index == 0 %>" style="cursor: pointer;" 
+                   data-dataset-id="<%= dataset.id %>"
+                   data-dataset-title="<%= dataset.name.presence || "Dataset ##{dataset.id}" %>">
+                <div class="card-body p-2" style="height: 120px;">
+                  <canvas id="thumb-<%= dataset.id %>" width="130" height="80" style="width: 100%; height: 100%;"></canvas>
+                </div>
+                <div class="card-footer p-1">
+                  <div class="small text-center">
+                    <div class="fw-bold"><%= truncate(dataset.name.presence || "Dataset ##{dataset.id}", length: 15) %></div>
+                    <div class="text-muted" style="font-size: 11px;">
+                      <%= dataset.processed_at.strftime('%m/%d %H:%M') %>
+                    </div>
                   </div>
                 </div>
                 
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label class="form-label">Well Position in Video</label>
-                    <div class="row">
-                      <div class="col-6">
-                        <input type="number" class="form-control" name="pixel_x" placeholder="X coordinate" required>
-                      </div>
-                      <div class="col-6">
-                        <input type="number" class="form-control" name="pixel_y" placeholder="Y coordinate" required>
-                      </div>
-                    </div>
-                    <div class="form-text">Pixel coordinates of well center in video</div>
-                  </div>
-                  
-                  <div class="mb-3">
-                    <label class="form-label">Mask Diameter (pixels)</label>
-                    <input type="number" class="form-control" name="mask_diameter_pixels" placeholder="e.g., 50" required>
-                    <div class="form-text">Diameter of circular mask for temperature extraction</div>
+                <!-- Actions overlay on hover -->
+                <div class="position-absolute top-0 end-0 p-1 d-none calorimetry-actions">
+                  <div class="btn-group-vertical btn-group-sm">
+                    <a href="/api/v1/calorimetry_datasets/<%= dataset.id %>/datapoints" 
+                       class="btn btn-outline-light btn-sm" title="Download">
+                      <i class="bi bi-download"></i>
+                    </a>
+                    <button type="button" class="btn btn-outline-light btn-sm" 
+                            onclick="deleteCalorimetryDataset(<%= dataset.id %>)" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
                   </div>
                 </div>
               </div>
-              
-              <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#newCalorimetryDataset<%= well.id %>">Cancel</button>
-                <button type="submit" class="btn btn-primary">
-                  <i class="fas fa-cog"></i> Create Dataset
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      <% else %>
-        <div class="alert alert-info">
-          <div class="small">
-            <strong>No calorimetry videos available</strong><br>
-            <%= link_to "Upload a calorimetry video", calorimetry_videos_path, class: "alert-link" %> first, then return to process this well.
-          </div>
-        </div>
-      <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
     </div>
-  <% end %>
-</div>
+  </div>
 
-<!-- JavaScript for calorimetry dataset management -->
-<script>
-// Handle dataset form submission
-document.addEventListener('DOMContentLoaded', function() {
-  const form = document.getElementById('calorimetryDatasetForm<%= well.id %>');
-  if (form) {
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
+
+
+<% else %>
+  <div class="alert alert-info text-center">
+    <h6>No Calorimetry Datasets</h6>
+    <p>No calorimetry datasets have been processed for this well yet.</p>
+    <a href="<%= new_well_calorimetry_dataset_path(well) %>" class="btn btn-primary" target="_blank">Add First Dataset</a>
+  </div>
+<% end %>
+
+<script type="module">
+  setTimeout(async function() {
+    try {
+      // Import the calorimetry chart renderer
+      const { renderCalorimetryChart } = await import("calorimetry_chart");
       
-      const formData = new FormData(form);
-      const wellId = form.dataset.wellId;
-      
-      // Add well_id to form data
-      formData.append('well_id', wellId);
-      
-      try {
-        const response = await fetch(`/api/v1/wells/${wellId}/calorimetry_datasets`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-          },
-          body: JSON.stringify({
-            calorimetry_dataset: {
-              name: formData.get('name'),
-              calorimetry_video_id: formData.get('calorimetry_video_id'),
-              pixel_x: formData.get('pixel_x'),
-              pixel_y: formData.get('pixel_y'),
-              mask_diameter_pixels: formData.get('mask_diameter_pixels'),
-              processed_at: new Date().toISOString()
+      // Initialize thumbnails with calorimetry data
+      <% @calorimetry_datasets.each do |dataset| %>
+        <% if dataset.datapoint_count > 0 %>
+          (function() {
+            const canvas = document.getElementById('thumb-<%= dataset.id %>');
+            if (canvas) {
+              const datapoints = <%= raw dataset.calorimetry_datapoints.order(:timestamp_seconds).map { |dp| { timestamp_seconds: dp.timestamp_seconds, temperature: dp.temperature } }.to_json %>;
+              const title = '<%= j(dataset.name.presence || "Dataset ##{dataset.id}") %>';
+              
+              // Render mini chart using the modern approach
+              renderCalorimetryChart('thumb-<%= dataset.id %>', datapoints, title, true);
             }
-          })
-        });
+          })();
+        <% end %>
+      <% end %>
+    } catch (error) {
+      console.error('Error loading calorimetry chart module:', error);
+      // Fallback to basic display if module loading fails
+      console.log('Calorimetry chart thumbnails could not be rendered');
+    }
+    
+    // Initialize thumbnail click handlers
+    document.querySelectorAll('.calorimetry-thumbnail').forEach(function(thumb) {
+      thumb.addEventListener('click', function() {
+        const datasetId = this.getAttribute('data-dataset-id');
+        const datasetTitle = this.getAttribute('data-dataset-title');
         
-        if (response.ok) {
-          // Reload the calorimetry content
-          const wellModalController = document.querySelector('[data-controller="well-modal"]');
-          if (wellModalController && wellModalController.stimulusController) {
-            await wellModalController.stimulusController.loadCalorimetryInBackground();
-          }
-          
-          // Show success message
-          showNotification('Dataset created successfully!', 'success');
-        } else {
-          const errorData = await response.json();
-          showNotification(`Error: ${errorData.error || 'Failed to create dataset'}`, 'error');
-        }
-      } catch (error) {
-        console.error('Error creating dataset:', error);
-        showNotification('Error creating dataset', 'error');
-      }
+        window.showCalorimetryDatasetInMain(datasetId, datasetTitle, '');
+      });
+      
+      // Show actions on hover
+      thumb.addEventListener('mouseenter', function() {
+        this.querySelector('.calorimetry-actions').classList.remove('d-none');
+      });
+      thumb.addEventListener('mouseleave', function() {
+        this.querySelector('.calorimetry-actions').classList.add('d-none');
+      });
     });
-  }
-});
+  }, 200);
+</script>
 
-// Utility functions for dataset actions
-function viewDatasetChart(datasetId) {
-  // Open modal with temperature chart
-  console.log('View chart for dataset:', datasetId);
-  // TODO: Implement chart viewing
-}
-
-function downloadDatasetData(datasetId) {
-  // Download CSV or JSON data
-  window.location.href = `/api/v1/calorimetry_datasets/${datasetId}/datapoints`;
-}
-
-function deleteDataset(datasetId) {
+<script>
+// Utility functions
+function deleteCalorimetryDataset(datasetId) {
   if (confirm('Are you sure you want to delete this dataset? This action cannot be undone.')) {
     fetch(`/api/v1/calorimetry_datasets/${datasetId}`, {
       method: 'DELETE',
@@ -317,7 +244,6 @@ function deleteDataset(datasetId) {
   }
 }
 
-// Simple notification function
 function showNotification(message, type) {
   const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
   const notification = document.createElement('div');
@@ -329,18 +255,10 @@ function showNotification(message, type) {
   `;
   document.body.appendChild(notification);
   
-  // Auto-remove after 5 seconds
   setTimeout(() => {
     if (notification.parentNode) {
       notification.remove();
     }
   }, 5000);
-}
-
-// Helper function for duration formatting
-function timeDurationInWords(seconds) {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
-  return `${Math.round(seconds / 3600)}h`;
 }
 </script>

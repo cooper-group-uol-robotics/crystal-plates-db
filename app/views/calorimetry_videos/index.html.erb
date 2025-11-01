@@ -61,12 +61,13 @@
                     <div class="btn-group" role="group">
                       <%= link_to "View", video, class: "btn btn-sm btn-outline-primary" %>
                       <%= link_to "Edit", edit_calorimetry_video_path(video), class: "btn btn-sm btn-outline-secondary" %>
-                      <%= link_to "Delete", video, method: :delete, 
-                                  class: "btn btn-sm btn-outline-danger",
-                                  confirm: "Are you sure? This will also delete all associated datasets and datapoints.",
-                                  data: { 
-                                    confirm: "Are you sure? This will also delete all associated datasets and datapoints." 
-                                  } %>
+                      <%= button_to "Delete", video, 
+                                    method: :delete,
+                                    class: "btn btn-sm btn-outline-danger",
+                                    form: { style: "display: inline;" },
+                                    data: { 
+                                      confirm: "Are you sure? This will also delete all associated datasets and datapoints."
+                                    } %>
                     </div>
                   </td>
                 </tr>

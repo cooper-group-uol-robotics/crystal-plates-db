@@ -123,7 +123,7 @@ class Api::V1::CalorimetryDatasetsController < Api::V1::BaseController
   def calorimetry_dataset_params
     params.require(:calorimetry_dataset).permit(
       :name, :pixel_x, :pixel_y, :mask_diameter_pixels, :processed_at,
-      :well_id, :calorimetry_video_id
+      :well_id, :calorimetry_video_id, :temperature_data_file
     )
   end
 
@@ -145,24 +145,14 @@ class Api::V1::CalorimetryDatasetsController < Api::V1::BaseController
   end
 
   def format_calorimetry_dataset(dataset)
-    {
+    result = {
       id: dataset.id,
       name: dataset.name,
       well: {
         id: dataset.well.id,
-        position: dataset.well.position,
+        position: dataset.well.well_label_with_subwell,
         well_row: dataset.well.well_row,
         well_column: dataset.well.well_column
-      },
-      calorimetry_video: {
-        id: dataset.calorimetry_video.id,
-        name: dataset.calorimetry_video.name,
-        recorded_at: dataset.calorimetry_video.recorded_at
-      },
-      processing_parameters: {
-        pixel_x: dataset.pixel_x,
-        pixel_y: dataset.pixel_y,
-        mask_diameter_pixels: dataset.mask_diameter_pixels
       },
       datapoint_count: dataset.datapoint_count,
       temperature_range: dataset.temperature_range,
@@ -171,17 +161,36 @@ class Api::V1::CalorimetryDatasetsController < Api::V1::BaseController
       created_at: dataset.created_at,
       updated_at: dataset.updated_at
     }
+
+    if dataset.calorimetry_video.present?
+      result[:calorimetry_video] = {
+        id: dataset.calorimetry_video.id,
+        name: dataset.calorimetry_video.name,
+        recorded_at: dataset.calorimetry_video.recorded_at
+      }
+      result[:processing_parameters] = {
+        pixel_x: dataset.pixel_x,
+        pixel_y: dataset.pixel_y,
+        mask_diameter_pixels: dataset.mask_diameter_pixels
+      }
+    end
+
+    result
   end
 
   def format_calorimetry_dataset_detailed(dataset)
     base_data = format_calorimetry_dataset(dataset)
 
-    base_data.merge({
-      plate: {
-        id: dataset.calorimetry_video.plate.id,
-        barcode: dataset.calorimetry_video.plate.barcode,
-        name: dataset.calorimetry_video.plate.name
-      }
-    })
+    if dataset.calorimetry_video&.plate.present?
+      base_data.merge({
+        plate: {
+          id: dataset.calorimetry_video.plate.id,
+          barcode: dataset.calorimetry_video.plate.barcode,
+          name: dataset.calorimetry_video.plate.name
+        }
+      })
+    else
+      base_data
+    end
   end
 end

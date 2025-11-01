@@ -1,0 +1,110 @@
+<%= form_with(model: [@well, calorimetry_dataset].compact, local: true, multipart: true, class: "needs-validation", novalidate: true) do |form| %>
+  <% if calorimetry_dataset.errors.any? %>
+    <div class="alert alert-danger">
+      <h6><%= pluralize(calorimetry_dataset.errors.count, "error") %> prohibited this dataset from being saved:</h6>
+      <ul class="mb-0">
+        <% calorimetry_dataset.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="mb-3">
+        <%= form.label :name, "Dataset Name", class: 'form-label' %>
+        <%= form.text_field :name, class: 'form-control', placeholder: 'e.g., Heating Run 1', required: true %>
+        <div class="form-text">
+          A descriptive name for this calorimetry dataset
+        </div>
+        <div class="invalid-feedback">
+          Please provide a name for the dataset.
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <%= form.label :calorimetry_video_id, "Source Video", class: 'form-label' %>
+        <%= form.collection_select :calorimetry_video_id, @available_videos, :id, 
+                                   proc { |video| "#{video.name} (#{video.plate.barcode})" }, 
+                                   { prompt: "Select a video..." }, 
+                                   { class: 'form-select', required: true } %>
+        <div class="form-text">
+          Choose the calorimetry video from which this data was extracted
+        </div>
+        <% if @available_videos.empty? %>
+          <div class="alert alert-warning mt-2">
+            <strong>No videos available!</strong> 
+            <%= link_to "Upload a calorimetry video first", calorimetry_videos_path, target: "_blank" %>
+          </div>
+        <% end %>
+        <div class="invalid-feedback">
+          Please select a source video.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= form.label :temperature_data_file, "Temperature Data File", class: 'form-label' %>
+        <%= form.file_field :temperature_data_file, class: 'form-control', accept: '.csv,.txt', required: calorimetry_dataset.new_record? %>
+        <div class="form-text">
+          CSV file with columns: timestamp_seconds, temperature
+        </div>
+        <div class="invalid-feedback">
+          Please select a temperature data file to upload.
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-6">
+      <div class="mb-3">
+        <label class="form-label">Well Position in Video</label>
+        <div class="row">
+          <div class="col-6">
+            <%= form.number_field :pixel_x, class: 'form-control', placeholder: 'X coordinate', required: true %>
+          </div>
+          <div class="col-6">
+            <%= form.number_field :pixel_y, class: 'form-control', placeholder: 'Y coordinate', required: true %>
+          </div>
+        </div>
+        <div class="form-text">Pixel coordinates of well center in video</div>
+        <div class="invalid-feedback">
+          Please provide both X and Y coordinates.
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <%= form.label :mask_diameter_pixels, "Mask Diameter (pixels)", class: 'form-label' %>
+        <%= form.number_field :mask_diameter_pixels, class: 'form-control', placeholder: 'e.g., 50', required: true %>
+        <div class="form-text">Diameter of circular mask for temperature extraction</div>
+        <div class="invalid-feedback">
+          Please provide a mask diameter.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">CSV Format Example</label>
+        <div class="bg-light p-2 rounded small font-monospace">
+          timestamp_seconds,temperature<br>
+          0.0,23.45<br>
+          0.033,23.46<br>
+          0.066,23.48<br>
+          ...
+        </div>
+        <div class="form-text">
+          First column: time in seconds (decimal values)<br>
+          Second column: temperature in Celsius (decimal values)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= form.submit (calorimetry_dataset.new_record? ? "Create Dataset" : "Update Dataset"), class: 'btn btn-primary' %>
+    <% if @well.present? %>
+      <%= link_to "Cancel", @well.plate, class: "btn btn-outline-secondary" %>
+    <% else %>
+      <%= link_to "Cancel", (calorimetry_dataset.new_record? ? calorimetry_datasets_path : calorimetry_dataset), class: "btn btn-outline-secondary" %>
+    <% end %>
+  </div>
+<% end %>
+

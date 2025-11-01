@@ -46,7 +46,8 @@ Rails.application.routes.draw do
         end
       end
     end
-  resources :pxrd_patterns, only: [ :index, :new, :create ]
+    resources :pxrd_patterns, only: [ :index, :new, :create ]
+    resources :calorimetry_datasets, only: [ :index, :new, :create ]
     resources :scxrd_datasets, only: [ :index, :new, :create ] do
       # Keep only well-scoped collection operations - no individual dataset member actions
     end
@@ -66,6 +67,13 @@ Rails.application.routes.draw do
 
   # Calorimetry routes
   resources :calorimetry_videos
+
+  # Standalone calorimetry dataset routes for AJAX calls and global index
+  resources :calorimetry_datasets, only: [ :index, :show, :new, :create, :edit, :update, :destroy ] do
+    member do
+      get :plot
+    end
+  end
 
   # Standalone SCXRD dataset routes - all individual dataset operations
   resources :scxrd_datasets, only: [ :index, :show, :new, :create, :edit, :update, :destroy ] do
