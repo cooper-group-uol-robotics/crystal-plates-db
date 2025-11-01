@@ -121,6 +121,50 @@ class Well < ApplicationRecord
     end
   end
 
+  # Check if well has any calorimetry datasets
+  def has_calorimetry_datasets?
+    if association(:calorimetry_datasets).loaded?
+      calorimetry_datasets.any?
+    else
+      calorimetry_datasets.exists?
+    end
+  end
+
+  # Check if well has SCXRD data with unit cell parameters
+  def has_scxrd_unit_cell?
+    if association(:scxrd_datasets).loaded?
+      scxrd_datasets.any? { |dataset| dataset.has_primitive_cell? }
+    else
+      scxrd_datasets.with_primitive_cells.exists?
+    end
+  end
+
+  # Check if well has SCXRD datasets with unit cells unique within our database
+  def has_db_unique_scxrd_unit_cell?
+    return false unless has_scxrd_unit_cell?
+
+    # A well has unique unit cells if any of its SCXRD datasets have no similar datasets
+    # within the G6 distance tolerance (default 10.0) in our local database
+    scxrd_datasets.with_primitive_cells.any? do |dataset|
+      dataset.similar_datasets_count_by_g6(tolerance: 10.0) == 0
+    end
+  end
+
+  # Check if well has SCXRD datasets with unit cells unique within CSD
+  def has_csd_unique_scxrd_unit_cell?
+    return false unless has_scxrd_unit_cell?
+
+    # A well has CSD-unique unit cells if any of its SCXRD datasets are not found
+    # in the Cambridge Structural Database (this would require CSD integration)
+    # For now, this is a placeholder - would need CSD API integration
+    scxrd_datasets.with_primitive_cells.any? do |dataset|
+      # TODO: Implement CSD lookup functionality
+      # This might involve calling an external CSD API or local CSD database
+      # For now, return false as we don't have CSD integration
+      false
+    end
+  end
+
   # Get the most recent image
   def latest_image
     images.recent.first

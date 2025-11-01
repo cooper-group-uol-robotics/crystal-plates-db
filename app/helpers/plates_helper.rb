@@ -1,9 +1,55 @@
 module PlatesHelper
-  # Well color coding based on content
-  WELL_COLORS = {
-    has_data: { bg_color: "#198754", text_color: "white" },  # Green - has images or PXRD patterns
-    has_content: { bg_color: "#ffc107", text_color: "black" }, # Yellow - has stock solutions but no images/PXRD
-    empty: { bg_color: "#dc3545", text_color: "white" }       # Red - empty
+  # Dynamic layer system for well visualization
+  WELL_LAYERS = {
+    has_content: {
+      name: "Has Content",
+      description: "Wells containing chemicals or stock solutions",
+      icon: "bi-droplet-fill",
+      color: "#0d6efd",
+      method: :has_content?
+    },
+    has_images: {
+      name: "Has Images",
+      description: "Wells with microscopy images",
+      icon: "bi-camera-fill",
+      color: "#198754",
+      method: :has_images?
+    },
+    has_pxrd: {
+      name: "Has PXRD",
+      description: "Wells with powder X-ray diffraction data",
+      icon: "bi-graph-up",
+      color: "#fd7e14",
+      method: :has_pxrd_patterns?
+    },
+    has_scxrd: {
+      name: "Has SCXRD",
+      description: "Wells with single crystal X-ray diffraction data",
+      icon: "bi-gem",
+      color: "#6f42c1",
+      method: :has_scxrd_datasets?
+    },
+    unit_cells_db: {
+      name: "Unique in DB",
+      description: "Wells with SCXRD unit cells unique within our database",
+      icon: "bi-database-fill",
+      color: "#8e44ad",
+      method: :has_db_unique_scxrd_unit_cell?
+    },
+    unit_cells_csd: {
+      name: "Unique in CSD",
+      description: "Wells with SCXRD unit cells unique within CSD",
+      icon: "bi-gem",
+      color: "#9b59b6",
+      method: :has_csd_unique_scxrd_unit_cell?
+    },
+    has_calorimetry: {
+      name: "Has Calorimetry",
+      description: "Wells with calorimetry temperature data",
+      icon: "bi-thermometer-half",
+      color: "#dc3545",
+      method: :has_calorimetry_datasets?
+    }
   }.freeze
 
   # Point type badge classes
@@ -13,11 +59,48 @@ module PlatesHelper
     "droplet" => "info"
   }.freeze
 
-  def well_color_class(well)
-    return WELL_COLORS[:has_data] if well.has_images? || well.has_pxrd_patterns? || well.has_scxrd_datasets?
-    return WELL_COLORS[:has_content] if well.has_content?
 
-    WELL_COLORS[:empty]
+
+  # New layer system methods
+  def well_layer_data(well)
+    # Return data for all layers for this well
+    layer_data = {}
+
+    WELL_LAYERS.each do |key, config|
+      if key == :default
+        # Use traditional color logic for default
+        if well.has_images? || well.has_pxrd_patterns? || well.has_scxrd_datasets?
+          layer_data[key] = { active: true, level: "has_data" }
+        elsif well.has_content?
+          layer_data[key] = { active: true, level: "has_content" }
+        else
+          layer_data[key] = { active: true, level: "empty" }
+        end
+      elsif config[:method]
+        # Use the defined method to check if layer is active
+        layer_data[key] = { active: well.send(config[:method]) }
+      else
+        layer_data[key] = { active: false }
+      end
+    end
+
+    layer_data
+  end
+
+  def wells_data_for_layers(wells)
+    # Serialize all wells data for JavaScript layer system
+    wells_data = {}
+
+    wells.each do |well|
+      wells_data[well.id] = well_layer_data(well)
+    end
+
+    wells_data
+  end
+
+  def available_layers
+    # Return layers configuration for UI
+    WELL_LAYERS
   end
 
   def well_position_label(well)
