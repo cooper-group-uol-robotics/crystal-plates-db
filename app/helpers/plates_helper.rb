@@ -68,20 +68,14 @@ module PlatesHelper
     layer_data = {}
 
     WELL_LAYERS.each do |key, config|
-      if key == :default
-        # Use traditional color logic for default
-        if well.has_images? || well.has_pxrd_patterns? || well.has_scxrd_datasets?
-          layer_data[key] = { active: true, level: "has_data" }
-        elsif well.has_content?
-          layer_data[key] = { active: true, level: "has_content" }
-        else
-          layer_data[key] = { active: true, level: "empty" }
-        end
-      elsif config[:method]
+      # Convert symbol keys to strings for JSON compatibility
+      string_key = key.to_s
+
+      if config[:method]
         # Use the defined method to check if layer is active
-        layer_data[key] = { active: well.send(config[:method]) }
+        layer_data[string_key] = { active: well.send(config[:method]) }
       else
-        layer_data[key] = { active: false }
+        layer_data[string_key] = { active: false }
       end
     end
 
@@ -100,8 +94,8 @@ module PlatesHelper
   end
 
   def available_layers
-    # Return layers configuration for UI
-    WELL_LAYERS
+    # Return layers configuration for UI with string keys for JSON compatibility
+    WELL_LAYERS.transform_keys(&:to_s)
   end
 
   def well_position_label(well)
