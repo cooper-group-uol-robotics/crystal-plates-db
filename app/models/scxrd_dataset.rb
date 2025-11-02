@@ -170,9 +170,9 @@ class ScxrdDataset < ApplicationRecord
   end
 
   def first_image_size
-    first_diffraction_image = diffraction_images.order(:run_number, :image_number).first
-    return 0 unless first_diffraction_image&.rodhypix_file&.attached?
-    first_diffraction_image.rodhypix_file.blob.byte_size
+    first_image = diffraction_images.order(:run_number, :image_number).first
+    return 0 unless first_image&.rodhypix_file&.attached?
+    first_image.rodhypix_file.blob.byte_size
   end
 
   # Diffraction images methods
@@ -188,92 +188,12 @@ class ScxrdDataset < ApplicationRecord
     diffraction_images.distinct.pluck(:run_number).sort
   end
 
-  def first_diffraction_image
-    diffraction_images.ordered.first
-  end
-
   def total_diffraction_images_size
     diffraction_images.sum(&:file_size) || 0
   end
 
-  def image_metadata_only(diffraction_image: nil)
-    # Fast metadata extraction without full decompression
-    image_source = diffraction_image&.rodhypix_file || diffraction_images.order(:run_number, :image_number).first&.rodhypix_file
-    return { success: false, error: "No image file attached" } unless image_source&.attached?
-
-    begin
-      # Download the image data
-      image_data = image_source.blob.download
-
-      # Parse just the header using the ROD parser service
-      parser = RodImageParserService.new(image_data)
-      metadata = parser.parse_header_only
-
-      metadata
-    rescue => e
-      Rails.logger.error "SCXRD Dataset #{id}: Error parsing image metadata: #{e.message}"
-      {
-        success: false,
-        error: e.message,
-        dimensions: [ 0, 0 ],
-        pixel_size: [ 0.0, 0.0 ],
-        metadata: {}
-      }
-    end
-  end
-
-  def parsed_image_data(force_refresh: false, diffraction_image: nil)
-    return @parsed_image_data if @parsed_image_data && !force_refresh && diffraction_image.nil?
-
-    # Determine which image to parse
-    image_source = diffraction_image&.rodhypix_file || diffraction_images.order(:run_number, :image_number).first&.rodhypix_file
-    return nil unless image_source&.attached?
-
-    begin
-      # Download the image data
-      image_data = image_source.blob.download
-
-      # Parse using the ROD parser service
-      parser = RodImageParserService.new(image_data)
-      parsed_data = parser.parse
-
-      # Cache only if parsing the default first image
-      @parsed_image_data = parsed_data if diffraction_image.nil?
-
-      parsed_data
-    rescue => e
-      Rails.logger.error "SCXRD Dataset #{id}: Error parsing image data: #{e.message}"
-      {
-        success: false,
-        error: e.message,
-        dimensions: [ 0, 0 ],
-        pixel_size: [ 0.0, 0.0 ],
-        image_data: [],
-        metadata: {}
-      }
-    end
-  end
-
-  def image_dimensions
-    parsed_data = parsed_image_data
-    parsed_data[:dimensions] if parsed_data[:success]
-  end
-
-  def image_pixel_size
-    parsed_data = parsed_image_data
-    parsed_data[:pixel_size] if parsed_data[:success]
-  end
-
-  def image_metadata
-    parsed_data = parsed_image_data
-    parsed_data[:metadata] if parsed_data[:success]
-  end
-
-  def has_valid_image_data?(diffraction_image: nil)
-    return false unless diffraction_image&.rodhypix_file&.attached? || diffraction_images.any?
-    parsed_data = parsed_image_data(diffraction_image: diffraction_image)
-    parsed_data[:success] && !parsed_data[:image_data].empty?
-  end
+  # All image processing is now done client-side via WASM
+  # Methods removed: image_metadata_only, parsed_image_data, image_dimensions, image_pixel_size, image_metadata, has_valid_image_data
 
   def parsed_peak_table_data(force_refresh: false)
     return @parsed_peak_table_data if @parsed_peak_table_data && !force_refresh

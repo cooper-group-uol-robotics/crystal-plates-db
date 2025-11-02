@@ -72,21 +72,18 @@ class ScxrdDiffractionViewer {
         throw new Error(data.error || 'Failed to load image data');
       }
 
-      // Handle both old format (image_data array) and new format (raw_data base64)
-      if (data.raw_data && !data.image_data) {
-
-
+      // All responses now contain raw_data for WASM processing
+      if (data.raw_data) {
         // Parse raw data using client-side ROD parser
         if (window.RodImageParser) {
           try {
             const parser = new window.RodImageParser(data.raw_data);
             const parsedData = await parser.parse();
             if (parsedData.success) {
-
-              // Use client-side results
+              // Use client-side WASM results
               this.imageData = parsedData.image_data;
               this.dimensions = parsedData.dimensions;
-
+              this.metadata = parsedData.metadata;
             } else {
               throw new Error(`ROD parsing failed: ${parsedData.error}`);
             }
@@ -99,12 +96,8 @@ class ScxrdDiffractionViewer {
           throw new Error('RodImageParser not available for client-side parsing');
         }
       } else {
-        // Use pre-parsed image data
-        this.imageData = data.image_data;
+        throw new Error('No raw image data provided in response');
       }
-
-      this.dimensions = data.dimensions;
-      this.metadata = data.metadata;
       this.currentDiffractionImageId = diffractionImageId;
 
 

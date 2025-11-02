@@ -93,7 +93,6 @@ Rails.application.routes.draw do
     resources :diffraction_images, only: [ :index, :show ] do
       member do
         get :image_data
-        get :parsed_image_data
         get :download
       end
     end
@@ -213,7 +212,6 @@ Rails.application.routes.draw do
         resources :diffraction_images, only: [ :index, :show ] do
           member do
             get :image_data
-            get :parsed_image_data
             get :download
           end
         end

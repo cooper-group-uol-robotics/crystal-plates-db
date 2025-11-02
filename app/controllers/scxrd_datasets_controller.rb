@@ -264,8 +264,9 @@ class ScxrdDatasetsController < ApplicationController
     end
   end
 
+  # DEPRECATED: Use /scxrd_datasets/{id}/diffraction_images/{image_id}/image_data instead
   def image_data
-    Rails.logger.info "SCXRD: Serving parsed image data for dataset #{@scxrd_dataset.id}"
+    Rails.logger.warn "SCXRD: DEPRECATED ENDPOINT - /scxrd_datasets/#{@scxrd_dataset.id}/image_data accessed. Use /scxrd_datasets/#{@scxrd_dataset.id}/diffraction_images/{image_id}/image_data instead."
 
     # Get the first diffraction image from the diffraction_images association
     first_diffraction_image = @scxrd_dataset.diffraction_images.order(:run_number, :image_number).first
@@ -276,32 +277,23 @@ class ScxrdDatasetsController < ApplicationController
     end
 
     begin
-      parsed_data = @scxrd_dataset.parsed_image_data
+      # Set cache headers for raw data (cache for 1 hour)
+      expires_in 1.hour, public: true
 
-      if parsed_data[:success]
-        # Set cache headers for parsed image data (cache for 1 hour)
-        expires_in 1.hour, public: true
+      # Serve raw data for WASM processing only
+      raw_data = first_diffraction_image.rodhypix_file.blob.download
 
-        # Option to send just a sample for testing (add ?sample=true to URL)
-        image_data = parsed_data[:image_data]
-        if params[:sample] == "true" && image_data&.any?
-          sample_size = [ 1000, image_data.length ].min
-          image_data = image_data.first(sample_size)
-        end
-
-        render json: {
-          success: true,
-          dimensions: parsed_data[:dimensions],
-          pixel_size: parsed_data[:pixel_size],
-          image_data: image_data,
-          metadata: parsed_data[:metadata]
+      render json: {
+        success: true,
+        raw_data: Base64.strict_encode64(raw_data),
+        diffraction_image: {
+          id: first_diffraction_image.id,
+          run_number: first_diffraction_image.run_number,
+          image_number: first_diffraction_image.image_number,
+          filename: first_diffraction_image.filename,
+          file_size: raw_data.bytesize
         }
-      else
-        render json: {
-          success: false,
-          error: parsed_data[:error] || "Failed to parse image data"
-        }, status: :unprocessable_entity
-      end
+      }
     rescue => e
       Rails.logger.error "SCXRD: Error serving image data: #{e.message}"
       render json: {

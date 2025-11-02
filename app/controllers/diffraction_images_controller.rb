@@ -1,6 +1,6 @@
 class DiffractionImagesController < ApplicationController
   before_action :set_scxrd_dataset
-  before_action :set_diffraction_image, only: [ :show, :image_data, :parsed_image_data, :download ]
+  before_action :set_diffraction_image, only: [ :show, :image_data, :download ]
 
   def index
     @diffraction_images = @scxrd_dataset.diffraction_images.ordered
@@ -71,62 +71,27 @@ class DiffractionImagesController < ApplicationController
         return
       end
 
-      # Get metadata without full parsing
-      metadata = @scxrd_dataset.image_metadata_only(diffraction_image: @diffraction_image)
+      # Pure WASM processing - serve raw data only
+      raw_data = blob.download
 
-      if metadata[:success]
-        # Serve the raw file data as base64 for client-side processing
-        raw_data = blob.download
-
-        render json: {
-          success: true,
-          raw_data: Base64.strict_encode64(raw_data),
-          dimensions: metadata[:dimensions],
-          pixel_size: metadata[:pixel_size],
-          metadata: metadata[:metadata].merge({
-            run_number: @diffraction_image.run_number,
-            image_number: @diffraction_image.image_number,
-            filename: @diffraction_image.filename,
-            file_size: raw_data.bytesize
-          })
+      render json: {
+        success: true,
+        raw_data: Base64.strict_encode64(raw_data),
+        diffraction_image: {
+          id: @diffraction_image.id,
+          run_number: @diffraction_image.run_number,
+          image_number: @diffraction_image.image_number,
+          filename: @diffraction_image.filename,
+          file_size: raw_data.bytesize
         }
-      else
-        render_error(metadata[:error])
-      end
+      }
     rescue => e
       Rails.logger.error "Error serving diffraction image #{@diffraction_image.id}: #{e.message}"
       render_error("Failed to serve diffraction image: #{e.message}")
     end
   end
 
-  # New endpoint for backward compatibility - full server-side parsing if needed
-  def parsed_image_data
-    return render_error("No rodhypix file attached") unless @diffraction_image.rodhypix_file.attached?
-
-    begin
-      # Parse the diffraction image data using the dataset's parsing method
-      parsed_data = @scxrd_dataset.parsed_image_data(diffraction_image: @diffraction_image)
-
-      if parsed_data[:success]
-        render json: {
-          success: true,
-          image_data: parsed_data[:image_data],
-          dimensions: parsed_data[:dimensions],
-          pixel_size: parsed_data[:pixel_size],
-          metadata: parsed_data[:metadata].merge({
-            run_number: @diffraction_image.run_number,
-            image_number: @diffraction_image.image_number,
-            filename: @diffraction_image.filename
-          })
-        }
-      else
-        render_error(parsed_data[:error])
-      end
-    rescue => e
-      Rails.logger.error "Error parsing diffraction image #{@diffraction_image.id}: #{e.message}"
-      render_error("Failed to parse diffraction image: #{e.message}")
-    end
-  end
+  # REMOVED: parsed_image_data endpoint - all parsing now done client-side via WASM
 
   def download
     return render_error("No rodhypix file attached") unless @diffraction_image.rodhypix_file.attached?

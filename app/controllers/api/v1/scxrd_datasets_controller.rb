@@ -85,26 +85,43 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
   end
 
   # GET /api/v1/wells/:well_id/scxrd_datasets/:id/image_data
+  # DEPRECATED: Use /scxrd_datasets/{id}/diffraction_images/{image_id}/image_data instead
   def image_data
     unless @scxrd_dataset.has_first_image?
       render json: { error: "No diffraction image available" }, status: :not_found
       return
     end
 
-    parsed_data = @scxrd_dataset.parsed_image_data
+    # Log deprecation warning
+    Rails.logger.warn "SCXRD API: DEPRECATED ENDPOINT - /scxrd_datasets/#{@scxrd_dataset.id}/image_data accessed. Use /scxrd_datasets/#{@scxrd_dataset.id}/diffraction_images/{image_id}/image_data instead."
 
-    if parsed_data[:success]
+    # Serve first image raw data for WASM processing only
+    first_image = @scxrd_dataset.diffraction_images.order(:run_number, :image_number).first
+
+    unless first_image&.rodhypix_file&.attached?
+      render json: { error: "No diffraction image file attached" }, status: :not_found
+      return
+    end
+
+    begin
+      raw_data = first_image.rodhypix_file.blob.download
+
       render json: {
         success: true,
-        dimensions: parsed_data[:dimensions],
-        pixel_size: parsed_data[:pixel_size],
-        metadata: parsed_data[:metadata],
-        image_data: parsed_data[:image_data]
+        raw_data: Base64.strict_encode64(raw_data),
+        diffraction_image: {
+          id: first_image.id,
+          run_number: first_image.run_number,
+          image_number: first_image.image_number,
+          filename: first_image.filename,
+          file_size: raw_data.bytesize
+        }
       }
-    else
+    rescue => e
+      Rails.logger.error "Error serving SCXRD dataset image data: #{e.message}"
       render json: {
         success: false,
-        error: parsed_data[:error]
+        error: "Failed to serve image data: #{e.message}"
       }, status: :unprocessable_entity
     end
   end
@@ -433,7 +450,7 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       has_diffraction_images: dataset.has_diffraction_images?,
       diffraction_images_count: dataset.diffraction_images_count,
       total_diffraction_images_size: dataset.has_diffraction_images? ? number_to_human_size(dataset.total_diffraction_images_size) : nil,
-      image_metadata: dataset.has_first_image? ? dataset.image_metadata : nil,
+      # image_metadata removed - all metadata extraction now handled client-side via WASM
       nearby_point_of_interests: dataset.has_real_world_coordinates? ?
         dataset.nearby_point_of_interests.map do |poi|
           coords = poi.real_world_coordinates

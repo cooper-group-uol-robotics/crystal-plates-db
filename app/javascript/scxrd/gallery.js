@@ -58,14 +58,14 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
             // Load diffraction images list first (for navigation)
             await viewer.loadDiffractionImagesList(wellId, datasetId);
 
-            // Load the first available diffraction image, or fall back to legacy first image
+            // Load the first available diffraction image by ID
             let success = false;
             if (viewer.diffractionImages && viewer.diffractionImages.length > 0) {
-              // Load the first diffraction image from the new system
+              // Load the first diffraction image from the modern system
               success = await viewer.loadImageData(wellId, datasetId, viewer.diffractionImages[0].id);
             } else {
-              // Fall back to legacy first image
-              success = await viewer.loadImageData(wellId, datasetId);
+              console.warn(`No diffraction images found for dataset ${datasetId}`);
+              // No fallback - if there are no individual diffraction images, the dataset is incomplete
             }
 
             if (success) {
