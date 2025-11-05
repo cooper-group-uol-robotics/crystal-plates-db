@@ -1,3 +1,5 @@
+require 'timeout'
+
 class ScxrdDatasetsController < ApplicationController
   include ActionView::Helpers::NumberHelper
   before_action :log_request
@@ -465,9 +467,50 @@ class ScxrdDatasetsController < ApplicationController
       Rails.logger.debug "CSD Search API response: #{response.body.inspect}"
 
       if response.success?
+        # Add simple formula matching with error handling
+        results = response.body || []
+        well_formulas = []
+        
+        begin
+          well_formulas = @scxrd_dataset.associated_chemical_formulas
+        rescue StandardError => e
+          Rails.logger.error "Error getting well formulas: #{e.message}"
+          well_formulas = []
+        end
+        
+        # Add match_type to each result using sophisticated formula matching
+        results.each do |result|
+          begin
+            csd_formula = result['formula'] || result['empirical_formula'] || result['molecular_formula']
+            
+            if csd_formula.present? && well_formulas.present?
+              # Use FormulaComparisonService for sophisticated matching
+              matching_formulas = FormulaComparisonService.find_matching_formulas(
+                csd_formula, 
+                well_formulas, 
+                tolerance_percent: 10.0
+              )
+              
+              if matching_formulas.any?
+                result['match_type'] = 'cell_and_formula'
+                result['matched_well_formula'] = matching_formulas.first[:formula]
+                result['similarity_score'] = matching_formulas.first[:similarity_score]
+              else
+                result['match_type'] = 'cell_only'
+              end
+            else
+              result['match_type'] = 'cell_only'
+            end
+          rescue StandardError => e
+            Rails.logger.error "Error categorizing CSD result: #{e.message}"
+            result['match_type'] = 'cell_only'
+          end
+        end
+        
         render json: {
           success: true,
-          results: response.body || [],
+          results: results,
+          well_formulas: well_formulas,
           search_parameters: {
             max_hits: max_hits,
             lattice_centring: "P",
@@ -512,7 +555,8 @@ class ScxrdDatasetsController < ApplicationController
       g6_count = similar_datasets.size
     end
 
-    # Get CSD count
+    # Get CSD count and formula match count
+    csd_formula_matches = 0
     begin
       cell_params = @scxrd_dataset.extract_cell_params_for_g6
 
@@ -540,6 +584,28 @@ class ScxrdDatasetsController < ApplicationController
 
       if response.success? && response.body.is_a?(Array)
         csd_count = response.body.size
+        
+        # Count formula matches using sophisticated matching
+        well_formulas = @scxrd_dataset.associated_chemical_formulas
+        if well_formulas.any?
+          csd_formula_matches = response.body.count do |result|
+            csd_formula = result['formula'] || result['empirical_formula'] || result['molecular_formula']
+            if csd_formula.present?
+              begin
+                FormulaComparisonService.find_matching_formulas(
+                  csd_formula, 
+                  well_formulas, 
+                  tolerance_percent: 10.0
+                ).any?
+              rescue StandardError => e
+                Rails.logger.error "Error in formula matching: #{e.message}"
+                false
+              end
+            else
+              false
+            end
+          end
+        end
       end
     rescue StandardError => e
       Rails.logger.error "Error getting CSD count: #{e.message}"
@@ -548,7 +614,8 @@ class ScxrdDatasetsController < ApplicationController
     render json: {
       success: true,
       g6_count: g6_count,
-      csd_count: csd_count
+      csd_count: csd_count,
+      csd_formula_matches: csd_formula_matches
     }
   end
 
@@ -571,7 +638,95 @@ class ScxrdDatasetsController < ApplicationController
     end
   end
 
+  private
 
+  # Simple formula matching - just check if formulas are identical (case insensitive)
+  # This avoids the complex parsing that was causing performance issues
+  def simple_formula_match?(formula1, formula2)
+    return false if formula1.blank? || formula2.blank?
+    
+    # Normalize formulas by removing spaces and converting to uppercase
+    norm1 = formula1.to_s.gsub(/\s+/, '').upcase
+    norm2 = formula2.to_s.gsub(/\s+/, '').upcase
+    
+    norm1 == norm2
+  end
+
+  # Categorize CSD search results based on formula matching
+  def categorize_csd_results_by_formula_match(csd_results)
+    cell_and_formula_matches = []
+    cell_only_matches = []
+    
+    begin
+      # Get well formulas once to avoid repeated database queries
+      well_formulas = @scxrd_dataset.associated_chemical_formulas
+      Rails.logger.debug "Well formulas for categorization: #{well_formulas.inspect}"
+      
+      csd_results.each do |result|
+        begin
+          # Extract formula from CSD result (adjust field name based on actual API response)
+          csd_formula = result['formula'] || result['empirical_formula'] || result['molecular_formula']
+          
+          if csd_formula.present? && well_formulas.present?
+            # Check if formula matches using our comparison service
+            matching_formula = FormulaComparisonService.find_matching_formulas(csd_formula, well_formulas).first
+            
+            if matching_formula
+              # Mark as both cell and formula match
+              result_with_match_type = result.merge({
+                'match_type' => 'cell_and_formula',
+                'matched_well_formula' => matching_formula[:formula]
+              })
+              cell_and_formula_matches << result_with_match_type
+            else
+              # Mark as cell only match
+              result_with_match_type = result.merge({
+                'match_type' => 'cell_only',
+                'csd_formula' => csd_formula
+              })
+              cell_only_matches << result_with_match_type
+            end
+          else
+            # Mark as cell only match (no formula or no well formulas)
+            result_with_match_type = result.merge({
+              'match_type' => 'cell_only',
+              'csd_formula' => csd_formula
+            })
+            cell_only_matches << result_with_match_type
+          end
+        rescue StandardError => e
+          Rails.logger.error "Error processing CSD result: #{e.message}"
+          # Fallback to cell-only match on error
+          result_with_match_type = result.merge({
+            'match_type' => 'cell_only',
+            'csd_formula' => csd_formula,
+            'processing_error' => e.message
+          })
+          cell_only_matches << result_with_match_type
+        end
+      end
+      
+    rescue StandardError => e
+      Rails.logger.error "Error in CSD result categorization: #{e.message}"
+      # Fallback: treat all as cell-only matches
+      csd_results.each do |result|
+        result_with_match_type = result.merge({
+          'match_type' => 'cell_only',
+          'categorization_error' => e.message
+        })
+        cell_only_matches << result_with_match_type
+      end
+    end
+    
+    # Combine all results with match type information
+    all_results = cell_and_formula_matches + cell_only_matches
+    
+    {
+      all_results: all_results,
+      cell_and_formula_matches: cell_and_formula_matches,
+      cell_only_matches: cell_only_matches
+    }
+  end
 
   def scxrd_dataset_params
     # Create a copy of params without the compressed_archive to avoid unpermitted parameter warnings

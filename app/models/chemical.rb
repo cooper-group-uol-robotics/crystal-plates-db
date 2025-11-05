@@ -20,6 +20,9 @@ class Chemical < ApplicationRecord
   end
 
   def molecular_formula
+    # Return empirical formula if available from SciFormation
+    return empirical_formula if empirical_formula.present?
+    
     # This could be calculated from SMILES if needed
     # For now, return nil until we add that functionality
     nil
@@ -44,12 +47,20 @@ class Chemical < ApplicationRecord
 
   # Check if chemical is used directly in wells
   def used_in_wells?
-    well_contents.exists?
+    if association(:well_contents).loaded?
+      well_contents.any?
+    else
+      well_contents.exists?
+    end
   end
 
   # Check if chemical is used in stock solutions
   def used_in_stock_solutions?
-    stock_solution_components.exists?
+    if association(:stock_solution_components).loaded?
+      stock_solution_components.any?
+    else
+      stock_solution_components.exists?
+    end
   end
 
   # Check if chemical can be deleted (not used anywhere)
@@ -59,7 +70,11 @@ class Chemical < ApplicationRecord
 
   # Get wells where this chemical is used directly
   def direct_wells_count
-    well_contents.count
+    if association(:well_contents).loaded?
+      well_contents.size
+    else
+      well_contents.count
+    end
   end
 
   # Get usage summary
@@ -71,7 +86,11 @@ class Chemical < ApplicationRecord
     end
 
     if used_in_stock_solutions?
-      stock_solution_count = stock_solutions.count
+      stock_solution_count = if association(:stock_solutions).loaded?
+                              stock_solutions.size
+                            else
+                              stock_solutions.count
+                            end
       summaries << "#{stock_solution_count} stock solution#{stock_solution_count == 1 ? '' : 's'}"
     end
 
@@ -121,13 +140,9 @@ class Chemical < ApplicationRecord
       form_data = {
         "table" => "CdbContainer",
         "format" => "json",
-        "query" => "[0+AND+1]",
+        "query" => "[0]",
         "crit0" => "barcode",
-        "op0" => "OP_CONTAINS_ONE",
-        "val0" => barcode,
-        "crit1" => "department",
-        "op1" => "OP_IN_NUM",
-        "val1" => department_id
+        "val0" => barcode
       }
       Rails.logger.info "Form data for barcode search: #{form_data.inspect}"
       request.set_form_data(form_data)
@@ -138,7 +153,6 @@ class Chemical < ApplicationRecord
         "format" => "json",
         "query" => "[0]",
         "crit0" => "department",
-        "op0" => "OP_IN_NUM",
         "val0" => department_id
       }
       Rails.logger.info "Form data for full department search: #{form_data.inspect}"
@@ -213,6 +227,7 @@ class Chemical < ApplicationRecord
         amount = item["realAmount"]
         storage = item["storageName"]
         barcode = item["barcode"]
+        empirical_formula = item["empFormula"]
 
         # Skip if essential data is missing
         if sciformation_id.blank? || name.blank?
@@ -239,7 +254,8 @@ class Chemical < ApplicationRecord
             cas: cas,
             amount: amount,
             storage: storage,
-            barcode: barcode
+            barcode: barcode,
+            empirical_formula: empirical_formula
           )
           Rails.logger.info "Updated chemical #{sciformation_id}: #{name}"
           updated_count += 1
@@ -252,7 +268,8 @@ class Chemical < ApplicationRecord
             cas: cas,
             amount: amount,
             storage: storage,
-            barcode: barcode
+            barcode: barcode,
+            empirical_formula: empirical_formula
           )
           Rails.logger.info "Created chemical #{sciformation_id}: #{name}"
           imported_count += 1

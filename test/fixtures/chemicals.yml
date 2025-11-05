@@ -2,6 +2,20 @@
 
 one:
   sciformation_id: 1
+  name: "Test Chemical One"
+  smiles: "CCO"
+  cas: "64-17-5"
+  empirical_formula: "C2H6O"
+  amount: "10g"
+  storage: "Freezer A / Shelf 1"
+  barcode: "TEST001"
 
 two:
-  sciformation_id: 1
+  sciformation_id: 2
+  name: "Test Chemical Two"
+  smiles: "CC(=O)O"
+  cas: "64-19-7"
+  empirical_formula: "C2H4O2"
+  amount: "25ml"
+  storage: "Room Temperature / Cabinet B"
+  barcode: "TEST002"

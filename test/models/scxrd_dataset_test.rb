@@ -107,4 +107,113 @@ class ScxrdDatasetTest < ActiveSupport::TestCase
     result = @dataset.best_conventional_cell
     assert result.nil? || result.is_a?(Hash)
   end
+
+  test "associated_chemical_formulas returns empty array when no well" do
+    @dataset.well = nil
+    @dataset.save!
+    
+    formulas = @dataset.associated_chemical_formulas
+    assert_equal [], formulas
+  end
+
+  test "associated_chemical_formulas includes direct chemical formulas" do
+    # Add a chemical directly to the well
+    chemical = chemicals(:one)  # This should have empirical_formula "C2H6O"
+    WellContent.create!(
+      well: @well,
+      contentable: chemical,
+      volume: 50.0,
+      unit: units(:microliters)
+    )
+
+    formulas = @dataset.associated_chemical_formulas
+    assert_includes formulas, chemical.empirical_formula
+  end
+
+  test "associated_chemical_formulas includes stock solution component formulas" do
+    # Create a stock solution with chemicals
+    stock_solution = StockSolution.create!(name: "Test Stock Solution")
+    chemical = chemicals(:two)  # This should have empirical_formula "C2H4O2"
+    
+    # Create unit if it doesn't exist
+    unit = Unit.find_by(symbol: 'mM') || Unit.create!(
+      name: 'millimolar', 
+      symbol: 'mM',
+      conversion_to_base: 1.0
+    )
+    
+    # Add chemical to stock solution
+    StockSolutionComponent.create!(
+      stock_solution: stock_solution,
+      chemical: chemical,
+      amount: 10.0,
+      unit: unit
+    )
+    
+    # Add stock solution to well
+    WellContent.create!(
+      well: @well,
+      contentable: stock_solution,
+      volume: 100.0,
+      unit: units(:microliters)
+    )
+
+    formulas = @dataset.associated_chemical_formulas
+    assert_includes formulas, chemical.empirical_formula
+  end
+
+  test "formula_matches_well_contents? returns false for empty CSD formula" do
+    assert_not @dataset.formula_matches_well_contents?("")
+    assert_not @dataset.formula_matches_well_contents?(nil)
+  end
+
+  test "formula_matches_well_contents? returns false when no well chemicals" do
+    # Well with no content
+    assert_not @dataset.formula_matches_well_contents?("C2H6O")
+  end
+
+  test "formula_matches_well_contents? returns true for matching formula" do
+    # Add a chemical to the well
+    chemical = chemicals(:one)  # "C2H6O"
+    WellContent.create!(
+      well: @well,
+      contentable: chemical,
+      volume: 50.0,
+      unit: units(:microliters)
+    )
+
+    # Should match exact formula
+    assert @dataset.formula_matches_well_contents?("C2H6O")
+    
+    # Should match within tolerance (±1 atom)
+    assert @dataset.formula_matches_well_contents?("C2H7O")  # +1 H
+    assert @dataset.formula_matches_well_contents?("C2H5O")  # -1 H
+    
+    # Should not match outside tolerance
+    assert_not @dataset.formula_matches_well_contents?("C2H10O")  # +4 H
+  end
+
+  test "best_matching_formula returns nil when no matches" do
+    result = @dataset.best_matching_formula("C10H20O10")
+    assert_nil result
+  end
+
+  test "best_matching_formula returns matching formula" do
+    # Add a chemical to the well
+    chemical = chemicals(:one)  # "C2H6O"
+    WellContent.create!(
+      well: @well,
+      contentable: chemical,
+      volume: 50.0,
+      unit: units(:microliters)
+    )
+
+    # Should return the exact match
+    result = @dataset.best_matching_formula("C2H6O")
+    assert_equal "C2H6O", result
+    
+    # Should return the best match within tolerance
+    result = @dataset.best_matching_formula("C2H7O")  # Close to C2H6O
+    assert_equal "C2H6O", result
+  end
 end

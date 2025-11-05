@@ -1,3 +1,5 @@
+require 'digest'
+
 class G6DistanceService
   API_ENDPOINT = "/api/v1/g6-distance"
 
@@ -24,43 +26,65 @@ class G6DistanceService
 
       Rails.logger.debug "G6 Distance API request: #{request_body.to_json}"
 
-      begin
-        connection = Faraday.new(url: base_url) do |faraday|
-          faraday.request :json
-          faraday.response :json
-          faraday.adapter Faraday.default_adapter
-          faraday.options.timeout = timeout_seconds
-        end
+      # Use a cache key based on the full request body so identical queries hit the cache
+      cache_key = "g6:distances:#{Digest::SHA1.hexdigest(request_body.to_json)}"
+      expires_in = (defined?(Setting) && Setting.respond_to?(:g6_distance_cache_ttl) && Setting.g6_distance_cache_ttl.present?) ? Setting.g6_distance_cache_ttl : 12.hours
 
-        response = connection.post(API_ENDPOINT, request_body)
-        Rails.logger.debug "G6 Distance API response: #{response.body.inspect}"
+      cached = Rails.cache.fetch(cache_key, expires_in: expires_in) do
+        begin
+          connection = Faraday.new(url: base_url) do |faraday|
+            faraday.request :json
+            faraday.response :json
+            faraday.adapter Faraday.default_adapter
+            faraday.options.timeout = timeout_seconds
+          end
 
-        if response.success? && response.body.is_a?(Array)
-          # Parse the response array format: [{"cell_id" => "123", "g6_distance" => 5.0}]
-          distances_hash = {}
-          response.body.each do |result|
-            if result.is_a?(Hash) && result["cell_id"] && result["g6_distance"]
-              # The cell_id in response should match the keys we sent in the cells object
-              # Try to match it back to our original dataset IDs
-              cell_id_str = result["cell_id"].to_s
+          response = connection.post(API_ENDPOINT, request_body)
+          Rails.logger.debug "G6 Distance API response: #{response.body.inspect}"
 
-              # Find the original dataset_id that matches this cell_id
-              matching_cell = comparison_cells_with_ids.find { |c| c[:dataset_id].to_s == cell_id_str }
-              if matching_cell
-                distances_hash[matching_cell[:dataset_id]] = result["g6_distance"].to_f
-              else
-                # Fallback: try converting to integer
-                distances_hash[result["cell_id"].to_i] = result["g6_distance"].to_f
+          if response.success? && response.body.is_a?(Array)
+            # Parse the response array format: [{"cell_id" => "123", "g6_distance" => 5.0}]
+            distances_hash = {}
+            response.body.each do |result|
+              if result.is_a?(Hash) && result["cell_id"] && result["g6_distance"]
+                # The cell_id in response should match the keys we sent in the cells object
+                # Try to match it back to our original dataset IDs
+                cell_id_str = result["cell_id"].to_s
+
+                # Find the original dataset_id that matches this cell_id
+                matching_cell = comparison_cells_with_ids.find { |c| c[:dataset_id].to_s == cell_id_str }
+                if matching_cell
+                  distances_hash[matching_cell[:dataset_id]] = result["g6_distance"].to_f
+                else
+                  # Fallback: try converting to integer
+                  distances_hash[result["cell_id"].to_i] = result["g6_distance"].to_f
+                end
               end
             end
+
+            # Store successful parsed distances
+            { distances: distances_hash }
+          else
+            # Store an error marker for a short time to avoid hammering the API
+            { error: { status: response.status, body: response.body } }
           end
-          distances_hash
+        rescue StandardError => e
+          Rails.logger.error "G6 distance API request failed: #{e.message}"
+          { exception: e.message }
+        end
+      end
+
+      # Interpret cached value
+      if cached.is_a?(Hash)
+        if cached[:distances]
+          cached[:distances]
         else
-          Rails.logger.warn "G6 distance API error: #{response.status} - #{response.body}"
+          Rails.logger.warn "G6 distance API cached error/exception: #{cached.inspect}"
           nil
         end
-      rescue StandardError => e
-        Rails.logger.error "G6 distance API request failed: #{e.message}"
+      else
+        # Unexpected cache format - log and return nil
+        Rails.logger.warn "G6 distance API unexpected cached value: #{cached.inspect}"
         nil
       end
     end

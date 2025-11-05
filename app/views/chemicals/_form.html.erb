@@ -53,6 +53,16 @@
   </div>
 
   <div class="col-md-6">
+    <%= form.label :empirical_formula, "Empirical Formula", class: "form-label" %>
+    <%= form.text_field :empirical_formula, class: "form-control #{'is-invalid' if chemical.errors[:empirical_formula].any?}" %>
+    <% if chemical.errors[:empirical_formula].any? %>
+      <div class="invalid-feedback">
+        <%= chemical.errors[:empirical_formula].first %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="col-md-6">
     <%= form.label :amount, class: "form-label" %>
     <%= form.text_field :amount, class: "form-control #{'is-invalid' if chemical.errors[:amount].any?}" %>
     <% if chemical.errors[:amount].any? %>

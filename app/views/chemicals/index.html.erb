@@ -71,8 +71,19 @@
                   <% end %>
                 <% end %>
               </th>
+              <th>Empirical Formula</th>
               <th>Amount</th>
-              <th>Storage</th>
+              <th>
+                <%= link_to chemicals_path(sort: 'storage', direction: @sort_column == 'storage' && @sort_direction == 'asc' ? 'desc' : 'asc', page: params[:page], search: @search_query), 
+                            class: "text-decoration-none text-dark" do %>
+                  Storage
+                  <% if @sort_column == 'storage' %>
+                    <i class="bi bi-arrow-<%= @sort_direction == 'asc' ? 'up' : 'down' %>"></i>
+                  <% else %>
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  <% end %>
+                <% end %>
+              </th>
               <th>Usage</th>
               <th class="text-end">Actions</th>
             </tr>
@@ -105,6 +116,13 @@
                 <td>
                   <% if chemical.barcode.present? %>
                     <code><%= chemical.barcode %></code>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if chemical.empirical_formula.present? %>
+                    <code><%= chemical.empirical_formula %></code>
                   <% else %>
                     <span class="text-muted">—</span>
                   <% end %>

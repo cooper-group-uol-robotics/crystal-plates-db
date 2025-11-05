@@ -7,7 +7,12 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
   // Use standalone API endpoint for all datasets
   const apiUrl = `/scxrd_datasets/${datasetId}`;
 
-
+  // Find the specific dataset viewer container to avoid updating wrong headers on index page
+  const datasetViewer = document.querySelector(`[data-dataset-id="${datasetId}"]`);
+  if (!datasetViewer) {
+    console.error(`Dataset viewer not found for dataset ID: ${datasetId}`);
+    return;
+  }
 
   // Update the main display panels
   fetch(apiUrl, {
@@ -20,6 +25,129 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
       return response.json();
     })
     .then(data => {
+      // Update dataset header information - look for header within the page structure
+      // On index page, look for the main card header outside the dataset viewer
+      // On show page, look for any header with h5
+      let headerCard = null;
+      
+      // Try to find header in the parent card structure (index page)
+      const parentCard = datasetViewer.closest('.card');
+      if (parentCard) {
+        headerCard = parentCard.querySelector('.card-header:has(h5)');
+      }
+      
+      // Fallback to global search (show page)
+      if (!headerCard) {
+        headerCard = document.querySelector('.card-header:has(h5)');
+      }
+      if (headerCard) {
+        // Update experiment name and link
+        const titleLink = headerCard.querySelector('h5 a');
+        if (titleLink) {
+          titleLink.href = datasetUrl;
+          titleLink.textContent = experimentName || `SCXRD Dataset #${datasetId}`;
+        }
+
+        // Update metadata section
+        const metadataDiv = headerCard.querySelector('.text-muted.small');
+        if (metadataDiv) {
+          let metadataHTML = '';
+
+          // Well information (if available)
+          if (wellId && wellId !== 'null' && wellId !== null) {
+            // We'll need to get well info separately or modify the API to include it
+            // For now, keep the well link but use the existing well context
+            const existingWellLink = metadataDiv.querySelector('a[href*="/plates/"]');
+            if (existingWellLink) {
+              metadataHTML += `<strong>Well:</strong> 
+                <a href="${existingWellLink.href}" class="text-decoration-none" target="_blank">
+                  ${existingWellLink.textContent}
+                </a>`;
+            } else {
+              metadataHTML += `<strong>Well:</strong> Well ${wellId}`;
+            }
+
+            // Add coordinates if available
+            if (data.real_world_coordinates &&
+              data.real_world_coordinates.x_mm !== null) {
+              metadataHTML += ` <span class="text-info ms-2">
+                (x=${parseFloat(data.real_world_coordinates.x_mm).toFixed(2)}mm, 
+                 y=${parseFloat(data.real_world_coordinates.y_mm).toFixed(2)}mm, 
+                 z=${parseFloat(data.real_world_coordinates.z_mm || 0).toFixed(2)}mm)
+              </span>`;
+            }
+            metadataHTML += ' | ';
+          }
+
+          // Measurement date
+          const measuredDate = data.measured_at ?
+            new Date(data.measured_at + ' UTC').toLocaleDateString('en-US', {
+              year: 'numeric', month: 'short', day: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            }) :
+            'Unknown date';
+          metadataHTML += `<strong>Measured:</strong> ${measuredDate}`;
+
+          // Unit cell information (using primitive_unit_cell from API)
+          if (data.primitive_unit_cell && data.primitive_unit_cell.a) {
+            metadataHTML += ` | <strong>Unit Cell:</strong> `;
+            metadataHTML += `a=${data.primitive_unit_cell.a} `;
+            metadataHTML += `b=${data.primitive_unit_cell.b} `;
+            metadataHTML += `c=${data.primitive_unit_cell.c} `;
+            metadataHTML += `α=${data.primitive_unit_cell.alpha}° `;
+            metadataHTML += `β=${data.primitive_unit_cell.beta}° `;
+            metadataHTML += `γ=${data.primitive_unit_cell.gamma}°`;
+          }
+
+          metadataDiv.innerHTML = metadataHTML;
+        }
+
+        // Update G6 comparison button and download links
+        const actionDiv = headerCard.querySelector('.text-end .d-flex');
+        if (actionDiv) {
+          let actionsHTML = '';
+
+          // Add G6 comparison button if unit cell is available
+          if (data.primitive_unit_cell && data.primitive_unit_cell.a) {
+            actionsHTML += `
+              <button type="button" class="btn btn-outline-info btn-sm similarity-button me-2"
+                      data-g6-comparison-target="similarityButton"
+                      data-dataset-id="${datasetId}"
+                      data-action="click->g6-comparison#loadG6Comparison">
+                <i class="bi bi-box-seam me-1"></i>
+                <span class="similarity-text">Loading...</span>
+              </button>
+            `;
+          }
+
+          // Action buttons group
+          actionsHTML += `
+            <div class="btn-group btn-group-sm">
+              <a href="${datasetUrl}" class="btn btn-outline-primary btn-sm" target="_blank">
+                <i class="bi bi-eye"></i> Details
+              </a>
+          `;
+
+          if (data.has_archive) {
+            actionsHTML += `
+              <a href="${datasetUrl}/download" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-download"></i> Archive
+              </a>
+            `;
+          }
+
+          actionsHTML += '</div>';
+          actionDiv.innerHTML = actionsHTML;
+
+          // Load similarity counts for the newly created button
+          if (data.primitive_unit_cell && data.primitive_unit_cell.a) {
+            const newButton = actionDiv.querySelector(`[data-dataset-id="${datasetId}"]`);
+            if (newButton) {
+              loadSimilarityCountForButton(newButton, datasetId);
+            }
+          }
+        }
+      }
       // Update diffraction image panel with interactive viewer
       const imagePanel = document.getElementById(`${uniqueId}-diffraction-image-panel`);
       if (data.has_diffraction_images) {
@@ -435,5 +563,46 @@ window.handleWellImageError = function () {
     `;
   }
 }
+
+// Function to load similarity count for a specific button
+window.loadSimilarityCountForButton = function (button, datasetId) {
+  const textSpan = button.querySelector('.similarity-text');
+
+  if (!textSpan) return;
+
+  fetch(`/scxrd_datasets/${datasetId}/similarity_counts`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const g6Count = data.g6_count || 0;
+        const csdCount = data.csd_count || 0;
+        const totalCount = g6Count + csdCount;
+
+        if (totalCount > 0) {
+          textSpan.textContent = `${g6Count} local + ${csdCount} CSD matches`;
+          button.classList.remove('btn-outline-secondary');
+          button.classList.add('btn-outline-info', 'has-matches');
+          button.disabled = false;
+        } else {
+          textSpan.textContent = 'No similar unit cells';
+          button.classList.remove('btn-outline-info');
+          button.classList.add('btn-outline-secondary');
+          button.disabled = true;
+        }
+      } else {
+        textSpan.textContent = 'No unit cell data';
+        button.classList.remove('btn-outline-info');
+        button.classList.add('btn-outline-secondary');
+        button.disabled = true;
+      }
+    })
+    .catch(error => {
+      console.error('Error loading similarity counts:', error);
+      textSpan.textContent = 'Error loading';
+      button.classList.remove('btn-outline-info');
+      button.classList.add('btn-outline-secondary');
+      button.disabled = true;
+    });
+};
 
 console.log('SCXRD Gallery functions loaded');

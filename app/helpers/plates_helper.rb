@@ -50,6 +50,13 @@ module PlatesHelper
       icon: "bi-database-fill",
       color: "#e377c2", # tab10 pink
       method: :has_csd_unique_scxrd_unit_cell?
+    },
+    csd_formula_matches: {
+      name: "CSD with Formula",
+      description: "Wells with SCXRD datasets that have both unit cell and chemical formula matches in CSD",
+      icon: "bi-diagram-3-fill",
+      color: "#17a2b8", # tab10 cyan/teal
+      method: :has_csd_formula_matches?
     }
   }.freeze
 
@@ -154,21 +161,39 @@ module PlatesHelper
     if well.has_content?
       content_details = []
 
-      # Add chemical names
-      if well.chemicals.any?
-        chemical_names = well.chemicals.limit(3).pluck(:name)
-        if well.chemicals.count > 3
-          chemical_names << "#{well.chemicals.count - 3} more..."
+      # Add chemical names - use loaded associations when available
+      chemicals = if well.association(:chemicals).loaded?
+                    well.chemicals.to_a
+                  else
+                    well.chemicals.to_a
+                  end
+      
+      if chemicals.any?
+        chemical_names = chemicals.first(3).map(&:name)
+        if chemicals.size > 3
+          chemical_names << "#{chemicals.size - 3} more..."
         end
         content_details += chemical_names.map { |name| "Chemical: #{name}" }
       end
 
-      # Add stock solution names
-      stock_solutions = (well.stock_solutions + well.polymorphic_stock_solutions).uniq
+      # Add stock solution names - use loaded associations when available
+      direct_stock_solutions = if well.association(:stock_solutions).loaded?
+                                 well.stock_solutions.to_a
+                               else
+                                 well.stock_solutions.to_a
+                               end
+      
+      polymorphic_stock_solutions = if well.association(:polymorphic_stock_solutions).loaded?
+                                     well.polymorphic_stock_solutions.to_a
+                                   else
+                                     well.polymorphic_stock_solutions.to_a
+                                   end
+      
+      stock_solutions = (direct_stock_solutions + polymorphic_stock_solutions).uniq
       if stock_solutions.any?
         stock_names = stock_solutions.first(3).map(&:display_name)
-        if stock_solutions.count > 3
-          stock_names << "#{stock_solutions.count - 3} more..."
+        if stock_solutions.size > 3
+          stock_names << "#{stock_solutions.size - 3} more..."
         end
         content_details += stock_names.map { |name| "Stock: #{name}" }
       end

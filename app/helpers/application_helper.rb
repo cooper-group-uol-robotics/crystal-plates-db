@@ -72,7 +72,9 @@ module ApplicationHelper
                 data: {
                   dataset_id: dataset.id,
                   g6_comparison_target: "similarityButton",
-                  action: "click->g6-comparison#loadG6Comparison"
+                  action: "click->g6-comparison#loadG6Comparison",
+                  bs_toggle: "modal",
+                  bs_target: modal_target
                 })
   end
 

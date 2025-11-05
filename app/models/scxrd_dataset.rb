@@ -393,4 +393,59 @@ class ScxrdDataset < ApplicationRecord
       gamma: primitive_gamma
     }
   end
+
+  # Get all chemical formulas associated with this dataset's well
+  # Returns array of empirical formulas from both direct chemicals and stock solution components
+  def associated_chemical_formulas
+    return [] unless well.present?
+    
+    begin
+      formulas = []
+      
+      # Get formulas from direct chemicals in the well
+      well.chemicals.each do |chemical|
+        if chemical.empirical_formula.present?
+          formulas << chemical.empirical_formula
+        end
+      end
+      
+      # Get formulas from stock solution components  
+      well.polymorphic_stock_solutions.each do |stock_solution|
+        stock_solution.chemicals.each do |chemical|
+          if chemical.empirical_formula.present?
+            formulas << chemical.empirical_formula
+          end
+        end
+      end
+      
+      # Remove duplicates and blanks
+      formulas.compact.uniq.reject(&:blank?)
+    rescue StandardError => e
+      Rails.logger.error "Error retrieving chemical formulas for SCXRD dataset #{id}: #{e.message}"
+      []
+    end
+  end
+
+  # Check if any of the associated formulas match a given CSD formula
+  def formula_matches_well_contents?(csd_formula, tolerance_percent: 10.0)
+    return false if csd_formula.blank?
+    
+    well_formulas = associated_chemical_formulas
+    return false if well_formulas.empty?
+    
+    well_formulas.any? do |well_formula|
+      FormulaComparisonService.formulas_match?(csd_formula, well_formula, tolerance_percent: tolerance_percent)
+    end
+  end
+
+  # Get best matching formula from well contents for a given CSD formula
+  def best_matching_formula(csd_formula, tolerance_percent: 10.0)
+    return nil if csd_formula.blank?
+    
+    well_formulas = associated_chemical_formulas
+    return nil if well_formulas.empty?
+    
+    matches = FormulaComparisonService.find_matching_formulas(csd_formula, well_formulas, tolerance_percent: tolerance_percent)
+    matches.first&.dig(:formula)
+  end
 end

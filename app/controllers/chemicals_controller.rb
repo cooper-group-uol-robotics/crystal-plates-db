@@ -11,12 +11,12 @@ class ChemicalsController < ApplicationController
     sort_direction = params[:direction] || "asc"
 
     # Validate sort parameters
-    allowed_columns = %w[name cas barcode sciformation_id created_at]
+    allowed_columns = %w[name cas barcode storage sciformation_id created_at]
     sort_column = "name" unless allowed_columns.include?(sort_column)
     sort_direction = "asc" unless %w[asc desc].include?(sort_direction)
 
-    # Start with base query
-    @chemicals = Chemical.all
+    # Start with base query - include associations to avoid N+1 queries
+    @chemicals = Chemical.includes(:well_contents, :stock_solution_components, :stock_solutions)
 
     # Apply search if provided
     if @search_query.present?
@@ -216,6 +216,6 @@ class ChemicalsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def chemical_params
-    params.require(:chemical).permit(:sciformation_id, :name, :smiles, :cas, :amount, :storage, :barcode)
+    params.require(:chemical).permit(:sciformation_id, :name, :smiles, :cas, :amount, :storage, :barcode, :empirical_formula)
   end
 end

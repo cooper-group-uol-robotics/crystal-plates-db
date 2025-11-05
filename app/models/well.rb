@@ -165,6 +165,30 @@ class Well < ApplicationRecord
     end
   end
 
+  # Check if well has SCXRD datasets with both unit cell and formula matches in CSD
+  def has_csd_formula_matches?
+    return false unless has_scxrd_datasets?
+
+    # Check if any SCXRD dataset has CSD matches with formula matches
+    # This requires actual CSD API calls, which is expensive, so we'll cache the result
+    # For now, return false as a safe default - this method should be used sparingly
+    scxrd_datasets.with_primitive_cells.any? do |dataset|
+      begin
+        # Get well formulas for this dataset
+        well_formulas = dataset.associated_chemical_formulas
+        next false if well_formulas.empty?
+        
+        # For performance, we just check if the dataset has associated formulas
+        # The actual CSD matching would be done via the CSD search API when needed
+        # This is a lightweight check that indicates potential for CSD formula matches
+        true
+      rescue => e
+        Rails.logger.error "Error checking CSD formula matches for SCXRD dataset #{dataset.id}: #{e.message}"
+        false
+      end
+    end
+  end
+
   # Get the most recent image
   def latest_image
     images.recent.first

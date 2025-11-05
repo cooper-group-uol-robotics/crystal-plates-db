@@ -16,7 +16,10 @@ export default class extends Controller {
     console.log("G6 comparison controller connected!")
 
     // Load similarity counts for all datasets when the controller connects
-    this.loadSimilarityCounts()
+    // Use a small delay to ensure DOM is fully loaded
+    setTimeout(() => {
+      this.loadSimilarityCounts()
+    }, 2000)
 
     // Initialize card toggler if available
     this.initializeCardToggler()
@@ -182,12 +185,45 @@ export default class extends Controller {
       return
     }
 
+    // Sort results: complete matches first, then cell-only matches
+    const sortedResults = data.results.sort((a, b) => {
+      if (a.match_type === 'cell_and_formula' && b.match_type === 'cell_only') return -1
+      if (a.match_type === 'cell_only' && b.match_type === 'cell_and_formula') return 1
+      return 0
+    })
+
+    // Count matches
+    const formulaMatches = sortedResults.filter(r => r.match_type === 'cell_and_formula').length
+    const cellOnlyMatches = sortedResults.filter(r => r.match_type === 'cell_only').length
+
     let html = `
       <div class="alert alert-success">
         <i class="bi bi-check-circle me-2"></i>
-        Found <strong>${data.results.length}</strong> similar structure(s) in the Cambridge Structural Database
+        Found <strong>${sortedResults.length}</strong> similar structure(s) in the Cambridge Structural Database
+        ${formulaMatches > 0 ? `
+          <br>
+          <small>
+            <i class="bi bi-check-circle-fill text-success me-1"></i>${formulaMatches} complete matches (unit cell + formula)
+            &nbsp;&nbsp;
+            <i class="bi bi-check-circle text-muted me-1"></i>${cellOnlyMatches} unit cell only matches
+          </small>
+        ` : ''}
       </div>
-      
+    `
+
+    // Show well formulas if available
+    if (data.well_formulas && data.well_formulas.length > 0) {
+      html += `
+        <div class="alert alert-light border mb-3">
+          <small class="text-muted">
+            <strong>Well contains chemicals with formulas:</strong> 
+            ${data.well_formulas.map(formula => `<code>${formula}</code>`).join(', ')}
+          </small>
+        </div>
+      `
+    }
+
+    html += `      
       <div class="table-responsive">
         <table class="table table-sm">
           <thead>
@@ -196,25 +232,43 @@ export default class extends Controller {
               <th>Unit Cell</th>
               <th>Space Group</th>
               <th>Formula</th>
+              <th>Match Type</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
     `
 
-    data.results.forEach(structure => {
+    sortedResults.forEach(structure => {
       const unitCellText = structure.cell_parameters && structure.cell_parameters.length >= 6 ?
         `a=${structure.cell_parameters[0].toFixed(3)}Å b=${structure.cell_parameters[1].toFixed(3)}Å c=${structure.cell_parameters[2].toFixed(3)}Å α=${structure.cell_parameters[3].toFixed(1)}° β=${structure.cell_parameters[4].toFixed(1)}° γ=${structure.cell_parameters[5].toFixed(1)}°` :
         'No unit cell data'
 
+      const isCompleteMatch = structure.match_type === 'cell_and_formula'
+      const rowClass = isCompleteMatch ? '' : 'text-muted'
+
+      let matchBadge = '<span class="badge bg-secondary"><i class="bi bi-circle"></i> Cell Only</span>'
+      if (isCompleteMatch) {
+        let badgeText = '<i class="bi bi-check-circle-fill"></i> Complete Match'
+        if (structure.matched_well_formula) {
+          badgeText += ` (${structure.matched_well_formula})`
+        }
+        if (structure.similarity_score) {
+          const scorePercent = Math.round(structure.similarity_score * 100)
+          badgeText += ` ${scorePercent}%`
+        }
+        matchBadge = `<span class="badge bg-success">${badgeText}</span>`
+      }
+
       html += `
-        <tr>
+        <tr class="${rowClass}">
           <td>
             <strong>${structure.identifier || 'Unknown'}</strong>
           </td>
           <td><small>${unitCellText}</small></td>
           <td><span class="badge bg-secondary">${structure.space_group || 'Unknown'}</span></td>
-          <td><small>${structure.formula || 'Unknown'}</small></td>
+          <td><small><code>${structure.formula || 'Unknown'}</code></small></td>
+          <td>${matchBadge}</td>
           <td>
             ${structure.identifier ? `
               <button type="button" class="btn btn-outline-info btn-sm" 
@@ -330,10 +384,15 @@ export default class extends Controller {
   }
 
   loadSimilarityCounts() {
+    console.log("Loading similarity counts for buttons...")
+    console.log("Found similarity button targets:", this.similarityButtonTargets.length)
+
     // Load similarity counts for all datasets with unit cells
-    this.similarityButtonTargets.forEach(button => {
+    this.similarityButtonTargets.forEach((button, index) => {
       const datasetId = button.getAttribute('data-dataset-id')
       const textSpan = button.querySelector('.similarity-text')
+
+      console.log(`Button ${index}: datasetId=${datasetId}, textSpan=${textSpan ? 'found' : 'not found'}`)
 
       if (!textSpan) return
 
@@ -343,22 +402,36 @@ export default class extends Controller {
           if (data.success) {
             const g6Count = data.g6_count || 0
             const csdCount = data.csd_count || 0
+            const csdFormulaMatches = data.csd_formula_matches || 0
             const totalCount = g6Count + csdCount
 
             if (totalCount > 0) {
-              textSpan.textContent = `${g6Count} local + ${csdCount} CSD matches`
+              let buttonText = `${g6Count} local + ${csdCount} CSD matches`
+              if (csdFormulaMatches > 0) {
+                buttonText = `${g6Count} local + ${csdCount} CSD (${csdFormulaMatches} with formula) matches`
+              }
+
+              textSpan.textContent = buttonText
               button.classList.remove('btn-outline-secondary')
-              button.classList.add('btn-outline-info', 'has-matches')
+
+              // Use different color if we have formula matches
+              if (csdFormulaMatches > 0) {
+                button.classList.remove('btn-outline-info')
+                button.classList.add('btn-outline-success', 'has-matches')
+              } else {
+                button.classList.remove('btn-outline-success')
+                button.classList.add('btn-outline-info', 'has-matches')
+              }
               button.disabled = false
             } else {
               textSpan.textContent = 'No similar unit cells'
-              button.classList.remove('btn-outline-info')
+              button.classList.remove('btn-outline-info', 'btn-outline-success')
               button.classList.add('btn-outline-secondary')
               button.disabled = true
             }
           } else {
             textSpan.textContent = 'No unit cell data'
-            button.classList.remove('btn-outline-info')
+            button.classList.remove('btn-outline-info', 'btn-outline-success')
             button.classList.add('btn-outline-secondary')
             button.disabled = true
           }
@@ -366,7 +439,7 @@ export default class extends Controller {
         .catch(error => {
           console.error('Error loading similarity counts:', error)
           textSpan.textContent = 'Error loading'
-          button.classList.remove('btn-outline-info')
+          button.classList.remove('btn-outline-info', 'btn-outline-success')
           button.classList.add('btn-outline-secondary')
           button.disabled = true
         })

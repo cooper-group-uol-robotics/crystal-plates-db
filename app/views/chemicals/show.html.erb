@@ -49,6 +49,17 @@
           </div>
           
           <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted">Empirical Formula</label>
+            <div>
+              <% if @chemical.empirical_formula.present? %>
+                <code><%= @chemical.empirical_formula %></code>
+              <% else %>
+                <span class="text-muted">Not specified</span>
+              <% end %>
+            </div>
+          </div>
+          
+          <div class="col-sm-6 mb-3">
             <label class="form-label text-muted">Sciformation ID</label>
             <div>
               <% if @chemical.sciformation_id.present? %>

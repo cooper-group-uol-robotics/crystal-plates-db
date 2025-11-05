@@ -119,6 +119,8 @@ class WellContent < ApplicationRecord
 
       # Normalize common unit symbol variations
       unit_symbol = normalize_unit_symbol(unit_symbol)
+      
+      Rails.logger.debug "Parsing volume with unit: '#{input}' -> volume: #{volume_value}, unit: '#{unit_symbol}'"
 
       # Find unit by symbol (case insensitive)
       found_unit = Unit.where("LOWER(symbol) = ?", unit_symbol.downcase).first

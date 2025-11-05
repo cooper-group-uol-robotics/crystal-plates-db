@@ -692,23 +692,31 @@ class ScxrdFolderProcessorService
     end
 
     res_file_pattern = File.join(struct_folder, "**", "*.res")
-    res_files = Dir.glob(res_file_pattern, File::FNM_CASEFOLD)
+    all_res_files = Dir.glob(res_file_pattern, File::FNM_CASEFOLD)
 
-    Rails.logger.info "SCXRD: Found #{res_files.count} .res files in struct folder: #{res_files.map { |f| File.basename(f) }.inspect}"
+    Rails.logger.info "SCXRD: Found #{all_res_files.count} .res files in struct folder: #{all_res_files.map { |f| File.basename(f) }.inspect}"
 
-    if res_files.any?
-      # Find the .res file with the largest file size
-      largest_file = res_files.max_by { |file| File.size(file) }
+    if all_res_files.any?
+      # Filter .res files based on quality criteria
+      valid_res_files = filter_res_files_by_quality(all_res_files)
+      
+      if valid_res_files.empty?
+        Rails.logger.warn "SCXRD: No .res files met the quality criteria (Reflections_all >= 200 and R1_all <= 0.3)"
+        return
+      end
+
+      # Find the .res file with the largest file size from the valid files
+      largest_file = valid_res_files.max_by { |file| File.size(file) }
       largest_size = File.size(largest_file)
 
-      Rails.logger.info "SCXRD: File sizes:"
-      res_files.each do |file|
+      Rails.logger.info "SCXRD: Valid file sizes:"
+      valid_res_files.each do |file|
         size = File.size(file)
         Rails.logger.info "SCXRD: - #{File.basename(file)}: #{number_to_human_size(size)}"
       end
 
       structure_file = largest_file
-      Rails.logger.info "SCXRD: Using largest structure file: #{File.basename(structure_file)} (#{number_to_human_size(largest_size)})"
+      Rails.logger.info "SCXRD: Using largest valid structure file: #{File.basename(structure_file)} (#{number_to_human_size(largest_size)})"
 
       begin
         structure_content = File.read(structure_file, encoding: "UTF-8")
@@ -738,5 +746,60 @@ class ScxrdFolderProcessorService
     else
       Rails.logger.info "SCXRD: No .res files found in struct/best_res folder"
     end
+  end
+
+  def filter_res_files_by_quality(res_files)
+    Rails.logger.info "SCXRD: Filtering #{res_files.count} .res files by quality criteria"
+    
+    valid_files = []
+    
+    res_files.each do |file_path|
+      filename = File.basename(file_path)
+      
+      begin
+        content = File.read(file_path, encoding: "UTF-8")
+        
+        # Extract quality metrics from REM lines
+        reflections_all = nil
+        r1_all = nil
+        
+        content.each_line do |line|
+          clean_line = line.strip
+          
+          # Look for reflections count: "  REM Reflections_all = 4335"
+          if clean_line.match(/^\s*REM\s+Reflections_all\s*=\s*(\d+)/)
+            reflections_all = $1.to_i
+            Rails.logger.debug "SCXRD: #{filename} - Found Reflections_all = #{reflections_all}"
+          end
+          
+          # Look for R1 value: "  REM R1_all = 0.0382"
+          if clean_line.match(/^\s*REM\s+R1_all\s*=\s*([\d.]+)/)
+            r1_all = $1.to_f
+            Rails.logger.debug "SCXRD: #{filename} - Found R1_all = #{r1_all}"
+          end
+          
+          # Break early if we found both values
+          break if reflections_all && r1_all
+        end
+        
+        # Apply quality criteria
+        if reflections_all && r1_all
+          if reflections_all >= 200 && r1_all <= 0.3
+            valid_files << file_path
+            Rails.logger.info "SCXRD: #{filename} - PASSED quality check (Reflections: #{reflections_all}, R1: #{r1_all})"
+          else
+            Rails.logger.info "SCXRD: #{filename} - FAILED quality check (Reflections: #{reflections_all}, R1: #{r1_all})"
+          end
+        else
+          Rails.logger.warn "SCXRD: #{filename} - Could not find quality metrics (Reflections: #{reflections_all || 'not found'}, R1: #{r1_all || 'not found'})"
+        end
+        
+      rescue => e
+        Rails.logger.error "SCXRD: Error reading .res file #{filename}: #{e.message}"
+      end
+    end
+    
+    Rails.logger.info "SCXRD: #{valid_files.count} out of #{res_files.count} .res files passed quality criteria"
+    valid_files
   end
 end

@@ -34,7 +34,16 @@ class PlatesController < ApplicationController
 
   # GET /plates/1 or /plates/1.json
   def show
-    @wells = @plate.wells.includes(:images, :well_contents, :pxrd_patterns, :scxrd_datasets)
+    @wells = @plate.wells.includes(:images, :pxrd_patterns, :scxrd_datasets, :calorimetry_datasets, 
+                                   :chemicals, :stock_solutions, :polymorphic_stock_solutions,
+                                   :well_contents)
+                         
+    # Preload polymorphic associations for well_contents manually 
+    # since Rails can't eager load polymorphic associations directly
+    ActiveRecord::Associations::Preloader.new(
+      records: @wells.flat_map(&:well_contents),
+      associations: :contentable
+    ).call
     @rows = @wells.maximum(:well_row) || 0
     @columns = @wells.maximum(:well_column) || 0
 
@@ -501,7 +510,14 @@ class PlatesController < ApplicationController
       results = process_bulk_contents_csv(csv)
 
       if results[:errors].any?
-        flash[:alert] = "Upload completed with errors: #{results[:errors].join(', ')}"
+        # Limit error messages to prevent cookie overflow
+        error_count = results[:errors].length
+        if error_count > 10
+          displayed_errors = results[:errors].first(5)
+          flash[:alert] = "Upload completed with #{error_count} errors. First 5 errors: #{displayed_errors.join('; ')}. Please check your CSV file format."
+        else
+          flash[:alert] = "Upload completed with errors: #{results[:errors].join('; ')}"
+        end
       else
         flash[:notice] = "Successfully uploaded #{results[:success_count]} well contents."
       end
@@ -713,15 +729,15 @@ class PlatesController < ApplicationController
             value_str = "#{value_str} #{content_info[:default_unit]}"
           end
 
-          begin
-            # Find or create well content using polymorphic association
-            well_content = well.well_contents.find_or_initialize_by(contentable: content_info[:object])
-            well_content.volume_with_unit = value_str
-            well_content.save!
-
+          # Find or create well content using polymorphic association
+          well_content = well.well_contents.find_or_initialize_by(contentable: content_info[:object])
+          well_content.volume_with_unit = value_str
+          
+          if well_content.save
             results[:success_count] += 1
-          rescue => e
-            results[:errors] << "Error saving #{content_info[:type].downcase} content for well #{well_label}: #{e.message}"
+          else
+            error_msg = well_content.errors.full_messages.join(', ')
+            results[:errors] << "Well #{well_label} (#{content_info[:identifier]}): #{error_msg}"
           end
         end
       end
