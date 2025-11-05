@@ -5,7 +5,7 @@ class Plate < ApplicationRecord
     has_many :point_of_interests, through: :wells
     has_many :plate_locations
     has_many :locations, through: :plate_locations
-    has_many :calorimetry_videos, dependent: :destroy
+    has_many :calorimetry_experiments, dependent: :destroy
 
     validates :barcode, uniqueness: true
     validates :name, length: { maximum: 255 }, allow_blank: true

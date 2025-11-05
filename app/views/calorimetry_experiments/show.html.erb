@@ -1,13 +1,13 @@
-<% content_for :title, @calorimetry_video.name %>
+<% content_for :title, @calorimetry_experiment.name %>
 
 <div class="container-fluid">
   <div class="row">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><%= @calorimetry_video.name %></h2>
+        <h2><%= @calorimetry_experiment.name %></h2>
         <div class="btn-group" role="group">
-          <%= link_to "Edit", edit_calorimetry_video_path(@calorimetry_video), class: "btn btn-secondary" %>
-          <%= link_to "Back to Videos", calorimetry_videos_path, class: "btn btn-secondary" %>
+          <%= link_to "Edit", edit_calorimetry_experiment_path(@calorimetry_experiment), class: "btn btn-secondary" %>
+          <%= link_to "Back to Experiments", calorimetry_experiments_path, class: "btn btn-secondary" %>
         </div>
       </div>
 
@@ -15,42 +15,42 @@
         <div class="col-md-6">
           <div class="card mb-4">
             <div class="card-header">
-              <h5 class="mb-0">Video Information</h5>
+              <h5 class="mb-0">Experiment Information</h5>
             </div>
             <div class="card-body">
               <dl class="row">
                 <dt class="col-sm-3">Name:</dt>
-                <dd class="col-sm-9"><%= @calorimetry_video.name %></dd>
+                <dd class="col-sm-9"><%= @calorimetry_experiment.name %></dd>
                 
                 <dt class="col-sm-3">Plate:</dt>
                 <dd class="col-sm-9">
-                  <%= link_to @calorimetry_video.plate.barcode, plate_path(@calorimetry_video.plate), class: "text-decoration-none" %>
-                  <% if @calorimetry_video.plate.name.present? %>
-                    <br><small class="text-muted"><%= @calorimetry_video.plate.name %></small>
+                  <%= link_to @calorimetry_experiment.plate.barcode, plate_path(@calorimetry_experiment.plate), class: "text-decoration-none" %>
+                  <% if @calorimetry_experiment.plate.name.present? %>
+                    <br><small class="text-muted"><%= @calorimetry_experiment.plate.name %></small>
                   <% end %>
                 </dd>
                 
                 <dt class="col-sm-3">Recorded:</dt>
                 <dd class="col-sm-9">
-                  <%= @calorimetry_video.recorded_at.strftime("%B %d, %Y at %l:%M %p") %>
-                  <br><small class="text-muted"><%= time_ago_in_words(@calorimetry_video.recorded_at) %> ago</small>
+                  <%= @calorimetry_experiment.recorded_at.strftime("%B %d, %Y at %l:%M %p") %>
+                  <br><small class="text-muted"><%= time_ago_in_words(@calorimetry_experiment.recorded_at) %> ago</small>
                 </dd>
                 
-                <% if @calorimetry_video.description.present? %>
+                <% if @calorimetry_experiment.description.present? %>
                   <dt class="col-sm-3">Description:</dt>
-                  <dd class="col-sm-9"><%= simple_format(@calorimetry_video.description) %></dd>
+                  <dd class="col-sm-9"><%= simple_format(@calorimetry_experiment.description) %></dd>
                 <% end %>
                 
                 <dt class="col-sm-3">Video File:</dt>
                 <dd class="col-sm-9">
-                  <% if @calorimetry_video.video_file.attached? %>
+                  <% if @calorimetry_experiment.video_file.attached? %>
                     <span class="badge bg-success me-2">
                       <i class="fas fa-video"></i>
-                      <%= @calorimetry_video.video_file.filename %>
+                      <%= @calorimetry_experiment.video_file.filename %>
                     </span>
                     <br><small class="text-muted">
-                      <%= number_to_human_size(@calorimetry_video.video_file.byte_size) %> • 
-                      <%= @calorimetry_video.video_file.content_type %>
+                      <%= number_to_human_size(@calorimetry_experiment.video_file.byte_size) %> • 
+                      <%= @calorimetry_experiment.video_file.content_type %>
                     </small>
                   <% else %>
                     <span class="badge bg-warning">No file attached</span>
@@ -67,14 +67,14 @@
             </div>
           </div>
           
-          <% if @calorimetry_video.video_file.attached? %>
+          <% if @calorimetry_experiment.video_file.attached? %>
             <div class="card">
               <div class="card-header">
                 <h5 class="mb-0">Video Preview</h5>
               </div>
               <div class="card-body">
                 <video controls class="w-100" style="max-height: 400px;">
-                  <source src="<%= url_for(@calorimetry_video.video_file) %>" type="<%= @calorimetry_video.video_file.content_type %>">
+                  <source src="<%= url_for(@calorimetry_experiment.video_file) %>" type="<%= @calorimetry_experiment.video_file.content_type %>">
                   Your browser does not support the video tag.
                 </video>
               </div>

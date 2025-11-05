@@ -4,7 +4,7 @@ class CalorimetryDatasetsController < ApplicationController
 
   # GET /calorimetry_datasets (standalone index for all datasets)
   def index
-    @calorimetry_datasets = CalorimetryDataset.includes(:well, :calorimetry_video)
+    @calorimetry_datasets = CalorimetryDataset.includes(:well, :calorimetry_experiment)
                                              .order(created_at: :desc)
                                              .page(params[:page])
                                              .per(20)
@@ -19,13 +19,13 @@ class CalorimetryDatasetsController < ApplicationController
       @calorimetry_dataset = CalorimetryDataset.new
     end
 
-    # Load available videos for the dropdown
+    # Load available experiments for the dropdown
     if @well.present?
-      @available_videos = CalorimetryVideo.joins(:plate)
-                                         .where(plates: { id: @well.plate_id })
-                                         .order(created_at: :desc)
+      @available_experiments = CalorimetryExperiment.joins(:plate)
+                                                   .where(plates: { id: @well.plate_id })
+                                                   .order(created_at: :desc)
     else
-      @available_videos = CalorimetryVideo.joins(:plate).order(created_at: :desc)
+      @available_experiments = CalorimetryExperiment.joins(:plate).order(created_at: :desc)
     end
   end
 
@@ -46,13 +46,13 @@ class CalorimetryDatasetsController < ApplicationController
         format.json { render json: @calorimetry_dataset, status: :created }
       else
         format.html {
-          # Reload available videos for the dropdown
+          # Reload available experiments for the dropdown
           if @well.present?
-            @available_videos = CalorimetryVideo.joins(:plate)
-                                               .where(plates: { id: @well.plate_id })
-                                               .order(created_at: :desc)
+            @available_experiments = CalorimetryExperiment.joins(:plate)
+                                                          .where(plates: { id: @well.plate_id })
+                                                          .order(created_at: :desc)
           else
-            @available_videos = CalorimetryVideo.joins(:plate).order(created_at: :desc)
+            @available_experiments = CalorimetryExperiment.joins(:plate).order(created_at: :desc)
           end
           render :new, status: :unprocessable_entity
         }
@@ -68,13 +68,13 @@ class CalorimetryDatasetsController < ApplicationController
 
   # GET /wells/:well_id/calorimetry_datasets/:id/edit or GET /calorimetry_datasets/:id/edit
   def edit
-    # Load available videos for the dropdown
+    # Load available experiments for the dropdown
     if @calorimetry_dataset.well.present?
-      @available_videos = CalorimetryVideo.joins(:plate)
-                                         .where(plates: { id: @calorimetry_dataset.well.plate_id })
-                                         .order(created_at: :desc)
+      @available_experiments = CalorimetryExperiment.joins(:plate)
+                                                   .where(plates: { id: @calorimetry_dataset.well.plate_id })
+                                                   .order(created_at: :desc)
     else
-      @available_videos = CalorimetryVideo.joins(:plate).order(created_at: :desc)
+      @available_experiments = CalorimetryExperiment.joins(:plate).order(created_at: :desc)
     end
   end
 
@@ -87,13 +87,13 @@ class CalorimetryDatasetsController < ApplicationController
         format.json { render json: @calorimetry_dataset }
       else
         format.html {
-          # Reload available videos for the dropdown
+          # Reload available experiments for the dropdown
           if @calorimetry_dataset.well.present?
-            @available_videos = CalorimetryVideo.joins(:plate)
-                                               .where(plates: { id: @calorimetry_dataset.well.plate_id })
-                                               .order(created_at: :desc)
+            @available_experiments = CalorimetryExperiment.joins(:plate)
+                                                          .where(plates: { id: @calorimetry_dataset.well.plate_id })
+                                                          .order(created_at: :desc)
           else
-            @available_videos = CalorimetryVideo.joins(:plate).order(created_at: :desc)
+            @available_experiments = CalorimetryExperiment.joins(:plate).order(created_at: :desc)
           end
           render :edit, status: :unprocessable_entity
         }
@@ -131,6 +131,6 @@ class CalorimetryDatasetsController < ApplicationController
   end
 
   def calorimetry_dataset_params
-    params.require(:calorimetry_dataset).permit(:name, :calorimetry_video_id, :pixel_x, :pixel_y, :mask_diameter_pixels, :temperature_data_file)
+    params.require(:calorimetry_dataset).permit(:name, :calorimetry_experiment_id, :pixel_x, :pixel_y, :mask_diameter_pixels, :temperature_data_file)
   end
 end

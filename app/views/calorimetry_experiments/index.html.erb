@@ -1,14 +1,14 @@
-<% content_for :title, "Calorimetry Videos" %>
+<% content_for :title, "Calorimetry Experiments" %>
 
 <div class="container-fluid">
   <div class="row">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Calorimetry Videos</h2>
-        <%= link_to "Upload New Video", new_calorimetry_video_path, class: "btn btn-primary" %>
+        <h2>Calorimetry Experiments</h2>
+        <%= link_to "Create New Experiment", new_calorimetry_experiment_path, class: "btn btn-primary" %>
       </div>
 
-      <% if @calorimetry_videos.any? %>
+      <% if @calorimetry_experiments.any? %>
         <div class="table-responsive">
           <table class="table table-striped">
             <thead>
@@ -22,46 +22,46 @@
               </tr>
             </thead>
             <tbody>
-              <% @calorimetry_videos.each do |video| %>
+              <% @calorimetry_experiments.each do |experiment| %>
                 <tr>
                   <td>
-                    <%= link_to video.name, video, class: "text-decoration-none" %>
-                    <% if video.description.present? %>
-                      <br><small class="text-muted"><%= truncate(video.description, length: 50) %></small>
+                    <%= link_to experiment.name, experiment, class: "text-decoration-none" %>
+                    <% if experiment.description.present? %>
+                      <br><small class="text-muted"><%= truncate(experiment.description, length: 50) %></small>
                     <% end %>
                   </td>
                   <td>
-                    <%= link_to video.plate.barcode, plate_path(video.plate), class: "text-decoration-none" %>
-                    <% if video.plate.name.present? %>
-                      <br><small class="text-muted"><%= video.plate.name %></small>
+                    <%= link_to experiment.plate.barcode, plate_path(experiment.plate), class: "text-decoration-none" %>
+                    <% if experiment.plate.name.present? %>
+                      <br><small class="text-muted"><%= experiment.plate.name %></small>
                     <% end %>
                   </td>
                   <td>
-                    <%= time_ago_in_words(video.recorded_at) %> ago
-                    <br><small class="text-muted"><%= video.recorded_at.strftime("%B %d, %Y at %l:%M %p") %></small>
+                    <%= time_ago_in_words(experiment.recorded_at) %> ago
+                    <br><small class="text-muted"><%= experiment.recorded_at.strftime("%B %d, %Y at %l:%M %p") %></small>
                   </td>
                   <td>
-                    <% if video.video_file.attached? %>
+                    <% if experiment.video_file.attached? %>
                       <span class="badge bg-success">
                         <i class="fas fa-video"></i>
-                        <%= number_to_human_size(video.video_file.byte_size) %>
+                        <%= number_to_human_size(experiment.video_file.byte_size) %>
                       </span>
-                      <br><small class="text-muted"><%= video.video_file.filename %></small>
+                      <br><small class="text-muted"><%= experiment.video_file.filename %></small>
                     <% else %>
-                      <span class="badge bg-warning">No file</span>
+                      <span class="badge bg-secondary">No video</span>
                     <% end %>
                   </td>
                   <td>
-                    <% dataset_count = video.calorimetry_datasets.count %>
+                    <% dataset_count = experiment.calorimetry_datasets.count %>
                     <span class="badge bg-<%= dataset_count > 0 ? 'info' : 'secondary' %>">
                       <%= dataset_count %> dataset<%= 's' unless dataset_count == 1 %>
                     </span>
                   </td>
                   <td>
                     <div class="btn-group" role="group">
-                      <%= link_to "View", video, class: "btn btn-sm btn-outline-primary" %>
-                      <%= link_to "Edit", edit_calorimetry_video_path(video), class: "btn btn-sm btn-outline-secondary" %>
-                      <%= button_to "Delete", video, 
+                      <%= link_to "View", experiment, class: "btn btn-sm btn-outline-primary" %>
+                      <%= link_to "Edit", edit_calorimetry_experiment_path(experiment), class: "btn btn-sm btn-outline-secondary" %>
+                      <%= button_to "Delete", experiment, 
                                     method: :delete,
                                     class: "btn btn-sm btn-outline-danger",
                                     form: { style: "display: inline;" },
@@ -78,11 +78,11 @@
       <% else %>
         <div class="text-center py-5">
           <div class="mb-3">
-            <i class="fas fa-video fa-3x text-muted"></i>
+            <i class="fas fa-flask fa-3x text-muted"></i>
           </div>
-          <h4 class="text-muted">No Calorimetry Videos</h4>
-          <p class="text-muted">Upload your first calorimetry video to get started.</p>
-          <%= link_to "Upload Video", new_calorimetry_video_path, class: "btn btn-primary" %>
+          <h4 class="text-muted">No Calorimetry Experiments</h4>
+          <p class="text-muted">Create your first calorimetry experiment to get started.</p>
+          <%= link_to "Create Experiment", new_calorimetry_experiment_path, class: "btn btn-primary" %>
         </div>
       <% end %>
     </div>

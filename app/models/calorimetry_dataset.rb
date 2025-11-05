@@ -1,6 +1,6 @@
 class CalorimetryDataset < ApplicationRecord
   belongs_to :well
-  belongs_to :calorimetry_video
+  belongs_to :calorimetry_experiment
   has_many :calorimetry_datapoints, dependent: :destroy
   has_one_attached :temperature_data_file
 
@@ -14,7 +14,7 @@ class CalorimetryDataset < ApplicationRecord
 
   scope :recent, -> { order(created_at: :desc) }
   scope :for_well, ->(well) { where(well: well) }
-  scope :for_video, ->(video) { where(calorimetry_video: video) }
+  scope :for_experiment, ->(experiment) { where(calorimetry_experiment: experiment) }
 
   after_create :process_uploaded_data, if: :temperature_data_file_attached?
   before_save :set_processed_at, if: :will_save_change_to_processed_at?

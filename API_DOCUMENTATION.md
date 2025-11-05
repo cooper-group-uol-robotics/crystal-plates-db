@@ -1423,17 +1423,17 @@ curl -X DELETE http://localhost:3000/api/v1/wells/123/scxrd_datasets/456
 
 ## Calorimetry API
 
-The Calorimetry API provides comprehensive endpoints for managing calorimetry videos and processed temperature time series data. This includes video file management, processing parameter configuration, and retrieval of temperature data points.
+The Calorimetry API provides comprehensive endpoints for managing calorimetry experiments and processed temperature time series data. This includes video file management, processing parameter configuration, and retrieval of temperature data points.
 
-### Calorimetry Videos
+### Calorimetry Experiments
 
 Calorimetry videos are recordings of plates showing temperature changes over time. Each video is associated with a plate and can have multiple processed datasets for individual wells.
 
-#### List All Calorimetry Videos
+#### List All Calorimetry Experiments
 
-**GET** `/api/v1/calorimetry_videos`
+**GET** `/api/v1/calorimetry_experiments`
 
-List all calorimetry videos across all plates.
+List all calorimetry experiments across all plates.
 
 **Response Example:**
 ```json
@@ -1461,22 +1461,22 @@ List all calorimetry videos across all plates.
 ]
 ```
 
-#### List Plate Calorimetry Videos
+#### List Plate Calorimetry Experiments
 
-**GET** `/api/v1/plates/:plate_barcode/calorimetry_videos`
+**GET** `/api/v1/plates/:plate_barcode/calorimetry_experiments`
 
-List all calorimetry videos for a specific plate.
+List all calorimetry experiments for a specific plate.
 
 **Parameters:**
 - `plate_barcode` (path, required) - Plate barcode (e.g., "PLATE001", "60123456")
 
-**Response:** Array of calorimetry video objects for the plate
+**Response:** Array of calorimetry experiment objects for the plate
 
-#### Get Calorimetry Video Details
+#### Get Calorimetry Experiment Details
 
-**GET** `/api/v1/calorimetry_videos/:id`
+**GET** `/api/v1/calorimetry_experiments/:id`
 
-Get detailed information about a specific calorimetry video including associated datasets.
+Get detailed information about a specific calorimetry experiment including associated datasets.
 
 **Parameters:**
 - `id` (path, required) - Calorimetry video ID
@@ -1522,11 +1522,11 @@ Get detailed information about a specific calorimetry video including associated
 }
 ```
 
-#### Upload Calorimetry Video
+#### Upload Calorimetry Experiment
 
-**POST** `/api/v1/plates/:plate_barcode/calorimetry_videos`
+**POST** `/api/v1/plates/:plate_barcode/calorimetry_experiments`
 
-Upload a new calorimetry video for a specific plate.
+Upload a new calorimetry experiment for a specific plate.
 
 **Parameters:**
 - `plate_barcode` (path, required) - Plate barcode
@@ -1543,7 +1543,7 @@ calorimetry_video[video_file]: (file, required) - Video file (MP4, AVI, MOV, etc
 
 **Example:**
 ```bash
-curl -X POST http://localhost:3000/api/v1/plates/PLATE001/calorimetry_videos \
+curl -X POST http://localhost:3000/api/v1/plates/PLATE001/calorimetry_experiments \
   -F "calorimetry_video[name]=Heating Cycle 1" \
   -F "calorimetry_video[description]=Initial screening with temperature ramp" \
   -F "calorimetry_video[recorded_at]=2025-10-30T14:30:00Z" \
@@ -1577,11 +1577,11 @@ curl -X POST http://localhost:3000/api/v1/plates/PLATE001/calorimetry_videos \
 }
 ```
 
-#### Upload Standalone Calorimetry Video
+#### Upload Standalone Calorimetry Experiment
 
-**POST** `/api/v1/calorimetry_videos`
+**POST** `/api/v1/calorimetry_experiments`
 
-Upload a calorimetry video not associated with a specific plate initially.
+Upload a calorimetry experiment not associated with a specific plate initially.
 
 **Content-Type:** `multipart/form-data`
 
@@ -1594,11 +1594,11 @@ calorimetry_video[plate_id]: (integer, required) - Plate ID to associate with
 calorimetry_video[video_file]: (file, required) - Video file
 ```
 
-#### Update Calorimetry Video
+#### Update Calorimetry Experiment
 
-**PATCH/PUT** `/api/v1/calorimetry_videos/:id`
+**PATCH/PUT** `/api/v1/calorimetry_experiments/:id`
 
-Update an existing calorimetry video's metadata or replace the video file.
+Update an existing calorimetry experiment's metadata or replace the video file.
 
 **Parameters:**
 - `id` (path, required) - Calorimetry video ID
@@ -1607,11 +1607,11 @@ Update an existing calorimetry video's metadata or replace the video file.
 
 **Body Parameters:** Same as create, all optional
 
-#### Delete Calorimetry Video
+#### Delete Calorimetry Experiment
 
-**DELETE** `/api/v1/calorimetry_videos/:id`
+**DELETE** `/api/v1/calorimetry_experiments/:id`
 
-Delete a calorimetry video and all associated datasets and datapoints.
+Delete a calorimetry experiment and all associated datasets and datapoints.
 
 **Parameters:**
 - `id` (path, required) - Calorimetry video ID
@@ -1625,7 +1625,7 @@ Delete a calorimetry video and all associated datasets and datapoints.
 
 ### Calorimetry Datasets
 
-Calorimetry datasets represent processed temperature time series data extracted from specific wells in calorimetry videos.
+Calorimetry datasets represent processed temperature time series data extracted from specific wells in calorimetry experiments.
 
 #### List All Calorimetry Datasets
 
@@ -1830,7 +1830,7 @@ Delete a calorimetry dataset and all associated datapoints.
 
 ### Calorimetry Datapoints
 
-Temperature time series datapoints are the individual measurements extracted from calorimetry videos.
+Temperature time series datapoints are the individual measurements extracted from calorimetry experiments.
 
 #### Get Dataset Datapoints
 
@@ -1918,8 +1918,8 @@ curl "http://localhost:3000/api/v1/calorimetry_datasets/101/datapoints?max_point
 #### Complete Workflow Example
 
 ```bash
-# 1. Upload a calorimetry video
-curl -X POST http://localhost:3000/api/v1/plates/PLATE001/calorimetry_videos \
+# 1. Upload a calorimetry experiment
+curl -X POST http://localhost:3000/api/v1/plates/PLATE001/calorimetry_experiments \
   -F "calorimetry_video[name]=Heating Cycle 1" \
   -F "calorimetry_video[recorded_at]=2025-10-30T14:30:00Z" \
   -F "calorimetry_video[video_file]=@calorimetry_video.mp4"

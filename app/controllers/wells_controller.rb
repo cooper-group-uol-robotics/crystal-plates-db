@@ -282,8 +282,8 @@ class WellsController < ApplicationController
 
   def calorimetry_datasets
     @well = Well.find(params[:id])
-    @calorimetry_datasets = @well.calorimetry_datasets.recent.includes(:calorimetry_video)
-    @available_videos = CalorimetryVideo.recent.includes(:plate)
+    @calorimetry_datasets = @well.calorimetry_datasets.recent.includes(:calorimetry_experiment)
+    @available_experiments = CalorimetryExperiment.recent.includes(:plate)
 
     respond_to do |format|
       format.html { render partial: "wells/calorimetry_datasets", locals: { well: @well } }

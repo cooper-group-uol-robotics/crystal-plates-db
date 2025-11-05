@@ -24,18 +24,18 @@
       </div>
       
       <div class="mb-3">
-        <%= form.label :calorimetry_video_id, "Source Video", class: 'form-label' %>
-        <%= form.collection_select :calorimetry_video_id, @available_videos, :id, 
-                                   proc { |video| "#{video.name} (#{video.plate.barcode})" }, 
-                                   { prompt: "Select a video..." }, 
+        <%= form.label :calorimetry_experiment_id, "Source Experiment", class: 'form-label' %>
+        <%= form.collection_select :calorimetry_experiment_id, @available_experiments, :id, 
+                                   proc { |experiment| "#{experiment.name} (#{experiment.plate.barcode})" }, 
+                                   { prompt: "Select an experiment..." }, 
                                    { class: 'form-select', required: true } %>
         <div class="form-text">
-          Choose the calorimetry video from which this data was extracted
+          Choose the calorimetry experiment from which this data was extracted
         </div>
-        <% if @available_videos.empty? %>
+        <% if @available_experiments.empty? %>
           <div class="alert alert-warning mt-2">
-            <strong>No videos available!</strong> 
-            <%= link_to "Upload a calorimetry video first", calorimetry_videos_path, target: "_blank" %>
+            <strong>No experiments available!</strong> 
+            <%= link_to "Create a calorimetry experiment first", calorimetry_experiments_path, target: "_blank" %>
           </div>
         <% end %>
         <div class="invalid-feedback">

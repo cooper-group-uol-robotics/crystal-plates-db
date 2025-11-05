@@ -66,7 +66,7 @@ Rails.application.routes.draw do
   end
 
   # Calorimetry routes
-  resources :calorimetry_videos
+  resources :calorimetry_experiments
 
   # Standalone calorimetry dataset routes for AJAX calls and global index
   resources :calorimetry_datasets, only: [ :index, :show, :new, :create, :edit, :update, :destroy ] do
@@ -148,7 +148,7 @@ Rails.application.routes.draw do
           get :location_history
           get :points_of_interest
         end
-        resources :calorimetry_videos, only: [ :index, :create ]
+        resources :calorimetry_experiments, only: [ :index, :create ]
         resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
           resources :images, only: [ :index, :show, :create, :update, :destroy ] do
             resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
@@ -220,7 +220,7 @@ Rails.application.routes.draw do
       end
 
       # Standalone Calorimetry routes
-      resources :calorimetry_videos, only: [ :index, :show, :create, :update, :destroy ]
+      resources :calorimetry_experiments, only: [ :index, :show, :create, :update, :destroy ]
 
       resources :calorimetry_datasets, only: [ :index, :show, :create, :update, :destroy ] do
         member do
