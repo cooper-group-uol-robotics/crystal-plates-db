@@ -70,7 +70,7 @@ module PlatesHelper
 
 
   # New layer system methods
-  def well_layer_data(well)
+  def well_layer_data(well, plate_custom_attributes = nil)
     # Return data for all layers for this well
     layer_data = {}
 
@@ -86,23 +86,85 @@ module PlatesHelper
       end
     end
 
+    # Add custom attributes as dynamic layers (only for attributes that have scores in this plate)
+    if plate_custom_attributes
+      # Use pre-loaded custom attributes to avoid N+1 queries
+      plate_custom_attributes.each do |attribute|
+        layer_key = "custom_attribute_#{attribute.id}"
+        well_score = well.well_scores.find { |ws| ws.custom_attribute_id == attribute.id }
+        
+        layer_data[layer_key] = {
+          active: well_score&.value.present?,
+          value: well_score&.display_value,
+          attribute_name: attribute.name,
+          attribute_id: attribute.id
+        }
+      end
+    elsif well.plate
+      # Fallback: Get custom attributes that have scores in this plate (less efficient)
+      custom_attributes_with_scores = CustomAttribute.with_well_scores_in_plate(well.plate)
+                                                   .select(:id, :name)
+
+      custom_attributes_with_scores.each do |attribute|
+        layer_key = "custom_attribute_#{attribute.id}"
+        well_score = well.well_scores.find { |ws| ws.custom_attribute_id == attribute.id }
+        
+        layer_data[layer_key] = {
+          active: well_score&.value.present?,
+          value: well_score&.display_value,
+          attribute_name: attribute.name,
+          attribute_id: attribute.id
+        }
+      end
+    end
+
     layer_data
   end
 
-  def wells_data_for_layers(wells)
+  def wells_data_for_layers(wells, plate_custom_attributes = nil)
     # Serialize all wells data for JavaScript layer system
     wells_data = {}
 
     wells.each do |well|
-      wells_data[well.id] = well_layer_data(well)
+      wells_data[well.id] = well_layer_data(well, plate_custom_attributes)
     end
 
     wells_data
   end
 
-  def available_layers
+  def available_layers(plate = nil)
     # Return layers configuration for UI with string keys for JSON compatibility
-    WELL_LAYERS.transform_keys(&:to_s)
+    layers = WELL_LAYERS.transform_keys(&:to_s)
+    
+    # Add custom attributes as dynamic layers if plate is provided
+    if plate
+      begin
+        # Only include custom attributes that have at least one well score in this plate
+        custom_attributes = CustomAttribute.with_well_scores_in_plate(plate)
+                                         .includes(:well_scores)
+        
+        custom_attributes.each_with_index do |attribute, index|
+          layer_key = "custom_attribute_#{attribute.id}"
+          
+          # Generate a color for this attribute using a color palette
+          color = generate_attribute_color(index)
+          
+          layers[layer_key] = {
+            name: attribute.name,
+            description: attribute.description || "Custom attribute: #{attribute.name}",
+            icon: "bi-tag-fill",
+            color: color,
+            custom_attribute: true,
+            attribute_id: attribute.id,
+            data_type: attribute.data_type
+          }
+        end
+      rescue => e
+        Rails.logger.error "Error loading custom attributes for plate #{plate.barcode}: #{e.message}"
+      end
+    end
+
+    layers
   end
 
   def well_position_label(well)
@@ -248,5 +310,18 @@ module PlatesHelper
     end
 
     tooltip_parts.join("\n")
+  end
+
+  # Generate a color for custom attributes using a predefined palette
+  def generate_attribute_color(index)
+    # Extended color palette for custom attributes (matplotlib tab20)
+    colors = [
+      "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", 
+      "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+      "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5",
+      "#c49c94", "#f7b6d3", "#c7c7c7", "#dbdb8d", "#9edae5"
+    ]
+    
+    colors[index % colors.length]
   end
 end

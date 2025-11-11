@@ -1,7 +1,9 @@
 class StockSolution < ApplicationRecord
   has_many :stock_solution_components, dependent: :destroy
   has_many :chemicals, through: :stock_solution_components
-  has_many :well_contents, dependent: :destroy
+  
+  # Polymorphic association with wells through well_contents
+  has_many :well_contents, as: :contentable, dependent: :destroy
   has_many :wells, through: :well_contents
 
   validates :name, presence: true, uniqueness: true

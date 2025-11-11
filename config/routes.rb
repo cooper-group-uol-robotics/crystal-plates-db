@@ -32,6 +32,7 @@ Rails.application.routes.draw do
       get :content_form
       get :spatial_correlations
       get :calorimetry_datasets
+      get :custom_attributes
       patch :update_content
       delete "content/:content_id", to: "wells#remove_content", as: "remove_content"
     end
@@ -149,6 +150,11 @@ Rails.application.routes.draw do
           get :points_of_interest
         end
         resources :calorimetry_experiments, only: [ :index, :create ]
+        resources :custom_attributes, only: [ :index, :create, :destroy ] do
+          member do
+            post :add_to_all_wells
+          end
+        end
         resources :wells, only: [ :index, :show, :create, :update, :destroy ] do
           resources :images, only: [ :index, :show, :create, :update, :destroy ] do
             resources :points_of_interest, only: [ :index, :show, :create, :update, :destroy ]
@@ -161,6 +167,7 @@ Rails.application.routes.draw do
             end
           end
           resources :calorimetry_datasets, only: [ :index, :create ]
+          resources :well_scores, only: [ :index, :create, :update, :destroy ]
         end
       end
 
@@ -209,6 +216,7 @@ Rails.application.routes.draw do
         end
         collection do
           post :upload_archive
+          post "plate/:barcode/well/:well_string", action: :upload_to_well, as: :upload_to_well
         end
         resources :diffraction_images, only: [ :index, :show ] do
           member do
@@ -235,6 +243,14 @@ Rails.application.routes.draw do
           get :crystals
           get :particles
           get "/", to: "points_of_interest#index_standalone"
+        end
+      end
+
+      # Standalone resources
+      resources :custom_attributes, only: [ :index, :create, :update, :destroy ] do
+        collection do
+          get :search  # For autocomplete suggestions
+          get :global  # Get global attributes only
         end
       end
 

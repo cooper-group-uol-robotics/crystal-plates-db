@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_05_145436) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_11_121633) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -87,6 +87,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_05_145436) do
     t.index ["barcode"], name: "index_chemicals_on_barcode"
     t.index ["cas"], name: "index_chemicals_on_cas"
     t.index ["name"], name: "index_chemicals_on_name"
+  end
+
+  create_table "custom_attributes", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "description"
+    t.string "data_type", default: "numeric", null: false
+    t.string "attributable_type"
+    t.integer "attributable_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["attributable_type", "attributable_id"], name: "index_custom_attributes_on_attributable"
+    t.index ["name", "attributable_type", "attributable_id"], name: "index_custom_attributes_uniqueness", unique: true
+    t.index ["name"], name: "index_custom_attributes_on_name"
+    t.index ["name"], name: "index_custom_attributes_on_name_unique", unique: true
   end
 
   create_table "diffraction_images", force: :cascade do |t|
@@ -281,6 +295,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_05_145436) do
     t.index ["well_id"], name: "index_well_contents_on_well_id"
   end
 
+  create_table "well_scores", force: :cascade do |t|
+    t.integer "well_id", null: false
+    t.integer "custom_attribute_id", null: false
+    t.decimal "value", precision: 10, scale: 3
+    t.text "string_value"
+    t.json "json_value"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["custom_attribute_id"], name: "index_well_scores_on_custom_attribute_id"
+    t.index ["well_id", "custom_attribute_id"], name: "index_well_scores_uniqueness", unique: true
+    t.index ["well_id"], name: "index_well_scores_on_well_id"
+  end
+
   create_table "wells", force: :cascade do |t|
     t.integer "plate_id", null: false
     t.integer "well_row"
@@ -316,5 +343,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_05_145436) do
   add_foreign_key "well_contents", "units"
   add_foreign_key "well_contents", "units", column: "mass_unit_id"
   add_foreign_key "well_contents", "wells"
+  add_foreign_key "well_scores", "custom_attributes"
+  add_foreign_key "well_scores", "wells"
   add_foreign_key "wells", "plates"
 end

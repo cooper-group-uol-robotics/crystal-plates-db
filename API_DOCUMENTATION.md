@@ -2148,6 +2148,18 @@ curl http://localhost:3000/api/v1/wells/123/scxrd_datasets/456/image_data
 curl -X PATCH http://localhost:3000/api/v1/wells/123/scxrd_datasets/456 \
   -H "Content-Type: application/json" \
   -d '{"scxrd_dataset": {"real_world_x_mm": 1.235}}'
+
+# Upload SCXRD dataset to well using human-readable identifier (background processing)
+curl -X POST http://localhost:3000/api/v1/scxrd_datasets/plate/PLATE001/well/A1 \
+  -F "archive=@/path/to/scxrd_experiment.zip"
+
+# Upload SCXRD dataset to subwell using human-readable identifier (background processing)
+curl -X POST http://localhost:3000/api/v1/scxrd_datasets/plate/60123456/well/B3_2 \
+  -F "archive=@/path/to/crystal_data.zip"
+
+# Upload standalone SCXRD dataset (background processing)
+curl -X POST http://localhost:3000/api/v1/scxrd_datasets/upload_archive \
+  -F "archive=@/path/to/experiment_folder.zip"
 ```
 
 ## Standalone SCXRD Datasets API
@@ -2244,6 +2256,82 @@ curl -X PATCH http://localhost:3000/api/v1/wells/123/scxrd_datasets/456 \
       "created_at": "2024-01-15T14:30:00Z",
       "updated_at": "2024-01-15T14:30:00Z"
     }
+  }
+  ```
+
+### Upload SCXRD Dataset to Well (Human-Readable Identifier)
+- **POST** `/api/v1/scxrd_datasets/plate/:barcode/well/:well_string`
+- **Description**: Upload a SCXRD ZIP archive to a specific well using human-readable identifiers
+- **URL Parameters**:
+  - `barcode`: Plate barcode (e.g., "PLATE001", "60123456")
+  - `well_string`: Human-readable well identifier (e.g., "A1", "H12", "B2_3" for B2 subwell 3)
+- **Content-Type**: `multipart/form-data`
+- **Body Parameters**:
+  ```
+  archive: (file) ZIP file containing complete SCXRD experiment folder
+  ```
+  **OR**
+  ```
+  scxrd_dataset[archive_file]: (file) ZIP file containing complete SCXRD experiment folder
+  ```
+- **Processing Features**: Same as standalone upload_archive endpoint
+  - **Background Processing**: Archive processing happens asynchronously for better reliability
+  - Automatic extraction of unit cell parameters from log files (.par files)
+  - Processing and storage of diffraction images (.img files)
+  - Extraction and attachment of structure files (.res files)
+  - Peak table parsing and attachment
+  - Crystal image extraction (if present)
+  - Measurement timestamp extraction from metadata files
+- **Well Identifier Format**:
+  - Basic wells: `A1`, `B2`, `H12` (letter + number)
+  - Subwells: `A1_2`, `B3_5`, `H12_10` (letter + number + underscore + subwell number)
+  - Case insensitive: `a1` = `A1`
+  - Whitespace is ignored: ` A1 ` = `A1`
+- **Response**: Created SCXRD dataset object with processing status (processing happens asynchronously)
+- **Error Responses**:
+  - `404` if plate barcode not found
+  - `404` if well identifier not found on plate
+  - `422` if archive file missing or initial creation fails
+- **Examples**:
+  ```bash
+  # Upload to well A1 (simple parameter format)
+  curl -X POST http://localhost:3000/api/v1/scxrd_datasets/plate/PLATE001/well/A1 \
+    -F "archive=@/path/to/scxrd_experiment.zip"
+
+  # Upload to well A1 (nested parameter format)
+  curl -X POST http://localhost:3000/api/v1/scxrd_datasets/plate/PLATE001/well/A1 \
+    -F "scxrd_dataset[archive_file]=@/path/to/scxrd_experiment.zip"
+
+  # Upload to well B3, subwell 2
+  curl -X POST http://localhost:3000/api/v1/scxrd_datasets/plate/60123456/well/B3_2 \
+    -F "archive=@/path/to/crystal_data.zip"
+  ```
+- **Example Success Response**:
+  ```json
+  {
+    "message": "SCXRD archive received for well A1. Processing will continue in background.",
+    "scxrd_dataset_id": 456,
+    "status": "processing"
+  }
+  ```
+- **Example Error Responses**:
+  ```json
+  // Plate not found
+  {
+    "error": "Plate not found",
+    "details": ["No plate found with barcode 'INVALID_PLATE'"]
+  }
+
+  // Well not found
+  {
+    "error": "Well not found", 
+    "details": ["No well found with identifier 'Z99' on plate 'PLATE001'"]
+  }
+
+  // Missing archive file
+  {
+    "error": "Archive file is required",
+    "details": ["Please provide a ZIP archive file containing SCXRD data"]
   }
   ```
 

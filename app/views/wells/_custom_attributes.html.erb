@@ -1,0 +1,147 @@
+<div class="well-custom-attributes" 
+     data-controller="custom-attributes" 
+     data-custom-attributes-well-id-value="<%= well.id %>"
+     data-custom-attributes-plate-barcode-value="<%= plate.barcode %>">
+  
+  <div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">Custom Attributes</h5>
+      <button class="btn btn-sm btn-primary" 
+              data-action="click->custom-attributes#showAddForm"
+              data-custom-attributes-target="addButton">
+        <i class="fas fa-plus"></i> Add Attribute
+      </button>
+    </div>
+    
+    <!-- Existing Scores -->
+    <div data-custom-attributes-target="scoresContainer">
+      <% if well.well_scores.any? %>
+        <div class="list-group">
+          <% well.well_scores.includes(:custom_attribute).each do |score| %>
+            <div class="list-group-item d-flex justify-content-between align-items-center" data-score-id="<%= score.id %>">
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center">
+                  <span class="badge bg-info me-2">Custom</span>
+                  <div>
+                    <strong><%= score.custom_attribute.name %></strong>
+                    <% if score.custom_attribute.description.present? %>
+                      <br><small class="text-muted"><%= score.custom_attribute.description %></small>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <input type="number" 
+                       class="form-control form-control-sm" 
+                       value="<%= score.display_value %>"
+                       step="0.1"
+                       style="width: 100px;"
+                       data-action="change->custom-attributes#updateScore"
+                       data-score-id="<%= score.id %>">
+                <button class="btn btn-sm btn-outline-danger" 
+                        data-action="click->custom-attributes#deleteScore"
+                        data-score-id="<%= score.id %>"
+                        title="Remove this attribute score">
+                  Delete
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="alert alert-info text-center" data-custom-attributes-target="emptyMessage">
+          <i class="fas fa-tags fa-2x mb-2 text-secondary"></i>
+          <h6>No custom attributes yet</h6>
+          <p>Add attributes to track custom measurements like crystallinity, solubility, etc.</p>
+          <button class="btn btn-sm btn-primary" 
+              data-action="click->custom-attributes#showAddForm"
+              data-custom-attributes-target="addButton">
+            <i class="fas fa-plus"></i> Add Attribute
+            </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Add New Attribute Form -->
+  <div class="d-none" data-custom-attributes-target="addForm">
+    <div class="card mt-3">
+      <div class="card-header">
+        <h6 class="mb-0">Add Attribute to Well</h6>
+      </div>
+      <div class="card-body">
+        <!-- Attribute Selection -->
+        <div class="mb-3">
+          <label class="form-label">Select Attribute</label>
+          <select class="form-select" 
+                  data-custom-attributes-target="attributeSelect"
+                  data-action="change->custom-attributes#attributeSelectChanged">
+            <option value="">-- Select an attribute --</option>
+            <% (available_attributes || []).each do |attr| %>
+              <option value="<%= attr.id %>" 
+                      data-name="<%= attr.name %>"
+                      data-description="<%= attr.description %>">
+                <%= attr.name %> <%= "(#{attr.description})" if attr.description.present? %>
+              </option>
+            <% end %>
+            <option value="create_new">+ Create New Attribute</option>
+          </select>
+          <div class="form-text">
+            Select an existing global attribute or create a new one.<br>
+            <small class="text-muted">Attributes will be added to all wells in the plate. You can set individual scores after adding.</small>
+          </div>
+        </div>
+
+        <!-- New Attribute Creation Fields (hidden by default) -->
+        <div class="d-none" data-custom-attributes-target="newAttributeFields">
+          <div class="mb-3">
+            <label class="form-label">Attribute Name</label>
+            <input type="text" 
+                   class="form-control" 
+                   data-custom-attributes-target="attributeNameInput"
+                   placeholder="Enter attribute name (e.g., 'Crystallinity', 'Solubility')">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description (Optional)</label>
+            <textarea class="form-control" 
+                      data-custom-attributes-target="descriptionInput"
+                      rows="2" 
+                      placeholder="Brief description of what this attribute measures"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" 
+                  data-action="click->custom-attributes#addAttribute"
+                  data-custom-attributes-target="submitButton">
+            Add Attribute
+          </button>
+          <button class="btn btn-secondary" 
+                  data-action="click->custom-attributes#cancelAdd">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading/Error States -->
+  <div class="d-none" data-custom-attributes-target="loadingMessage">
+    <div class="text-center py-3">
+      <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div class="text-muted">Saving...</div>
+    </div>
+  </div>
+
+  <div class="d-none alert alert-danger" data-custom-attributes-target="errorMessage">
+    <!-- Error messages will be inserted here -->
+  </div>
+
+  <div class="d-none alert alert-success" data-custom-attributes-target="successMessage">
+    <!-- Success messages will be inserted here -->
+  </div>
+</div>

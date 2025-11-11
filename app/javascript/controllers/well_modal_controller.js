@@ -2,10 +2,11 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to data-controller="well-modal"
 export default class extends Controller {
-    static targets = ["modal", "title", "contentForm", "imagesContent", "pxrdContent", "scxrdContent", "calorimetryContent"]
+    static targets = ["modal", "title", "contentForm", "imagesContent", "pxrdContent", "scxrdContent", "calorimetryContent", "customAttributesContent"]
     static values = {
         wellId: Number,
-        wellLabel: String
+        wellLabel: String,
+        plateBarcode: String
     }
 
     connect() {
@@ -45,11 +46,15 @@ export default class extends Controller {
             const wellId = triggerButton.getAttribute('data-well-id')
             const wellLabel = triggerButton.getAttribute('data-well-label')
 
-            console.log("Extracted from button - wellId:", wellId, "wellLabel:", wellLabel)
+            // Find the plate barcode from the closest plate container or URL
+            const plateBarcode = this.extractPlateBarcode(triggerButton)
+
+            console.log("Extracted from button - wellId:", wellId, "wellLabel:", wellLabel, "plateBarcode:", plateBarcode)
 
             // Set the controller values
             this.wellIdValue = parseInt(wellId) || 0
             this.wellLabelValue = wellLabel || ''
+            this.plateBarcodeValue = plateBarcode || ''
         }
 
         console.log("Well modal shown for well:", this.wellIdValue, "type:", typeof this.wellIdValue)
@@ -70,13 +75,15 @@ export default class extends Controller {
             this.loadContentForm()
             // Load images in background
             this.loadImagesInBackground()
-            // Set up placeholder content for PXRD, SCXRD, and calorimetry tabs
+            // Set up placeholder content for PXRD, SCXRD, calorimetry, and custom attributes tabs
             this.setupPxrdPlaceholder()
             this.setupScxrdPlaceholder()
             this.setupCalorimetryPlaceholder()
+            this.setupCustomAttributesPlaceholder()
 
-            // Load calorimetry data in background
+            // Load calorimetry data in background (this was working before)
             this.loadCalorimetryInBackground()
+            // Note: Custom attributes will be loaded on tab click for better UX
         } else {
             console.error("Invalid well ID for loading content:", this.wellIdValue)
             if (this.hasContentFormTarget) {
@@ -392,9 +399,80 @@ export default class extends Controller {
       <div class="text-center text-muted py-4">
         <i class="fas fa-thermometer-half fa-3x mb-3 text-secondary"></i>
         <div class="h5">Calorimetry Data</div>
-        <div>Calorimetry data functionality coming soon</div>
+        <div>Click to load calorimetry datasets for this well</div>
       </div>
     `
+    }
+
+    // Set up Custom Attributes placeholder content
+    setupCustomAttributesPlaceholder() {
+        if (!this.hasCustomAttributesContentTarget) return
+
+        this.customAttributesContentTarget.innerHTML = `
+      <div class="text-center text-muted py-4">
+        <i class="fas fa-tags fa-3x mb-3 text-secondary"></i>
+        <div class="h5">Custom Attributes</div>
+        <div>Click to load custom attributes for this well</div>
+      </div>
+    `
+    }
+
+    // Load Custom Attributes data in background
+    async loadCustomAttributesInBackground() {
+        if (!this.hasCustomAttributesContentTarget || !this.wellIdValue) return
+
+        try {
+            this.customAttributesContentTarget.innerHTML = `
+        <div class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+            <span class="visually-hidden">Loading custom attributes...</span>
+          </div>
+          <div class="text-muted">Loading custom attributes...</div>
+        </div>
+      `
+
+            console.log("Fetching custom attributes data for well:", this.wellIdValue)
+            const response = await fetch(`/wells/${this.wellIdValue}/custom_attributes`)
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+            }
+
+            const html = await response.text()
+            console.log("Custom attributes data loaded successfully")
+
+            this.customAttributesContentTarget.innerHTML = html
+
+            // Execute any script tags in the loaded content
+            this.executeScripts(this.customAttributesContentTarget)
+
+            // Process the new content to ensure Stimulus controllers are connected
+            this.processNewContent(this.customAttributesContentTarget)
+        } catch (error) {
+            console.error("Failed to load custom attributes data:", error)
+            this.customAttributesContentTarget.innerHTML = `
+        <div class="alert alert-warning">
+          Failed to load custom attributes: ${error.message}
+        </div>
+      `
+        }
+    }
+
+    // Helper method to extract plate barcode
+    extractPlateBarcode() {
+        // Try to get plate barcode from URL path
+        const pathMatch = window.location.pathname.match(/\/plates\/([^\/]+)/)
+        if (pathMatch) {
+            return pathMatch[1]
+        }
+
+        // Fallback: look for plate data in DOM
+        const plateElement = document.querySelector('[data-plate-barcode]')
+        if (plateElement) {
+            return plateElement.getAttribute('data-plate-barcode')
+        }
+
+        return null
     }
 
     // Execute script tags in dynamically loaded content
@@ -453,10 +531,14 @@ export default class extends Controller {
         if (this.hasCalorimetryContentTarget) {
             this.calorimetryContentTarget.innerHTML = ""
         }
+        if (this.hasCustomAttributesContentTarget) {
+            this.customAttributesContentTarget.innerHTML = ""
+        }
 
         // Reset values
         this.wellIdValue = null
         this.wellLabelValue = ""
+        this.plateBarcodeValue = ""
     }
 
     // Handle tab clicks (if needed for lazy loading)
@@ -487,7 +569,20 @@ export default class extends Controller {
                 }
                 break
             case 'calorimetry':
-                // Calorimetry data - just show placeholder for now
+                // Load calorimetry data when tab is clicked if not already loaded
+                if (!this.calorimetryContentTarget.innerHTML.trim() ||
+                    this.calorimetryContentTarget.innerHTML.includes('Click to load calorimetry datasets') ||
+                    this.calorimetryContentTarget.innerHTML.includes('spinner-border')) {
+                    this.loadCalorimetryInBackground()
+                }
+                break
+            case 'custom-attributes':
+                // Load custom attributes data when tab is clicked if not already loaded
+                if (!this.customAttributesContentTarget.innerHTML.trim() ||
+                    this.customAttributesContentTarget.innerHTML.includes('Click to load custom attributes') ||
+                    this.customAttributesContentTarget.innerHTML.includes('spinner-border')) {
+                    this.loadCustomAttributesInBackground()
+                }
                 break
         }
     }

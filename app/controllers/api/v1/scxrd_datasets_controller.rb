@@ -214,7 +214,7 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
 
   # POST /api/v1/scxrd_datasets/upload_archive
   def upload_archive
-    compressed_archive = params[:archive] || params.dig(:scxrd_dataset, :archive_file)
+    compressed_archive = params[:archive] || params.dig(:scxrd_dataset, :archive_file) || params.dig(:scxrd_dataset, :archive)
 
     unless compressed_archive.present?
       render json: { error: "Archive file is required" }, status: :unprocessable_entity
@@ -243,6 +243,63 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       render json: {
         error: "Failed to create SCXRD dataset",
         errors: @scxrd_dataset.errors.full_messages
+      }, status: :unprocessable_entity
+    end
+  end
+
+  # POST /api/v1/scxrd_datasets/plate/:barcode/well/:well_string
+  def upload_to_well
+    @plate = Plate.find_by(barcode: params[:barcode])
+    unless @plate
+      render json: {
+        error: "Plate not found",
+        details: [ "No plate found with barcode '#{params[:barcode]}'" ]
+      }, status: :not_found
+      return
+    end
+
+    @well = @plate.find_well_by_identifier(params[:well_string])
+    unless @well
+      render json: {
+        error: "Well not found",
+        details: [ "No well found with identifier '#{params[:well_string]}' on plate '#{params[:barcode]}'" ]
+      }, status: :not_found
+      return
+    end
+
+    compressed_archive = params[:archive] || params.dig(:scxrd_dataset, :archive) || params.dig(:scxrd_dataset, :archive_file)
+
+    unless compressed_archive.present?
+      render json: { 
+        error: "Archive file is required",
+        details: [ "Please provide a ZIP archive file containing SCXRD data" ]
+      }, status: :unprocessable_entity
+      return
+    end
+
+    @scxrd_dataset = @well.scxrd_datasets.build(
+      experiment_name: "Processing...",
+      measured_at: Time.current
+    )
+
+    if @scxrd_dataset.save
+      # Attach the archive file first
+      compressed_archive.rewind if compressed_archive.respond_to?(:rewind)
+      @scxrd_dataset.archive.attach(compressed_archive)
+
+      # Use the same background job processing as the standalone upload
+      Rails.logger.info "SCXRD upload_to_well: Starting background processing for well #{@well.well_label_with_subwell}"
+      ScxrdArchiveProcessingJob.perform_later(@scxrd_dataset.id)
+
+      render json: {
+        message: "SCXRD archive received for well #{@well.well_label_with_subwell}. Processing will continue in background.",
+        scxrd_dataset_id: @scxrd_dataset.id,
+        status: "processing"
+      }, status: :accepted
+    else
+      render json: {
+        error: "Failed to create SCXRD dataset",
+        details: @scxrd_dataset.errors.full_messages
       }, status: :unprocessable_entity
     end
   end

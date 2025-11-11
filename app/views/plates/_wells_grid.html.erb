@@ -1,6 +1,6 @@
 <div class="container" 
      data-controller="well-layers"
-     data-well-layers-config-value='<%= available_layers.to_json %>'
+     data-well-layers-config-value='<%= available_layers(@plate).to_json %>'
      data-well-layers-active-layers-value="[]">
   <div class="d-flex gap-3">
     <!-- Layer Control Sidebar -->
@@ -10,7 +10,7 @@
       </h6>
       
       <div class="layer-options">
-        <% available_layers.each_with_index do |(layer_key, config), index| %>
+        <% available_layers(@plate).each_with_index do |(layer_key, config), index| %>
           <div class="form-check mb-2">
             <input 
               class="form-check-input layer-toggle" 
@@ -105,7 +105,7 @@
                 data-col="<%= well.well_column %>"
                 data-row="<%= well.well_row %>"
                 data-subwell="<%= well.subwell %>"
-                data-layer-data="<%= well_layer_data(well).to_json %>"
+                data-layer-data="<%= well_layer_data(well, @plate_custom_attributes).to_json %>"
                 data-well-layers-target="wellButton"
                 title="<%= well_tooltip_text(well) %>"
                 <%= raw 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>

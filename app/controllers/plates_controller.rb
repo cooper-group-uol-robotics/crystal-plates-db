@@ -36,7 +36,7 @@ class PlatesController < ApplicationController
   def show
     @wells = @plate.wells.includes(:images, :pxrd_patterns, :scxrd_datasets, :calorimetry_datasets, 
                                    :chemicals, :stock_solutions, :polymorphic_stock_solutions,
-                                   :well_contents)
+                                   :well_contents, well_scores: :custom_attribute)
                          
     # Preload polymorphic associations for well_contents manually 
     # since Rails can't eager load polymorphic associations directly
@@ -44,6 +44,11 @@ class PlatesController < ApplicationController
       records: @wells.flat_map(&:well_contents),
       associations: :contentable
     ).call
+    
+    # Get custom attributes that have well scores in this plate for layer system
+    @plate_custom_attributes = CustomAttribute.with_well_scores_in_plate(@plate)
+                                             .select(:id, :name, :description, :data_type)
+    
     @rows = @wells.maximum(:well_row) || 0
     @columns = @wells.maximum(:well_column) || 0
 
@@ -779,7 +784,8 @@ class PlatesController < ApplicationController
         well.well_contents.each do |content|
           if content.chemical? && content.contentable.present?
             chemicals.add(content.contentable)
-          elsif content.stock_solution? && content.contentable.present?
+          end
+          if content.stock_solution? && content.contentable.present?
             stock_solutions.add(content.contentable)
           end
         end

@@ -18,6 +18,10 @@ class Well < ApplicationRecord
 
   has_many :calorimetry_datasets, dependent: :destroy
 
+  # Custom attributes associations
+  has_many :well_scores, dependent: :destroy
+  has_many :custom_attributes, through: :well_scores
+
   validates :well_row, :well_column, presence: true
   validates :subwell, presence: true, numericality: { greater_than: 0 }
   validates :subwell, uniqueness: { scope: [ :plate_id, :well_row, :well_column ] }
@@ -232,6 +236,30 @@ class Well < ApplicationRecord
   # Default subwell representation - can be customized
   def full_label
     well_label_with_subwell
+  end
+
+  # Custom attribute score methods
+  def score_for_attribute(custom_attribute)
+    well_scores.find_by(custom_attribute: custom_attribute)
+  end
+
+  def score_value_for_attribute(custom_attribute)
+    score = score_for_attribute(custom_attribute)
+    score&.display_value
+  end
+
+  def set_score_for_attribute(custom_attribute, value)
+    score = well_scores.find_or_initialize_by(custom_attribute: custom_attribute)
+    score.set_display_value(value)
+    score.save!
+  end
+
+  def has_custom_attribute_scores?
+    if association(:well_scores).loaded?
+      well_scores.any?
+    else
+      well_scores.exists?
+    end
   end
 
   # Coordinate methods

@@ -291,6 +291,46 @@ class WellsController < ApplicationController
     end
   end
 
+  def custom_attributes
+    @well = Well.find(params[:id])
+    @plate = @well.plate
+    @well_scores = @well.well_scores.includes(:custom_attribute)
+  # Return all global custom attributes (attributes are now global)
+  @available_attributes = CustomAttribute.order(:name)
+
+    respond_to do |format|
+      format.html { render partial: "wells/custom_attributes", locals: { well: @well, plate: @plate, available_attributes: @available_attributes } }
+      format.json { 
+        render json: {
+          well: {
+            id: @well.id,
+            label: @well.well_label_with_subwell,
+            scores: @well_scores.map do |score|
+              {
+                id: score.id,
+                value: score.display_value,
+                custom_attribute: {
+                  id: score.custom_attribute.id,
+                  name: score.custom_attribute.name,
+                  description: score.custom_attribute.description,
+                  data_type: score.custom_attribute.data_type
+                }
+              }
+            end
+          },
+          available_attributes: @available_attributes.map do |attr|
+            {
+              id: attr.id,
+              name: attr.name,
+              description: attr.description,
+              data_type: attr.data_type
+            }
+          end
+        }
+      }
+    end
+  end
+
   def remove_content
     @well = Well.find(params[:id])
     content = @well.well_contents.find(params[:content_id])
