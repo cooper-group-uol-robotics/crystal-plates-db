@@ -67,6 +67,9 @@ module PlatesHelper
     "droplet" => "info"
   }.freeze
 
+  # Heatmap palette choice: :viridis or :spectral
+  HEATMAP_PALETTE = :viridis
+
 
 
   # New layer system methods
@@ -314,14 +317,29 @@ module PlatesHelper
 
   # Generate a color for custom attributes using a predefined palette
   def generate_attribute_color(index)
-    # Extended color palette for custom attributes (matplotlib tab20)
-    colors = [
-      "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", 
-      "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
-      "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5",
-      "#c49c94", "#f7b6d3", "#c7c7c7", "#dbdb8d", "#9edae5"
-    ]
-    
+    case HEATMAP_PALETTE
+    when :viridis
+      # Viridis-like palette (10 steps)
+      colors = [
+        "#440154", "#482777", "#3E4989", "#31688E", "#26828E",
+        "#1F9E89", "#35B779", "#6DCD59", "#B4DE2C", "#FDE725"
+      ]
+    when :spectral
+      # Spectral-like palette (11 steps from ColorBrewer)
+      colors = [
+        "#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#FEE08B",
+        "#E6F598", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "#313695"
+      ]
+    else
+      # Fallback: previous tab20-inspired palette
+      colors = [
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+        "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5",
+        "#c49c94", "#f7b6d3", "#c7c7c7", "#dbdb8d", "#9edae5"
+      ]
+    end
+
     colors[index % colors.length]
   end
 end

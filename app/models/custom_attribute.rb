@@ -6,10 +6,11 @@ class CustomAttribute < ApplicationRecord
   validates :name, presence: true, uniqueness: { message: "already exists. Custom attribute names must be unique." }
   validates :data_type, presence: true, inclusion: { in: %w[numeric text json boolean] }
   scope :with_well_scores_in_plate, ->(plate) {
-    joins(:well_scores)
-      .joins('JOIN wells ON wells.id = well_scores.well_id')
+    # Use explicit column selection to avoid PostgreSQL JSON equality issues
+    joins('INNER JOIN well_scores ON well_scores.custom_attribute_id = custom_attributes.id')
+      .joins('INNER JOIN wells ON wells.id = well_scores.well_id')
       .where('wells.plate_id = ?', plate.id)
-      .distinct
+      .select('DISTINCT custom_attributes.*')
   }
 
   def display_name

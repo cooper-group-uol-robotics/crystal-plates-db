@@ -310,7 +310,6 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
   # and has real-world coordinates from the cmdscript.mac file
   def create_well_image_from_crystal_image(scxrd_dataset, processing_result)
     return unless scxrd_dataset.well.present?
-    return unless scxrd_dataset.crystal_image.attached?
     return unless processing_result[:crystal_image]
     return unless processing_result[:metadata]
 
@@ -321,19 +320,25 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
     Rails.logger.info "API SCXRD: Creating well image from crystal image for dataset #{scxrd_dataset.id}"
 
     begin
-      # Get image dimensions by analyzing the attached crystal image
-      crystal_image_blob = scxrd_dataset.crystal_image.blob
-      crystal_image_blob.analyze unless crystal_image_blob.analyzed?
-
-      pixel_width = crystal_image_blob.metadata["width"]
-      pixel_height = crystal_image_blob.metadata["height"]
+      # Get image dimensions directly from the extracted image data to avoid race conditions
+      crystal_image_data = processing_result[:crystal_image]
+      
+      # Analyze the image data directly using MiniMagick to get dimensions
+      require 'mini_magick'
+      begin
+        image = MiniMagick::Image.read(crystal_image_data[:data])
+        pixel_width = image.width
+        pixel_height = image.height
+        Rails.logger.info "API SCXRD: Crystal image dimensions from extracted data: #{pixel_width}x#{pixel_height}"
+      rescue => e
+        Rails.logger.error "API SCXRD: Failed to analyze crystal image data with MiniMagick: #{e.message}"
+        return
+      end
 
       unless pixel_width && pixel_height
         Rails.logger.warn "API SCXRD: Could not determine crystal image dimensions, skipping well image creation"
         return
       end
-
-      Rails.logger.info "API SCXRD: Crystal image dimensions: #{pixel_width}x#{pixel_height}"
 
       # Calculate reference point using the service method
       # The coordinates from cmdscript.mac refer to the center of the image
@@ -361,7 +366,6 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       )
 
       # Attach the same image data to the well image
-      crystal_image_data = processing_result[:crystal_image]
       well_image.file.attach(
         io: StringIO.new(crystal_image_data[:data]),
         filename: "scxrd_crystal_#{scxrd_dataset.experiment_name}.#{crystal_image_data[:filename].split('.').last}",
@@ -370,6 +374,22 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
 
       if well_image.save
         Rails.logger.info "API SCXRD: Successfully created well image #{well_image.id} for well #{scxrd_dataset.well.id}"
+        
+        # Create a point of interest at the center of the image
+        center_x = pixel_width / 2.0
+        center_y = pixel_height / 2.0
+        
+        point_of_interest = well_image.point_of_interests.build(
+          pixel_x: center_x,
+          pixel_y: center_y,
+          point_type: 'measured',
+        )
+        
+        if point_of_interest.save
+          Rails.logger.info "API SCXRD: Successfully created point of interest at center (#{center_x}, #{center_y}) for well image #{well_image.id}"
+        else
+          Rails.logger.error "API SCXRD: Failed to create point of interest: #{point_of_interest.errors.full_messages.join(', ')}"
+        end
       else
         Rails.logger.error "API SCXRD: Failed to create well image: #{well_image.errors.full_messages.join(', ')}"
       end

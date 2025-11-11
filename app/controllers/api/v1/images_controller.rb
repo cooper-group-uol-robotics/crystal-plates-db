@@ -1,6 +1,6 @@
 module Api::V1
   class ImagesController < BaseController
-    before_action :set_well
+    before_action :set_well, except: [:upload_to_well]
     before_action :set_image, only: [ :show, :update, :destroy ]
 
     # GET /api/v1/wells/:well_id/images
@@ -41,6 +41,38 @@ module Api::V1
         render_success(nil, message: "Image deleted successfully")
       else
         render_error("Failed to delete image", details: @image.errors.full_messages, status: :unprocessable_entity)
+      end
+    end
+
+    # POST /api/v1/images/plate/:barcode/well/:well_string
+    def upload_to_well
+      @plate = Plate.find_by(barcode: params[:barcode])
+      unless @plate
+        render_error(
+          "Plate not found", 
+          details: ["No plate found with barcode '#{params[:barcode]}'"], 
+          status: :not_found
+        )
+        return
+      end
+
+      @well = @plate.find_well_by_identifier(params[:well_string])
+      unless @well
+        render_error(
+          "Well not found", 
+          details: ["No well found with identifier '#{params[:well_string]}' on plate '#{params[:barcode]}'"], 
+          status: :not_found
+        )
+        return
+      end
+
+      @image = @well.images.build(image_params)
+      @image.captured_at ||= Time.current
+
+      if @image.save
+        render_success(image_json(@image, include_details: true), status: :created, message: "Image uploaded successfully")
+      else
+        render_error("Failed to create image", details: @image.errors.full_messages, status: :unprocessable_entity)
       end
     end
 

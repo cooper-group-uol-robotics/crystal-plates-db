@@ -3,7 +3,7 @@ class PointOfInterest < ApplicationRecord
 
   # Validations
   validates :pixel_x, :pixel_y, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  validates :point_type, presence: true, inclusion: { in: %w[crystal particle droplet other] }
+  validates :point_type, presence: true, inclusion: { in: %w[crystal particle droplet other measured] }
   validates :marked_at, presence: true
 
   # Validate coordinates are within image bounds

@@ -113,6 +113,8 @@ Rails.application.routes.draw do
       delete :permanent_delete
       post :bulk_upload_contents
       get :download_contents_csv
+      post :bulk_upload_attributes
+      get :download_attributes_csv
     end
   end
 
@@ -202,6 +204,13 @@ Rails.application.routes.draw do
         member do
           get :data
         end
+        collection do
+          post "plate/:barcode/well/:well_string", action: :upload_to_well, as: :upload_to_well
+        end
+      end
+
+      # Standalone Image routes
+      resources :images, only: [ :index, :show, :create, :update, :destroy ] do
         collection do
           post "plate/:barcode/well/:well_string", action: :upload_to_well, as: :upload_to_well
         end

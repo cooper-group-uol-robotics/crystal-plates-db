@@ -71,7 +71,86 @@
           </div>
         </div>
       </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Custom Attributes CSV Upload -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header p-2">
+        <div class="d-flex align-items-center w-100">
+          <button class="btn btn-link p-0 text-decoration-none d-flex align-items-center flex-grow-1" 
+                  type="button" 
+                  data-bs-toggle="collapse" 
+                  data-bs-target="#bulkAttributesUploadCollapse" 
+                  aria-expanded="false" 
+                  aria-controls="bulkAttributesUploadCollapse">
+            <i class="bi bi-upload me-2 text-muted"></i>
+            <span class="text-muted">Bulk Upload Custom Attributes</span>
+            <i class="fas fa-chevron-down ms-auto text-muted"></i>
+          </button>
+          <%= link_to download_attributes_csv_plate_path(@plate, format: :csv), 
+                      class: "btn btn-outline-primary btn-sm ms-2",
+                      title: "Download current custom attributes as CSV" do %>
+            <i class="bi bi-download me-1"></i>Download CSV
+          <% end %>
         </div>
+      </div>
+      <div class="collapse" id="bulkAttributesUploadCollapse">
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            Upload a CSV file to bulk populate custom attribute values for wells.
+            <strong>Column headers must match existing attribute names exactly.</strong>
+            <br>First column should contain well labels (A1, B2, etc.). Empty cells will be skipped.
+            <a href="#" class="text-decoration-none" data-bs-toggle="collapse" data-bs-target="#attributesCsvFormatExample">
+              <small>(Show format example)</small>
+            </a>
+          </p>
+          
+          <div class="collapse" id="attributesCsvFormatExample">
+            <div class="alert alert-info small mb-3">
+              <strong>CSV Format (Custom Attributes):</strong><br>
+              <code>
+                Well,Temperature,pH,Concentration<br>
+                A1,25.5,7.2,0.1<br>
+                A2,30.0,6.8,0.2<br>
+                B1,28.5,7.0,0.15<br>
+                C1,,7.1,0.12
+              </code>
+              <br><small class="text-muted">
+                • Column headers must match existing custom attribute names exactly<br>
+                • Numeric values only (text attributes not currently supported)<br>
+                • Empty cells will not update the attribute for that well<br>
+                • Use Download CSV to get current format with existing attributes
+              </small>
+            </div>
+          </div>
+
+        <%= form_with url: bulk_upload_attributes_plate_path(@plate), method: :post, 
+                      local: true, multipart: true, class: "d-flex align-items-end gap-3", 
+                      id: "bulkAttributesUploadForm" do |f| %>
+          <div class="flex-grow-1">
+            <%= f.file_field :csv_file, accept: ".csv", class: "form-control", required: true, 
+                             id: "attributesCsvFileInput" %>
+          </div>
+          <div>
+            <%= f.submit "Upload Attributes CSV", class: "btn btn-primary", id: "attributesUploadButton",
+                         data: { confirm: "This will update custom attribute values. Existing values will be overwritten. Continue?" } %>
+          </div>
+        <% end %>
+        
+        <div id="attributesUploadProgress" class="mt-2 d-none">
+          <div class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
+              Processing...
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   </div>
@@ -79,38 +158,78 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Contents CSV upload
   const form = document.getElementById('bulkUploadForm');
   const fileInput = document.getElementById('csvFileInput');
   const uploadButton = document.getElementById('uploadButton');
   const progressDiv = document.getElementById('uploadProgress');
   
-  // File validation
-  fileInput.addEventListener('change', function() {
-    const file = this.files[0];
-    if (!file) return;
+  if (form && fileInput && uploadButton && progressDiv) {
+    // File validation
+    fileInput.addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+      
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB');
+        this.value = '';
+        return;
+      }
+      
+      // Check file type
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file');
+        this.value = '';
+        return;
+      }
+      
+      uploadButton.disabled = false;
+    });
     
-    // Check file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
-      this.value = '';
-      return;
-    }
-    
-    // Check file type
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      alert('Please select a CSV file');
-      this.value = '';
-      return;
-    }
-    
-    uploadButton.disabled = false;
-  });
+    // Form submission
+    form.addEventListener('submit', function() {
+      uploadButton.disabled = true;
+      uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+      progressDiv.classList.remove('d-none');
+    });
+  }
+
+  // Attributes CSV upload
+  const attributesForm = document.getElementById('bulkAttributesUploadForm');
+  const attributesFileInput = document.getElementById('attributesCsvFileInput');
+  const attributesUploadButton = document.getElementById('attributesUploadButton');
+  const attributesProgressDiv = document.getElementById('attributesUploadProgress');
   
-  // Form submission
-  form.addEventListener('submit', function() {
-    uploadButton.disabled = true;
-    uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
-    progressDiv.classList.remove('d-none');
-  });
+  if (attributesForm && attributesFileInput && attributesUploadButton && attributesProgressDiv) {
+    // File validation
+    attributesFileInput.addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+      
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB');
+        this.value = '';
+        return;
+      }
+      
+      // Check file type
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file');
+        this.value = '';
+        return;
+      }
+      
+      attributesUploadButton.disabled = false;
+    });
+    
+    // Form submission
+    attributesForm.addEventListener('submit', function() {
+      attributesUploadButton.disabled = true;
+      attributesUploadButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+      attributesProgressDiv.classList.remove('d-none');
+    });
+  }
 });
 </script>

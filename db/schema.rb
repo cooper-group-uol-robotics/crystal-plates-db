@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_11_121633) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_11_142716) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -93,12 +93,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_11_121633) do
     t.string "name", null: false
     t.text "description"
     t.string "data_type", default: "numeric", null: false
-    t.string "attributable_type"
-    t.integer "attributable_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["attributable_type", "attributable_id"], name: "index_custom_attributes_on_attributable"
-    t.index ["name", "attributable_type", "attributable_id"], name: "index_custom_attributes_uniqueness", unique: true
     t.index ["name"], name: "index_custom_attributes_on_name"
     t.index ["name"], name: "index_custom_attributes_on_name_unique", unique: true
   end

@@ -343,6 +343,115 @@ module Api
         actual_time = Time.parse(image_data["captured_at"]).iso8601
         assert_equal expected_time, actual_time
       end
+
+      test "should upload image to well via plate barcode and well string" do
+        test_image = fixture_file_upload("test_image.png", "image/png")
+
+        assert_difference("Image.count") do
+          post upload_to_well_api_v1_images_url(@plate.barcode, @well.well_label), params: {
+            image: {
+              file: test_image,
+              pixel_size_x_mm: 0.15,
+              pixel_size_y_mm: 0.15,
+              reference_x_mm: 1.0,
+              reference_y_mm: 2.0,
+              reference_z_mm: 3.0,
+              description: "Test image uploaded via plate/well endpoint"
+            }
+          }
+        end
+
+        assert_response :created
+
+        json_response = JSON.parse(response.body)
+        assert json_response.key?("data")
+        assert_equal "Image uploaded successfully", json_response["message"]
+
+        image_data = json_response["data"]
+        assert_in_delta 0.15, image_data["pixel_size_x_mm"].to_f, 0.0001
+        assert_in_delta 0.15, image_data["pixel_size_y_mm"].to_f, 0.0001
+        assert_in_delta 1.0, image_data["reference_x_mm"].to_f, 0.0001
+        assert_in_delta 2.0, image_data["reference_y_mm"].to_f, 0.0001
+        assert_in_delta 3.0, image_data["reference_z_mm"].to_f, 0.0001
+        assert_equal "Test image uploaded via plate/well endpoint", image_data["description"]
+
+        # Verify the image was associated with the correct well
+        created_image = Image.find(image_data["id"])
+        assert_equal @well, created_image.well
+        assert created_image.file.attached?
+      end
+
+      test "should return 404 for non-existent plate in upload_to_well" do
+        test_image = fixture_file_upload("test_image.png", "image/png")
+
+        assert_no_difference("Image.count") do
+          post upload_to_well_api_v1_images_url("NONEXISTENT", "A1"), params: {
+            image: {
+              file: test_image,
+              pixel_size_x_mm: 0.1,
+              pixel_size_y_mm: 0.1,
+              reference_x_mm: 0.0,
+              reference_y_mm: 0.0,
+              reference_z_mm: 5.0
+            }
+          }
+        end
+
+        assert_response :not_found
+
+        json_response = JSON.parse(response.body)
+        assert json_response.key?("error")
+        assert_match(/Plate not found/, json_response["error"])
+        assert_includes json_response["details"], "No plate found with barcode 'NONEXISTENT'"
+      end
+
+      test "should return 404 for non-existent well in upload_to_well" do
+        test_image = fixture_file_upload("test_image.png", "image/png")
+
+        assert_no_difference("Image.count") do
+          post upload_to_well_api_v1_images_url(@plate.barcode, "Z99"), params: {
+            image: {
+              file: test_image,
+              pixel_size_x_mm: 0.1,
+              pixel_size_y_mm: 0.1,
+              reference_x_mm: 0.0,
+              reference_y_mm: 0.0,
+              reference_z_mm: 5.0
+            }
+          }
+        end
+
+        assert_response :not_found
+
+        json_response = JSON.parse(response.body)
+        assert json_response.key?("error")
+        assert_match(/Well not found/, json_response["error"])
+        assert_includes json_response["details"], "No well found with identifier 'Z99' on plate '#{@plate.barcode}'"
+      end
+
+      test "should handle validation errors in upload_to_well" do
+        test_image = fixture_file_upload("test_image.png", "image/png")
+
+        assert_no_difference("Image.count") do
+          post upload_to_well_api_v1_images_url(@plate.barcode, @well.well_label), params: {
+            image: {
+              file: test_image,
+              pixel_size_x_mm: -1, # Invalid negative value
+              pixel_size_y_mm: 0.1,
+              reference_x_mm: 0.0,
+              reference_y_mm: 0.0,
+              reference_z_mm: 5.0
+            }
+          }
+        end
+
+        assert_response :unprocessable_entity
+
+        json_response = JSON.parse(response.body)
+        assert json_response.key?("error")
+        assert json_response.key?("details")
+        assert_match(/Failed to create image/, json_response["error"])
+      end
     end
   end
 end

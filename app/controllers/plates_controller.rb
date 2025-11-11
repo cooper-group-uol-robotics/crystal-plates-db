@@ -1,5 +1,5 @@
 class PlatesController < ApplicationController
-  before_action :set_plate, only: %i[ show edit update destroy bulk_upload_contents download_contents_csv ]
+  before_action :set_plate, only: %i[ show edit update destroy bulk_upload_contents download_contents_csv bulk_upload_attributes download_attributes_csv ]
   before_action :set_deleted_plate, only: %i[ restore permanent_delete ]
 
   # GET /plates or /plates.json
@@ -536,6 +536,58 @@ class PlatesController < ApplicationController
     redirect_to @plate
   end
 
+  # POST /plates/:id/bulk_upload_attributes
+  def bulk_upload_attributes
+    require "csv"
+
+    unless params[:csv_file].present?
+      redirect_to @plate, alert: "Please select a CSV file to upload."
+      return
+    end
+
+    begin
+      csv_content = params[:csv_file].read
+      csv = CSV.parse(csv_content, headers: true)
+
+      results = process_bulk_attributes_csv(csv)
+
+      if results[:errors].any?
+        # Limit error messages to prevent cookie overflow
+        error_count = results[:errors].length
+        if error_count > 10
+          displayed_errors = results[:errors].first(5)
+          flash[:alert] = "Upload completed with #{error_count} errors. First 5 errors: #{displayed_errors.join('; ')}. Please check your CSV file format."
+        else
+          flash[:alert] = "Upload completed with errors: #{results[:errors].join('; ')}"
+        end
+      else
+        flash[:notice] = "Successfully uploaded #{results[:success_count]} custom attribute values."
+      end
+
+    rescue CSV::MalformedCSVError => e
+      flash[:alert] = "Invalid CSV file: #{e.message}"
+    rescue => e
+      flash[:alert] = "Error processing CSV: #{e.message}"
+    end
+
+    redirect_to @plate
+  end
+
+  # GET /plates/:id/download_attributes_csv
+  def download_attributes_csv
+    require "csv"
+
+    csv_data = generate_plate_attributes_csv
+
+    filename = "#{@plate.barcode}_attributes_#{Date.current.strftime('%Y%m%d')}.csv"
+
+    respond_to do |format|
+      format.csv do
+        send_data csv_data, filename: filename, type: "text/csv"
+      end
+    end
+  end
+
   # GET /plates/:id/download_contents_csv
   def download_contents_csv
     require "csv"
@@ -853,6 +905,120 @@ class PlatesController < ApplicationController
             else
               row_data << ""
             end
+          end
+
+          csv << row_data
+        end
+      end
+    end
+
+    def process_bulk_attributes_csv(csv)
+      results = { success_count: 0, errors: [] }
+
+      return { success_count: 0, errors: [ "CSV file is empty" ] } if csv.empty?
+
+      # Get headers - CSV is already parsed with headers
+      headers = csv.headers.compact
+      well_column = headers.first # First column should be well labels
+      attribute_columns = headers[1..-1] # Rest are attribute names
+
+      if well_column.nil? || attribute_columns.empty?
+        results[:errors] << "CSV must have well labels in first column and at least one attribute column"
+        return results
+      end
+
+      # Validate that all attribute columns exist as custom attributes
+      existing_attributes = CustomAttribute.where(name: attribute_columns).index_by(&:name)
+      missing_attributes = attribute_columns.reject { |name| existing_attributes.key?(name) }
+
+      if missing_attributes.any?
+        results[:errors] << "Unknown custom attributes: #{missing_attributes.join(', ')}. Available attributes: #{CustomAttribute.pluck(:name).join(', ')}"
+        return results
+      end
+
+      # Process each data row
+      csv.each do |row|
+        well_label = row[well_column]&.strip
+        next if well_label.nil? || well_label.empty?
+
+        # Parse well label
+        well_row, well_column_num, subwell = parse_well_label(well_label)
+        unless well_row && well_column_num && subwell
+          results[:errors] << "Invalid well label format: #{well_label}"
+          next
+        end
+
+        # Find the well
+        well = @plate.wells.find_by(well_row: well_row, well_column: well_column_num, subwell: subwell)
+        unless well
+          results[:errors] << "Well not found: #{well_label}"
+          next
+        end
+
+        # Process each attribute value
+        attribute_columns.each do |attr_name|
+          value = row[attr_name]
+          next if value.nil? || value.strip.empty?
+
+          # Validate numeric value
+          numeric_value = Float(value.strip) rescue nil
+          if numeric_value.nil?
+            results[:errors] << "Invalid numeric value '#{value}' for attribute '#{attr_name}' in well #{well_label}"
+            next
+          end
+
+          # Find or create well score
+          custom_attribute = existing_attributes[attr_name]
+          well_score = WellScore.find_or_initialize_by(
+            well: well,
+            custom_attribute: custom_attribute
+          )
+          
+          well_score.set_display_value(numeric_value)
+          
+          if well_score.save
+            results[:success_count] += 1 if well_score.saved_changes?
+          else
+            results[:errors] << "Failed to save #{attr_name} for well #{well_label}: #{well_score.errors.full_messages.join(', ')}"
+          end
+        end
+      end
+
+      results
+    end
+
+    def generate_plate_attributes_csv
+      require "csv"
+
+      # Get all wells ordered by position
+      wells = @plate.wells.includes(:well_scores, well_scores: :custom_attribute).order(:well_row, :well_column, :subwell)
+
+      # Get all custom attributes that have scores on this plate
+      attribute_names = CustomAttribute.joins(:well_scores)
+                                      .where(well_scores: { well_id: wells.pluck(:id) })
+                                      .distinct
+                                      .order(:name)
+                                      .pluck(:name)
+
+      # If no attributes have been set, include all available attributes
+      if attribute_names.empty?
+        attribute_names = CustomAttribute.order(:name).pluck(:name)
+      end
+
+      CSV.generate do |csv|
+        # Header row: Well, then all attribute names
+        headers = ["Well"] + attribute_names
+        csv << headers
+
+        # Data rows: one per well
+        wells.each do |well|
+          well_label = well.subwell == 1 ? well.well_label : "#{well.well_label}.#{well.subwell}"
+          row_data = [well_label]
+
+          # Add value for each attribute (or empty string if not set)
+          attribute_names.each do |attr_name|
+            well_score = well.well_scores.find { |ws| ws.custom_attribute.name == attr_name }
+            row_data << (well_score&.display_value&.to_s || "")
           end
 
           csv << row_data
