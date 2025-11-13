@@ -6,7 +6,6 @@ class Plate < ApplicationRecord
     has_many :plate_locations
     has_many :locations, through: :plate_locations
     has_many :calorimetry_experiments, dependent: :destroy
-    has_many :custom_attributes, as: :attributable, dependent: :destroy
     has_many :well_scores, through: :wells
 
     validates :barcode, uniqueness: true
