@@ -20,6 +20,43 @@ test:
   <<: *default
   database: storage/test.sqlite3
 
+# Store production database in PostgreSQL server
+staging:
+  primary:
+    adapter: postgresql
+    host: 10.10.2.102
+    port: 5432
+    database: crystal_plates_staging
+    username: <%= Rails.application.credentials.dig(:postgres, :username) %>
+    password: <%= Rails.application.credentials.dig(:postgres, :password) %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  cache:
+    adapter: postgresql
+    host: 10.10.2.102
+    port: 5432
+    database: crystal_plates_staging_cache
+    username: <%= Rails.application.credentials.dig(:postgres, :username) %>
+    password: <%= Rails.application.credentials.dig(:postgres, :password) %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    migrations_paths: db/cache_migrate
+  queue:
+    adapter: postgresql
+    host: 10.10.2.102
+    port: 5432
+    database: crystal_plates_staging_queue
+    username: <%= Rails.application.credentials.dig(:postgres, :username) %>
+    password: <%= Rails.application.credentials.dig(:postgres, :password) %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    migrations_paths: db/queue_migrate
+  cable:
+    adapter: postgresql
+    host: 10.10.2.102
+    port: 5432
+    database: crystal_plates_staging_cable
+    username: <%= Rails.application.credentials.dig(:postgres, :username) %>
+    password: <%= Rails.application.credentials.dig(:postgres, :password) %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    migrations_paths: db/cable_migrate
 
 # Store production database in PostgreSQL server
 production:
