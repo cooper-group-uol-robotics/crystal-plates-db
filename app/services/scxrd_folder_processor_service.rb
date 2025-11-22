@@ -33,10 +33,10 @@ class ScxrdFolderProcessorService
   # crystal_center_z_mm: Z coordinate of center of crystal image in mm
   # pixel_width: Width of the image in pixels
   # pixel_height: Height of the image in pixels
-  # pixel_size_mm: Size of one pixel in mm (0.000874 as specified)
+  # pixel_size_mm: Size of one pixel in mm (0.0019 as specified)
   # Returns hash with reference_x_mm, reference_y_mm, reference_z_mm for top-left corner
   def self.calculate_well_image_reference_point(crystal_center_x_mm, crystal_center_y_mm, crystal_center_z_mm,
-                                                pixel_width, pixel_height, pixel_size_mm = 0.000874)
+                                                pixel_width, pixel_height, pixel_size_mm = 0.0019)
     # Calculate half dimensions in mm
     half_width_mm = (pixel_width * pixel_size_mm) / 2.0
     half_height_mm = (pixel_height * pixel_size_mm) / 2.0
