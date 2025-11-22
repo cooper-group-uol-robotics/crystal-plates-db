@@ -78,7 +78,7 @@
 <div class="d-flex justify-content-center" style="background: #f8f9fa;">
   <div class="border rounded p-2 shadow-sm" id="well-grid-container">
     <div class="d-grid adaptive-well-grid" style="grid-template-columns: 40px repeat(<%= @columns %>, minmax(65px, 1fr)); gap: 8px; max-width: calc(100vw - 40px);">
-      <% wells_in_a1 = @wells.select { |w| w.well_row == 1 && w.well_column == 1 } %>
+      <% wells_in_a1 = @wells_by_position[[1, 1]] || [] %>
       <% subwell_selector_cols = subwell_grid_columns(wells_in_a1.length) %>
       <div class="d-grid" style="grid-template-columns: repeat(<%= subwell_selector_cols %>, 1fr); gap: 2px;">
       <!-- Subwell header buttons (copied from well A1) -->
@@ -103,7 +103,7 @@
           <%= ('A'.ord + row - 1).chr %>
         </button>
       <% (1..@columns).each do |col| %>
-        <% wells_in_position = @wells.select { |w| w.well_row == row && w.well_column == col } %>
+        <% wells_in_position = @wells_by_position[[row, col]] || [] %>
         <div class="well-position border rounded p-1" style="background: white; min-height: 20px;">
           <% if wells_in_position.any? %>
             <div class="text-center mb-1" style="font-size: 10px; font-weight: bold;">
@@ -119,7 +119,7 @@
                 data-col="<%= well.well_column %>"
                 data-row="<%= well.well_row %>"
                 data-subwell="<%= well.subwell %>"
-                data-layer-data="<%= well_layer_data(well, @plate_custom_attributes).to_json %>"
+                data-layer-data="<%= well_layer_data(well, @plate_custom_attributes, @well_scores_index).to_json %>"
                 data-well-layers-target="wellButton"
                 title="<%= well_tooltip_text(well) %>"
                 <%= raw 'data-bs-toggle="modal" data-bs-target="#wellImagesModal"' %>>

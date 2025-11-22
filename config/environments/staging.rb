@@ -4,6 +4,16 @@ require "rack-mini-profiler"
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
+  # Highlight code that triggered database queries in logs.
+  config.active_record.verbose_query_logs = true
+
+  # Append comments with runtime information tags to SQL queries in logs.
+  config.active_record.query_log_tags_enabled = true
+
+  # Highlight code that enqueued background job in logs.
+  config.active_job.verbose_enqueue_logs = true
+
+  config.server_timing = true
 
   # Code is not reloaded between requests.
   config.enable_reloading = false
@@ -43,7 +53,7 @@ Rails.application.configure do
   config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
 
   # Change to "debug" to log everything (including potentially personally-identifiable information!)
-  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "debug")
 
   # Prevent health checks from clogging up the logs.
   config.silence_healthcheck_path = "/up"
@@ -92,11 +102,15 @@ Rails.application.configure do
   #
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
-      # Enable MiniProfiler
-  Rack::MiniProfilerRails.initialize!(Rails.application)
-  Rack::MiniProfiler.config.position = 'bottom-right'
-  Rack::MiniProfiler.config.start_hidden = false
-  Rack::MiniProfiler.config.auto_inject = true
+
+  # Enable MiniProfiler
+  if Rails.env.staging?
+    config.middleware.use Rack::MiniProfiler, {
+      position: 'bottom-right',
+      start_hidden: false,
+      auto_inject: true
+    }
+  end
 
   # Optional: Bullet config can stay here too
   config.after_initialize do

@@ -36,28 +36,28 @@ module PlatesHelper
       icon: "bi-gem",
       color: "#d62728", # tab10 red
       method: :has_scxrd_datasets?
-    },
-    unit_cells_db: {
-      name: "Unique in DB",
-      description: "Wells with SCXRD unit cells unique within our database",
-      icon: "bi-database-fill",
-      color: "#8c564b", # tab10 brown
-      method: :has_db_unique_scxrd_unit_cell?
-    },
-    unit_cells_csd: {
-      name: "Unique in CSD",
-      description: "Wells with SCXRD unit cells unique within CSD",
-      icon: "bi-database-fill",
-      color: "#e377c2", # tab10 pink
-      method: :has_csd_unique_scxrd_unit_cell?
-    },
-    csd_formula_matches: {
-      name: "CSD with Formula",
-      description: "Wells with SCXRD datasets that have both unit cell and chemical formula matches in CSD",
-      icon: "bi-diagram-3-fill",
-      color: "#17a2b8", # tab10 cyan/teal
-      method: :has_csd_formula_matches?
-    }
+    #},
+    # unit_cells_db: {
+    #   name: "Unique in DB",
+    #   description: "Wells with SCXRD unit cells unique within our database",
+    #   icon: "bi-database-fill",
+    #   color: "#8c564b", # tab10 brown
+    #   method: :has_db_unique_scxrd_unit_cell?
+    # },
+    # unit_cells_csd: {
+    #   name: "Unique in CSD",
+    #   description: "Wells with SCXRD unit cells unique within CSD",
+    #   icon: "bi-database-fill",
+    #   color: "#e377c2", # tab10 pink
+    #   method: :has_csd_unique_scxrd_unit_cell?
+    # },
+    # csd_formula_matches: {
+    #   name: "CSD with Formula",
+    #   description: "Wells with SCXRD datasets that have both unit cell and chemical formula matches in CSD",
+    #   icon: "bi-diagram-3-fill",
+    #   color: "#17a2b8", # tab10 cyan/teal
+    #   method: :has_csd_formula_matches?
+     }
   }.freeze
 
   # Point type badge classes
@@ -73,7 +73,7 @@ module PlatesHelper
 
 
   # New layer system methods
-  def well_layer_data(well, plate_custom_attributes = nil)
+  def well_layer_data(well, plate_custom_attributes = nil, well_scores_index = nil)
     # Return data for all layers for this well
     layer_data = {}
 
@@ -94,7 +94,13 @@ module PlatesHelper
       # Use pre-loaded custom attributes to avoid N+1 queries
       plate_custom_attributes.each do |attribute|
         layer_key = "custom_attribute_#{attribute.id}"
-        well_score = well.well_scores.find { |ws| ws.custom_attribute_id == attribute.id }
+        
+        # Use the well_scores_index for O(1) lookup if provided, otherwise fallback to association
+        if well_scores_index && well_scores_index[well.id]
+          well_score = well_scores_index[well.id][attribute.id]
+        else
+          well_score = well.well_scores.find { |ws| ws.custom_attribute_id == attribute.id }
+        end
         
         layer_data[layer_key] = {
           active: well_score&.value.present?,
@@ -291,13 +297,14 @@ module PlatesHelper
       if well.has_scxrd_unit_cell?
         tooltip_parts << "  - Has unit cell parameters"
 
-        if well.has_db_unique_scxrd_unit_cell?
-          tooltip_parts << "  - Unique in database"
-        end
+        # Disabled for performance
+        # if well.has_db_unique_scxrd_unit_cell?
+        #   tooltip_parts << "  - Unique in database"
+        # end
 
-        if well.has_csd_unique_scxrd_unit_cell?
-          tooltip_parts << "  - Unique in CSD"
-        end
+        # if well.has_csd_unique_scxrd_unit_cell?
+        #   tooltip_parts << "  - Unique in CSD"
+        # end
       end
     end
 

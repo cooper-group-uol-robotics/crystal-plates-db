@@ -37,6 +37,12 @@ class PlatesController < ApplicationController
     @wells = @plate.wells.includes(:images, :pxrd_patterns, :scxrd_datasets, :calorimetry_datasets, 
                                    :chemicals, :stock_solutions, :polymorphic_stock_solutions,
                                    :well_contents, well_scores: :custom_attribute)
+    
+    # Preload all wells into memory to avoid N+1 queries in the view
+    @wells = @wells.to_a
+    
+    # Pre-group wells by position to avoid expensive selects in the view
+    @wells_by_position = @wells.group_by { |w| [w.well_row, w.well_column] }
                          
     # Preload polymorphic associations for well_contents manually 
     # since Rails can't eager load polymorphic associations directly
@@ -48,6 +54,12 @@ class PlatesController < ApplicationController
     # Get custom attributes that have well scores in this plate for layer system
     @plate_custom_attributes = CustomAttribute.with_well_scores_in_plate(@plate)
                                              .select(:id, :name, :description, :data_type)
+    
+    # Pre-index well scores by well_id and custom_attribute_id for O(1) lookup
+    @well_scores_index = {}
+    @wells.each do |well|
+      @well_scores_index[well.id] = well.well_scores.index_by(&:custom_attribute_id)
+    end
     
     @rows = @wells.maximum(:well_row) || 0
     @columns = @wells.maximum(:well_column) || 0
