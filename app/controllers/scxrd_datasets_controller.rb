@@ -40,13 +40,6 @@ class ScxrdDatasetsController < ApplicationController
 
       @scxrd_datasets = @scxrd_datasets.page(params[:page]).per(5)
 
-      # Precompute G6 similarities for all datasets with unit cells
-      @unit_cell_similarities = {}
-      if G6DistanceService.enabled?
-        tolerance = params[:g6_tolerance]&.to_f || 10.0
-        @unit_cell_similarities = G6DistanceService.calculate_all_similarities(tolerance: tolerance)
-      end
-
       respond_to do |format|
         format.html { render "index" }
         format.json do
@@ -369,24 +362,17 @@ class ScxrdDatasetsController < ApplicationController
 
     tolerance = params[:tolerance]&.to_f || 10.0
 
-    # Use API-based similarity calculation
+    # Use precomputed similarities for fast lookup
     similar_datasets_data = []
 
-    if G6DistanceService.enabled?
-      # Get all other datasets with unit cells
-      candidates = ScxrdDataset.where.not(id: @scxrd_dataset.id)
-                               .includes(well: :plate)
-                               .with_primitive_cells
+    if @scxrd_dataset.has_primitive_cell?
+      # Use precomputed similarities for fast lookup
+      similar_datasets = @scxrd_dataset.similar_datasets(tolerance: tolerance)
+      similarities_hash = @scxrd_dataset.similarities_hash
 
-      # Use the G6 distance service to find similar datasets
-      similar_datasets = G6DistanceService.find_similar_datasets(@scxrd_dataset, candidates, tolerance: tolerance)
-
-      # Format the response with calculated distances
+      # Format the response with precomputed distances
       similar_datasets_data = similar_datasets.map do |dataset|
-        distance = G6DistanceService.calculate_distance(
-          @scxrd_dataset.extract_cell_params_for_g6,
-          dataset.extract_cell_params_for_g6
-        )
+        distance = similarities_hash[dataset.id]
 
         {
           id: dataset.id,
@@ -546,17 +532,12 @@ class ScxrdDatasetsController < ApplicationController
 
     g6_count = 0
     csd_count = 0
+    csd_formula_matches = 0
 
-    # Get G6 similarity count
-    if G6DistanceService.enabled?
-      candidates = ScxrdDataset.where.not(id: @scxrd_dataset.id)
-                               .with_primitive_cells
-      similar_datasets = G6DistanceService.find_similar_datasets(@scxrd_dataset, candidates, tolerance: 10.0)
-      g6_count = similar_datasets.size
-    end
+    # Get G6 similarity count using precomputed similarities (fast, no API calls)
+    g6_count = @scxrd_dataset.similar_datasets(tolerance: 10.0).size
 
     # Get CSD count and formula match count
-    csd_formula_matches = 0
     begin
       cell_params = @scxrd_dataset.extract_cell_params_for_g6
 

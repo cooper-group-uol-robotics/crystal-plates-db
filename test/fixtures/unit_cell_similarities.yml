@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  dataset_1: one
+  dataset_2: one
+  g6_distance: 9.99
+
+two:
+  dataset_1: two
+  dataset_2: two
+  g6_distance: 9.99

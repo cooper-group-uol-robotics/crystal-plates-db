@@ -6,10 +6,23 @@ class ScxrdDataset < ApplicationRecord
   has_one_attached :crystal_image
   has_one_attached :structure_file
 
+  # Unit cell similarity associations
+  has_many :unit_cell_similarities_as_dataset_1, 
+           class_name: 'UnitCellSimilarity', 
+           foreign_key: 'dataset_1_id',
+           dependent: :destroy
+  has_many :unit_cell_similarities_as_dataset_2, 
+           class_name: 'UnitCellSimilarity', 
+           foreign_key: 'dataset_2_id',
+           dependent: :destroy
 
   validates :experiment_name, :measured_at, presence: true
   validates :primitive_a, :primitive_b, :primitive_c, :primitive_alpha, :primitive_beta, :primitive_gamma, numericality: { greater_than: 0 }, allow_nil: true
   validates :real_world_x_mm, :real_world_y_mm, :real_world_z_mm, numericality: true, allow_nil: true
+
+  # Callback to compute similarities when dataset is created or unit cell data changes
+  after_create :compute_unit_cell_similarities, if: :has_primitive_cell?
+  after_update :compute_unit_cell_similarities, if: -> { saved_change_to_primitive_cell? && has_primitive_cell? }
 
   # Processing log methods
   def has_processing_log?
@@ -367,14 +380,8 @@ class ScxrdDataset < ApplicationRecord
   end
 
   def similar_datasets_by_g6(tolerance: 10.0)
-    return ScxrdDataset.none unless has_primitive_cell?
-
-    # Get all other datasets with primitive cells
-    candidates = ScxrdDataset.where.not(id: id).includes(:well)
-                             .where.not(primitive_a: nil, primitive_b: nil, primitive_c: nil,
-                                       primitive_alpha: nil, primitive_beta: nil, primitive_gamma: nil)
-
-    G6DistanceService.find_similar_datasets(self, candidates, tolerance: tolerance)
+    # Use precomputed similarities for much faster lookup
+    similar_datasets(tolerance: tolerance)
   end
 
   def similar_datasets_count_by_g6(tolerance: 10.0)
@@ -436,6 +443,39 @@ class ScxrdDataset < ApplicationRecord
     well_formulas.any? do |well_formula|
       FormulaComparisonService.formulas_match?(csd_formula, well_formula, tolerance_percent: tolerance_percent)
     end
+  end
+
+  # Unit cell similarity methods
+  def unit_cell_similarities
+    UnitCellSimilarity.for_dataset(id)
+  end
+
+  def similar_datasets(tolerance: 10.0)
+    similarities = unit_cell_similarities.within_tolerance(tolerance).includes(:dataset_1, :dataset_2)
+    similarities.map { |sim| sim.other_dataset(id) }.compact
+  end
+
+  # Get all similarities for this dataset as a hash for easy lookup
+  def similarities_hash
+    similarities = {}
+    unit_cell_similarities.includes(:dataset_1, :dataset_2).each do |sim|
+      other_dataset = sim.other_dataset(id)
+      similarities[other_dataset.id] = sim.g6_distance if other_dataset
+    end
+    similarities
+  end
+
+  private
+
+  # Check if primitive cell parameters have changed
+  def saved_change_to_primitive_cell?
+    saved_change_to_primitive_a? || saved_change_to_primitive_b? || saved_change_to_primitive_c? ||
+    saved_change_to_primitive_alpha? || saved_change_to_primitive_beta? || saved_change_to_primitive_gamma?
+  end
+
+  # Trigger similarity computation in background
+  def compute_unit_cell_similarities
+    UnitCellSimilarityComputationService.perform_later(self)
   end
 
   # Get best matching formula from well contents for a given CSD formula

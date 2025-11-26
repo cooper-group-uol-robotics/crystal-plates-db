@@ -406,9 +406,13 @@ export default class extends Controller {
             const totalCount = g6Count + csdCount
 
             if (totalCount > 0) {
-              let buttonText = `${g6Count} local + ${csdCount} CSD matches`
-              if (csdFormulaMatches > 0) {
-                buttonText = `${g6Count} local + ${csdCount} CSD (${csdFormulaMatches} with formula) matches`
+              let buttonText = `${g6Count} local`
+              if (csdCount > 0) {
+                if (csdFormulaMatches > 0) {
+                  buttonText += ` + ${csdCount} CSD (${csdFormulaMatches} formula match${csdFormulaMatches > 1 ? 'es' : ''})`
+                } else {
+                  buttonText += ` + ${csdCount} CSD`
+                }
               }
 
               textSpan.textContent = buttonText

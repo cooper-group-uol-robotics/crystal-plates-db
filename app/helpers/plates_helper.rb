@@ -36,13 +36,13 @@ module PlatesHelper
       icon: "bi-gem",
       color: "#d62728", # tab10 red
       method: :has_scxrd_datasets?
-    #},
-    # unit_cells_db: {
-    #   name: "Unique in DB",
-    #   description: "Wells with SCXRD unit cells unique within our database",
-    #   icon: "bi-database-fill",
-    #   color: "#8c564b", # tab10 brown
-    #   method: :has_db_unique_scxrd_unit_cell?
+    },
+    unit_cells_db: {
+      name: "Unique in DB",
+      description: "Wells with SCXRD unit cells unique within our database",
+      icon: "bi-database-fill",
+      color: "#8c564b", # tab10 brown
+      method: :has_db_unique_scxrd_unit_cell?
     # },
     # unit_cells_csd: {
     #   name: "Unique in CSD",
@@ -298,9 +298,9 @@ module PlatesHelper
         tooltip_parts << "  - Has unit cell parameters"
 
         # Disabled for performance
-        # if well.has_db_unique_scxrd_unit_cell?
-        #   tooltip_parts << "  - Unique in database"
-        # end
+        if well.has_db_unique_scxrd_unit_cell?
+          tooltip_parts << "  - Unique in database"
+        end
 
         # if well.has_csd_unique_scxrd_unit_cell?
         #   tooltip_parts << "  - Unique in CSD"

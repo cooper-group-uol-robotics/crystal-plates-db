@@ -197,7 +197,7 @@ class RodImageParserService
       origin_offset = offset + general_nbytes + special_nbytes + 664
       origin_data = read_bytes(origin_offset, 16)
       @header[:origin_px_x], @header[:origin_px_y] = origin_data.unpack("e*")
-      Rails.logger.info "ROD Parser: Beam center: #{@header[:origin_px_x]}, #{@header[:origin_px_y]}"
+      Rails.logger.debug "ROD Parser: Beam center: #{@header[:origin_px_x]}, #{@header[:origin_px_y]}"
     rescue => e
       Rails.logger.warn "ROD Parser: Could not read beam center: #{e.message}"
       @header[:origin_px_x], @header[:origin_px_y] = [ 400.0, 387.5 ] # Default center for 800x775
@@ -208,13 +208,13 @@ class RodImageParserService
       detector_type_offset = offset + general_nbytes + 548
       detector_type_data = read_bytes(detector_type_offset, 4)
       detector_type = detector_type_data.unpack("l<")[0]
-      Rails.logger.info "ROD Parser: Detector type: #{detector_type}"
+      Rails.logger.debug "ROD Parser: Detector type: #{detector_type}"
 
       if [ 12, 14 ].include?(detector_type)
-        Rails.logger.info "ROD Parser: This is a FormatRODArc file (multi-panel detector)"
+        Rails.logger.debug "ROD Parser: This is a FormatRODArc file (multi-panel detector)"
         parse_arc_specific_header(nbytes)
       else
-        Rails.logger.info "ROD Parser: This is a standard FormatROD file"
+        Rails.logger.debug "ROD Parser: This is a standard FormatROD file"
       end
     rescue => e
       Rails.logger.warn "ROD Parser: Could not read detector type: #{e.message}"
@@ -222,7 +222,7 @@ class RodImageParserService
   end
 
   def parse_arc_specific_header(nbytes)
-    Rails.logger.info "ROD Parser: Parsing FormatRODArc specific header"
+    Rails.logger.debug "ROD Parser: Parsing FormatRODArc specific header"
 
     # Seek to the end of the standard version 3 header and into the
     # extra camera parameters section
@@ -231,12 +231,12 @@ class RodImageParserService
       arc_data = read_bytes(arc_offset, 12)
       ix, iy, nx, ny, gapx, gapy = arc_data.unpack("s<s<s<s<s<s<")
 
-      Rails.logger.info "ROD Parser: Arc parameters - ix: #{ix}, iy: #{iy}, nx: #{nx}, ny: #{ny}, gapx: #{gapx}, gapy: #{gapy}"
+      Rails.logger.debug "ROD Parser: Arc parameters - ix: #{ix}, iy: #{iy}, nx: #{nx}, ny: #{ny}, gapx: #{gapx}, gapy: #{gapy}"
 
       # Validate Arc parameters
       if ix == 2 || ix == 3 # 2 or 3 panels
         if ny == 775 && nx == 385 && gapx == 30 && gapy == 0
-          Rails.logger.info "ROD Parser: Valid FormatRODArc parameters detected"
+          Rails.logger.debug "ROD Parser: Valid FormatRODArc parameters detected"
           @header[:arc_nx] = nx
           @header[:arc_ny] = ny
           @header[:arc_gap_px] = gapx
@@ -246,7 +246,7 @@ class RodImageParserService
           @header[:im_npx_x] = ix * nx + (ix - 1) * gapx  # Total width including gaps
           @header[:im_npx_y] = ny
 
-          Rails.logger.info "ROD Parser: Arc image dimensions corrected to #{@header[:im_npx_x]}x#{@header[:im_npx_y]}"
+          Rails.logger.debug "ROD Parser: Arc image dimensions corrected to #{@header[:im_npx_x]}x#{@header[:im_npx_y]}"
         else
           Rails.logger.warn "ROD Parser: Unexpected Arc parameters - nx: #{nx}, ny: #{ny}, gapx: #{gapx}, gapy: #{gapy}"
         end

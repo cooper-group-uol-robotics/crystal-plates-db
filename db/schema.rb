@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_11_142716) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_22_083342) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -265,6 +265,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_11_142716) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "unit_cell_similarities", force: :cascade do |t|
+    t.integer "dataset_1_id", null: false
+    t.integer "dataset_2_id", null: false
+    t.decimal "g6_distance", precision: 10, scale: 6, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["dataset_1_id", "dataset_2_id"], name: "index_similarities_on_dataset_pair", unique: true
+    t.index ["dataset_1_id"], name: "index_unit_cell_similarities_on_dataset_1_id"
+    t.index ["dataset_2_id"], name: "index_unit_cell_similarities_on_dataset_2_id"
+    t.index ["g6_distance"], name: "index_unit_cell_similarities_on_g6_distance"
+  end
+
   create_table "units", force: :cascade do |t|
     t.string "name"
     t.string "symbol"
@@ -335,6 +347,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_11_142716) do
   add_foreign_key "stock_solution_components", "chemicals"
   add_foreign_key "stock_solution_components", "stock_solutions"
   add_foreign_key "stock_solution_components", "units"
+  add_foreign_key "unit_cell_similarities", "scxrd_datasets", column: "dataset_1_id"
+  add_foreign_key "unit_cell_similarities", "scxrd_datasets", column: "dataset_2_id"
   add_foreign_key "well_contents", "stock_solutions"
   add_foreign_key "well_contents", "units"
   add_foreign_key "well_contents", "units", column: "mass_unit_id"
