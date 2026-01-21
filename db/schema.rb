@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_22_083342) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_28_101536) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -235,6 +235,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_22_083342) do
     t.decimal "real_world_y_mm", precision: 8, scale: 3
     t.decimal "real_world_z_mm", precision: 8, scale: 3
     t.text "processing_log"
+    t.float "ub11"
+    t.float "ub12"
+    t.float "ub13"
+    t.float "ub21"
+    t.float "ub22"
+    t.float "ub23"
+    t.float "ub31"
+    t.float "ub32"
+    t.float "ub33"
+    t.float "conventional_a"
+    t.float "conventional_b"
+    t.float "conventional_c"
+    t.float "conventional_alpha"
+    t.float "conventional_beta"
+    t.float "conventional_gamma"
+    t.string "conventional_bravais"
+    t.string "conventional_cb_op"
+    t.float "conventional_distance"
+    t.float "wavelength"
+    t.integer "spots_found"
+    t.integer "spots_indexed"
     t.index ["well_id"], name: "index_scxrd_datasets_on_well_id"
   end
 

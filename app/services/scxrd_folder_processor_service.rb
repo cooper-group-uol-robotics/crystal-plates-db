@@ -98,21 +98,21 @@ class ScxrdFolderProcessorService
       Rails.logger.info "SCXRD: No peak table files found"
     end
 
+    # NOTE: crystal.ini parsing is deprecated - cell parameters are now derived from UB matrix
+    # The UB matrix from *_cracker.par is more accurate than the reduced cell in crystal.ini
+    # Keeping this code commented out for reference:
+    #
     # Find and parse crystal.ini file for reduced cell parameters - exclude files starting with 'pre_'
-    Rails.logger.info "SCXRD: Searching for crystal.ini files in folder: #{@folder_path}"
-    crystal_ini_pattern = File.join(@folder_path, "expinfo", "*_crystal.ini")
-    all_crystal_ini_files = Dir.glob(crystal_ini_pattern, File::FNM_CASEFOLD)
-    Rails.logger.info "SCXRD: Found #{all_crystal_ini_files.count} crystal.ini files total: #{all_crystal_ini_files.map { |f| File.basename(f) }.inspect}"
-
-    crystal_ini_files = all_crystal_ini_files.reject { |file| File.basename(file).start_with?("pre_") }
-    Rails.logger.info "SCXRD: Found #{crystal_ini_files.count} crystal.ini files (excluding pre_*): #{crystal_ini_files.map { |f| File.basename(f) }.inspect}"
-
-    if crystal_ini_files.any?
-      @metadata = parse_all_crystal_ini_files(crystal_ini_files)
-      Rails.logger.info "SCXRD: crystal.ini parsing result: #{@metadata ? 'SUCCESS' : 'FAILED'}"
-    else
-      Rails.logger.warn "SCXRD: No crystal.ini files found in expinfo folder"
-    end
+    # Rails.logger.info "SCXRD: Searching for crystal.ini files in folder: #{@folder_path}"
+    # crystal_ini_pattern = File.join(@folder_path, "expinfo", "*_crystal.ini")
+    # all_crystal_ini_files = Dir.glob(crystal_ini_pattern, File::FNM_CASEFOLD)
+    # if all_crystal_ini_files.any?
+    #   crystal_ini_files = all_crystal_ini_files.reject { |file| File.basename(file).start_with?("pre_") }
+    #   @metadata = parse_all_crystal_ini_files(crystal_ini_files)
+    # end
+    
+    # Initialize metadata hash for other metadata sources
+    @metadata = {}
 
     # Find and parse datacoll.ini file for measurement start time - exclude files starting with 'pre_'
     Rails.logger.info "SCXRD: Searching for datacoll.ini files in folder: #{@folder_path}"
@@ -148,6 +148,13 @@ class ScxrdFolderProcessorService
     if @metadata
       coordinates = parse_cmdscript_coordinates
       @metadata.merge!(coordinates) if coordinates
+    end
+
+    # Parse UB matrices from both CIF and PAR files, then choose the best one
+    ub_matrix = select_best_ub_matrix
+    if ub_matrix
+      @metadata ||= {}
+      @metadata.merge!(ub_matrix)
     end
 
     # Extract crystal image from movie/oneclickmovie*.jpg
@@ -644,6 +651,268 @@ class ScxrdFolderProcessorService
 
     rescue => e
       Rails.logger.error "SCXRD: Error parsing datacoll.ini file #{datacoll_ini_file_path}: #{e.message}"
+      Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(10).join("\n")}"
+      nil
+    end
+  end
+
+  def select_best_ub_matrix
+    Rails.logger.info "SCXRD: Selecting best UB matrix by comparing indexing rates"
+    
+    # Parse both UB matrices
+    cif_ub_matrix = parse_cif_file_for_ub_matrix
+    par_ub_matrix = parse_cracker_par_file
+    
+    # If we only have one, return it
+    return cif_ub_matrix if cif_ub_matrix && !par_ub_matrix
+    return par_ub_matrix if par_ub_matrix && !cif_ub_matrix
+    return nil unless cif_ub_matrix && par_ub_matrix
+    
+    # We have both - calculate indexing rate for each
+    Rails.logger.info "SCXRD: Both CIF and PAR UB matrices found, comparing indexing rates..."
+    
+    # Need peak table data to calculate indexing rates
+    unless @peak_table_data
+      Rails.logger.warn "SCXRD: No peak table data available, defaulting to CIF UB matrix"
+      return cif_ub_matrix
+    end
+    
+    # Parse peak table
+    begin
+      parser = PeakTableParserService.new(@peak_table_data)
+      parsed_data = parser.parse
+      
+      unless parsed_data[:success] && parsed_data[:data_points].present?
+        Rails.logger.warn "SCXRD: Failed to parse peak table, defaulting to CIF UB matrix"
+        return cif_ub_matrix
+      end
+      
+      data_points = parsed_data[:data_points]
+      Rails.logger.info "SCXRD: Parsed #{data_points.length} spots from peak table"
+      
+      # Calculate indexing rate for CIF UB matrix
+      cif_ub_array = [
+        [cif_ub_matrix[:ub11], cif_ub_matrix[:ub12], cif_ub_matrix[:ub13]],
+        [cif_ub_matrix[:ub21], cif_ub_matrix[:ub22], cif_ub_matrix[:ub23]],
+        [cif_ub_matrix[:ub31], cif_ub_matrix[:ub32], cif_ub_matrix[:ub33]]
+      ]
+      
+      cif_result = SpotIndexingService.calculate_indexed_spots(data_points, cif_ub_array, tolerance: 0.125)
+      cif_rate = cif_result[:indexing_rate] || 0.0
+      Rails.logger.info "SCXRD: CIF UB matrix indexing rate: #{cif_rate}% (#{cif_result[:indexed_count]}/#{cif_result[:total_count]} spots)"
+      
+      # Calculate indexing rate for PAR UB matrix
+      par_ub_array = [
+        [par_ub_matrix[:ub11], par_ub_matrix[:ub12], par_ub_matrix[:ub13]],
+        [par_ub_matrix[:ub21], par_ub_matrix[:ub22], par_ub_matrix[:ub23]],
+        [par_ub_matrix[:ub31], par_ub_matrix[:ub32], par_ub_matrix[:ub33]]
+      ]
+      
+      par_result = SpotIndexingService.calculate_indexed_spots(data_points, par_ub_array, tolerance: 0.125)
+      par_rate = par_result[:indexing_rate] || 0.0
+      Rails.logger.info "SCXRD: PAR UB matrix indexing rate: #{par_rate}% (#{par_result[:indexed_count]}/#{par_result[:total_count]} spots)"
+      
+      # Select the one with higher indexing rate
+      if cif_rate >= par_rate
+        Rails.logger.info "SCXRD: Selected CIF UB matrix (#{cif_rate}% vs #{par_rate}%)"
+        cif_ub_matrix
+      else
+        Rails.logger.info "SCXRD: Selected PAR UB matrix (#{par_rate}% vs #{cif_rate}%)"
+        par_ub_matrix
+      end
+      
+    rescue => e
+      Rails.logger.error "SCXRD: Error comparing UB matrices: #{e.message}"
+      Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(5).join("\n")}"
+      Rails.logger.warn "SCXRD: Defaulting to CIF UB matrix due to comparison error"
+      cif_ub_matrix
+    end
+  end
+
+  def parse_cif_file_for_ub_matrix
+    Rails.logger.info "SCXRD: Searching for CIF files with UB matrix"
+
+    # Look for .cif files in the folder
+    cif_pattern = File.join(@folder_path, "**", "*.cif")
+    all_cif_files = Dir.glob(cif_pattern, File::FNM_CASEFOLD)
+    
+    # Exclude files starting with 'pre_'
+    cif_files = all_cif_files.reject { |file| File.basename(file).start_with?("pre_") }
+    
+    Rails.logger.info "SCXRD: Found #{cif_files.count} CIF files (excluding pre_*): #{cif_files.map { |f| File.basename(f) }.inspect}"
+
+    return nil unless cif_files.any?
+
+    cif_file = cif_files.first
+    Rails.logger.info "SCXRD: Using CIF file: #{cif_file}"
+
+    begin
+      # Read the file content
+      content = File.read(cif_file, encoding: "UTF-8")
+      Rails.logger.info "SCXRD: Read CIF file (#{content.lines.count} lines)"
+
+      # Parse UB matrix elements and wavelength
+      ub_matrix = {}
+      
+      # Look for _diffrn_orient_matrix_UB_XX lines
+      %w[11 12 13 21 22 23 31 32 33].each do |component|
+        pattern = /^_diffrn_orient_matrix_UB_#{component}\s+([-+]?[\d.]+(?:[eE][-+]?\d+)?)/
+        if content =~ pattern
+          value = $1.to_f
+          ub_matrix["ub#{component}".to_sym] = value
+          Rails.logger.debug "SCXRD: Found UB_#{component} = #{value}"
+        end
+      end
+      
+      # Look for wavelength
+      wavelength_pattern = /^_diffrn_radiation_wavelength\s+([-+]?[\d.]+(?:[eE][-+]?\d+)?)/
+      if content =~ wavelength_pattern
+        wavelength = $1.to_f
+        ub_matrix[:wavelength] = wavelength
+        Rails.logger.info "SCXRD: Found wavelength = #{wavelength} Å"
+      else
+        Rails.logger.warn "SCXRD: Wavelength not found in CIF file, defaulting to Mo (0.71073 Å)"
+        ub_matrix[:wavelength] = 0.71073
+      end
+      
+      # Verify we have all 9 UB matrix components
+      if ub_matrix.size >= 10  # 9 UB components + wavelength
+        Rails.logger.info "SCXRD: Successfully parsed UB matrix from CIF file (dimensionless):"
+        Rails.logger.info "SCXRD: [#{ub_matrix[:ub11]}, #{ub_matrix[:ub12]}, #{ub_matrix[:ub13]}]"
+        Rails.logger.info "SCXRD: [#{ub_matrix[:ub21]}, #{ub_matrix[:ub22]}, #{ub_matrix[:ub23]}]"
+        Rails.logger.info "SCXRD: [#{ub_matrix[:ub31]}, #{ub_matrix[:ub32]}, #{ub_matrix[:ub33]}]"
+        Rails.logger.info "SCXRD: Wavelength: #{ub_matrix[:wavelength]} Å"
+        
+        return ub_matrix
+      else
+        Rails.logger.warn "SCXRD: Incomplete UB matrix in CIF file (found #{ub_matrix.size - 1} of 9 components)"
+        return nil
+      end
+
+    rescue => e
+      Rails.logger.error "SCXRD: Error parsing CIF file #{cif_file}: #{e.message}"
+      Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(10).join("\n")}"
+      nil
+    end
+  end
+
+  def parse_cracker_par_file
+    Rails.logger.info "SCXRD: Searching for cracker.par files (fallback method)"
+
+    # Look for *_cracker.par files in the folder
+    cracker_par_pattern = File.join(@folder_path, "**", "*_cracker.par")
+    all_cracker_par_files = Dir.glob(cracker_par_pattern, File::FNM_CASEFOLD)
+    
+    # Exclude files starting with 'pre_'
+    cracker_par_files = all_cracker_par_files.reject { |file| File.basename(file).start_with?("pre_") }
+    
+    Rails.logger.info "SCXRD: Found #{cracker_par_files.count} cracker.par files (excluding pre_*): #{cracker_par_files.map { |f| File.basename(f) }.inspect}"
+
+    # If no cracker.par files found, try regular .par files as fallback
+    if cracker_par_files.empty?
+      Rails.logger.info "SCXRD: No cracker.par files found, searching for .par files as fallback"
+      par_pattern = File.join(@folder_path, "**", "*.par")
+      all_par_files = Dir.glob(par_pattern, File::FNM_CASEFOLD)
+      
+      # Exclude files starting with 'pre_' and exclude cracker.par files (already checked)
+      cracker_par_files = all_par_files.reject { |file| 
+        basename = File.basename(file)
+        basename.start_with?("pre_") || basename.end_with?("_cracker.par")
+      }
+      
+      Rails.logger.info "SCXRD: Found #{cracker_par_files.count} .par files (excluding pre_* and *_cracker.par): #{cracker_par_files.map { |f| File.basename(f) }.inspect}"
+    end
+
+    return nil unless cracker_par_files.any?
+
+    cracker_par_file = cracker_par_files.first
+    Rails.logger.info "SCXRD: Using par file: #{cracker_par_file}"
+
+    begin
+      # Read the file content as binary first, then encode to UTF-8 with replacements
+      raw_content = File.binread(cracker_par_file)
+      content = raw_content.encode("UTF-8", invalid: :replace, undef: :replace, replace: "?")
+      Rails.logger.info "SCXRD: Read cracker.par file (#{content.lines.count} lines)"
+
+      # Search for the CRYSTALLOGRAPHY UB line and WAVELENGTH line
+      # Format: CRYSTALLOGRAPHY UB    ub11 ub12 ub13 ub21 ub22 ub23 ub31 ub32 ub33
+      # Format: WAVELENGTH MO (ANG): A1    0.70930 A2    0.71359  B1    0.63229
+      ub_line = nil
+      wavelength_line = nil
+      wavelength_type = nil
+      
+      content.each_line.with_index do |line, index|
+        clean_line = line.strip
+        
+        if clean_line.start_with?("CRYSTALLOGRAPHY UB")
+          ub_line = clean_line
+          Rails.logger.info "SCXRD: Found CRYSTALLOGRAPHY UB line at line #{index + 1}: '#{ub_line}'"
+        end
+        
+        if clean_line.match(/WAVELENGTH (MO|CU) \(ANG\)/i)
+          wavelength_line = clean_line
+          wavelength_type = $1.upcase
+          Rails.logger.info "SCXRD: Found WAVELENGTH line at line #{index + 1}: '#{wavelength_line}'"
+          Rails.logger.info "SCXRD: Detected radiation type: #{wavelength_type}"
+        end
+      end
+
+      if ub_line
+        # Parse the UB matrix values
+        # Split by whitespace and extract the numeric values after "CRYSTALLOGRAPHY UB"
+        parts = ub_line.split(/\s+/)
+        
+        # Remove "CRYSTALLOGRAPHY" and "UB" tokens
+        parts = parts.drop_while { |p| p == "CRYSTALLOGRAPHY" || p == "UB" }
+        
+        # Convert to floats
+        ub_values = parts.map(&:to_f)
+        
+        if ub_values.length >= 9
+          ub_matrix = {
+            ub11: ub_values[0],
+            ub12: ub_values[1],
+            ub13: ub_values[2],
+            ub21: ub_values[3],
+            ub22: ub_values[4],
+            ub23: ub_values[5],
+            ub31: ub_values[6],
+            ub32: ub_values[7],
+            ub33: ub_values[8]
+          }
+          
+          # Determine wavelength from radiation type
+          # Mo: 0.71073 Å, Cu: 1.5418 Å
+          wavelength = case wavelength_type
+          when "MO"
+            0.71073
+          when "CU"
+            1.5418
+          else
+            # Default to Mo if not detected
+            Rails.logger.warn "SCXRD: Wavelength type not detected, defaulting to Mo (0.71073 Å)"
+            0.71073
+          end
+          
+          ub_matrix[:wavelength] = wavelength
+          
+          Rails.logger.info "SCXRD: Successfully parsed UB matrix (dimensionless):"
+          Rails.logger.info "SCXRD: [#{ub_matrix[:ub11]}, #{ub_matrix[:ub12]}, #{ub_matrix[:ub13]}]"
+          Rails.logger.info "SCXRD: [#{ub_matrix[:ub21]}, #{ub_matrix[:ub22]}, #{ub_matrix[:ub23]}]"
+          Rails.logger.info "SCXRD: [#{ub_matrix[:ub31]}, #{ub_matrix[:ub32]}, #{ub_matrix[:ub33]}]"
+          Rails.logger.info "SCXRD: Wavelength: #{wavelength} Å (#{wavelength_type || 'default'})"
+          
+          return ub_matrix
+        else
+          Rails.logger.warn "SCXRD: CRYSTALLOGRAPHY UB line found but insufficient values (#{ub_values.length})"
+        end
+      else
+        Rails.logger.warn "SCXRD: Could not find CRYSTALLOGRAPHY UB line in cracker.par file"
+      end
+
+      nil
+    rescue => e
+      Rails.logger.error "SCXRD: Error parsing cracker.par file #{cracker_par_file}: #{e.message}"
       Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(10).join("\n")}"
       nil
     end

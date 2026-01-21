@@ -81,7 +81,8 @@ class PeakTableParserService
       metadata: {
         num_points: @data_points.length,
         file_size: @binary_data.length
-      }
+      },
+      spots_found: @data_points.length
     }
   end
 

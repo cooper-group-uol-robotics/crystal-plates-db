@@ -72,14 +72,97 @@ class ScxrdArchiveProcessingJob < ApplicationJob
 
 
 
-          # Store unit cell parameters from metadata, ensuring they are primitive
+          # Store UB matrix and derive unit cell parameters
           Rails.logger.info "SCXRD Job: Checking for parsed metadata..."
           if result[:metadata]
             metadata = result[:metadata]
             Rails.logger.info "SCXRD Job: Found metadata: #{metadata.inspect}"
 
-            # Extract unit cell parameters from metadata
-            if metadata[:a] && metadata[:b] && metadata[:c] && metadata[:alpha] && metadata[:beta] && metadata[:gamma]
+            # Check for UB matrix (preferred source of truth)
+            if metadata[:ub11] && metadata[:ub22] && metadata[:ub33]
+              Rails.logger.info "SCXRD Job: UB matrix found, using as source of truth"
+              
+              # Store UB matrix
+              dataset.ub11 = metadata[:ub11]
+              dataset.ub12 = metadata[:ub12]
+              dataset.ub13 = metadata[:ub13]
+              dataset.ub21 = metadata[:ub21]
+              dataset.ub22 = metadata[:ub22]
+              dataset.ub23 = metadata[:ub23]
+              dataset.ub31 = metadata[:ub31]
+              dataset.ub32 = metadata[:ub32]
+              dataset.ub33 = metadata[:ub33]
+              dataset.wavelength = metadata[:wavelength]
+              
+              Rails.logger.info "SCXRD Job: UB matrix stored (wavelength: #{dataset.wavelength} Å)"
+              
+              # Convert UB matrix to cell parameters
+              cell_params = UbMatrixService.ub_matrix_to_cell_parameters(
+                dataset.ub11, dataset.ub12, dataset.ub13,
+                dataset.ub21, dataset.ub22, dataset.ub23,
+                dataset.ub31, dataset.ub32, dataset.ub33,
+                dataset.wavelength
+              )
+              
+              if cell_params
+                Rails.logger.info "SCXRD Job: Cell parameters from UB matrix: a=#{cell_params[:a]}, b=#{cell_params[:b]}, c=#{cell_params[:c]}, α=#{cell_params[:alpha]}, β=#{cell_params[:beta]}, γ=#{cell_params[:gamma]}"
+                
+                # Use cell reduction API to get conventional and primitive cells
+                # Call once and store both results
+                if ConventionalCellService.enabled?
+                  conventional_cells = ConventionalCellService.convert_to_conventional(
+                    cell_params[:a], cell_params[:b], cell_params[:c],
+                    cell_params[:alpha], cell_params[:beta], cell_params[:gamma]
+                  )
+                  
+                  if conventional_cells && conventional_cells.any?
+                    # First result is conventional cell (highest symmetry)
+                    conventional_cell = conventional_cells.first
+                    dataset.conventional_a = conventional_cell[:a]
+                    dataset.conventional_b = conventional_cell[:b]
+                    dataset.conventional_c = conventional_cell[:c]
+                    dataset.conventional_alpha = conventional_cell[:alpha]
+                    dataset.conventional_beta = conventional_cell[:beta]
+                    dataset.conventional_gamma = conventional_cell[:gamma]
+                    dataset.conventional_bravais = conventional_cell[:bravais]
+                    dataset.conventional_cb_op = conventional_cell[:cb_op]
+                    dataset.conventional_distance = conventional_cell[:distance]
+                    
+                    Rails.logger.info "SCXRD Job: Conventional cell stored: #{conventional_cell[:bravais]} a=#{dataset.conventional_a}, b=#{dataset.conventional_b}, c=#{dataset.conventional_c}"
+                    
+                    # Last result is primitive cell
+                    primitive_cell = conventional_cells.last
+                    dataset.primitive_a = primitive_cell[:a]
+                    dataset.primitive_b = primitive_cell[:b]
+                    dataset.primitive_c = primitive_cell[:c]
+                    dataset.primitive_alpha = primitive_cell[:alpha]
+                    dataset.primitive_beta = primitive_cell[:beta]
+                    dataset.primitive_gamma = primitive_cell[:gamma]
+                    
+                    Rails.logger.info "SCXRD Job: Primitive cell stored: #{primitive_cell[:bravais]} a=#{dataset.primitive_a}, b=#{dataset.primitive_b}, c=#{dataset.primitive_c}"
+                  else
+                    Rails.logger.warn "SCXRD Job: Cell reduction API failed, storing UB-derived parameters as primitive"
+                    dataset.primitive_a = cell_params[:a]
+                    dataset.primitive_b = cell_params[:b]
+                    dataset.primitive_c = cell_params[:c]
+                    dataset.primitive_alpha = cell_params[:alpha]
+                    dataset.primitive_beta = cell_params[:beta]
+                    dataset.primitive_gamma = cell_params[:gamma]
+                  end
+                else
+                  Rails.logger.warn "SCXRD Job: Cell reduction API disabled, storing UB-derived parameters as primitive"
+                  dataset.primitive_a = cell_params[:a]
+                  dataset.primitive_b = cell_params[:b]
+                  dataset.primitive_c = cell_params[:c]
+                  dataset.primitive_alpha = cell_params[:alpha]
+                  dataset.primitive_beta = cell_params[:beta]
+                  dataset.primitive_gamma = cell_params[:gamma]
+                end
+              else
+                Rails.logger.error "SCXRD Job: Failed to convert UB matrix to cell parameters"
+              end
+            # Fallback: Extract unit cell parameters from crystal.ini (old method)
+            elsif metadata[:a] && metadata[:b] && metadata[:c] && metadata[:alpha] && metadata[:beta] && metadata[:gamma]
               original_a = metadata[:a]
               original_b = metadata[:b]
               original_c = metadata[:c]
@@ -87,7 +170,7 @@ class ScxrdArchiveProcessingJob < ApplicationJob
               original_beta = metadata[:beta]
               original_gamma = metadata[:gamma]
 
-              Rails.logger.info "SCXRD Job: Original unit cell parameters: a=#{original_a}, b=#{original_b}, c=#{original_c}, α=#{original_alpha}, β=#{original_beta}, γ=#{original_gamma}"
+              Rails.logger.info "SCXRD Job: Using fallback crystal.ini cell parameters: a=#{original_a}, b=#{original_b}, c=#{original_c}, α=#{original_alpha}, β=#{original_beta}, γ=#{original_gamma}"
 
               # Convert to primitive cell using the PrimitiveCellService
               if PrimitiveCellService.enabled?
@@ -124,7 +207,7 @@ class ScxrdArchiveProcessingJob < ApplicationJob
                 dataset.primitive_gamma = original_gamma
               end
             else
-              Rails.logger.warn "SCXRD Job: Incomplete unit cell parameters in metadata"
+              Rails.logger.warn "SCXRD Job: No UB matrix or unit cell parameters found in metadata"
             end
 
             # Store real world coordinates if parsed, but only if not already provided by user
@@ -232,9 +315,83 @@ class ScxrdArchiveProcessingJob < ApplicationJob
       "processing_completed" # Return a value for the captured logs
       end
 
-      # Save the captured logs to the database
+      # Save the dataset first so Active Storage attachments are persisted
       dataset.processing_log = captured_logs
       dataset.save!
+      
+      # Now calculate spot statistics with persisted attachments
+      if dataset.has_peak_table? && dataset.has_ub_matrix?
+        Rails.logger.info "SCXRD Job: Calculating spot statistics..."
+        begin
+          spot_stats = dataset.calculate_spot_statistics!
+          Rails.logger.info "SCXRD Job: Spot statistics: #{spot_stats[:spots_found]} spots found, #{spot_stats[:spots_indexed]} indexed (#{spot_stats[:indexing_rate]}%)"
+          
+          # Validate spot quality before keeping unit cell data
+          if spot_stats[:spots_found] < 30 || spot_stats[:indexing_rate] < 15.0
+            Rails.logger.warn "SCXRD Job: Insufficient spot quality (#{spot_stats[:spots_found]} spots, #{spot_stats[:indexing_rate]}% indexed). Clearing unit cell data."
+            dataset.primitive_a = nil
+            dataset.primitive_b = nil
+            dataset.primitive_c = nil
+            dataset.primitive_alpha = nil
+            dataset.primitive_beta = nil
+            dataset.primitive_gamma = nil
+            dataset.conventional_a = nil
+            dataset.conventional_b = nil
+            dataset.conventional_c = nil
+            dataset.conventional_alpha = nil
+            dataset.conventional_beta = nil
+            dataset.conventional_gamma = nil
+            dataset.conventional_bravais = nil
+            dataset.conventional_distance = nil
+            dataset.save! # Save the cleared data
+          else
+            Rails.logger.info "SCXRD Job: Spot quality sufficient, unit cell data retained"
+          end
+        rescue => e
+          Rails.logger.error "SCXRD Job: Error calculating spot statistics: #{e.message}"
+        end
+      elsif dataset.has_peak_table?
+        Rails.logger.info "SCXRD Job: Calculating spots found (no UB matrix available for indexing calculation)..."
+        begin
+          spots_found = dataset.calculate_spots_found!
+          Rails.logger.info "SCXRD Job: Found #{spots_found} spots" if spots_found
+          Rails.logger.warn "SCXRD Job: Insufficient spot quality (#{spots_found} spots, none indexed). Clearing unit cell data."
+          dataset.primitive_a = nil
+          dataset.primitive_b = nil
+          dataset.primitive_c = nil
+          dataset.primitive_alpha = nil
+          dataset.primitive_beta = nil
+          dataset.primitive_gamma = nil
+          dataset.conventional_a = nil
+          dataset.conventional_b = nil
+          dataset.conventional_c = nil
+          dataset.conventional_alpha = nil
+          dataset.conventional_beta = nil
+          dataset.conventional_gamma = nil
+          dataset.conventional_bravais = nil
+          dataset.conventional_distance = nil
+          dataset.save! # Save the cleared data
+        rescue => e
+          Rails.logger.error "SCXRD Job: Error calculating spots found: #{e.message}"
+        end
+      else
+        Rails.logger.warn "SCXRD Job: No peak table or UB matrix available. Clearing unit cell data."
+        dataset.primitive_a = nil
+        dataset.primitive_b = nil
+        dataset.primitive_c = nil
+        dataset.primitive_alpha = nil
+        dataset.primitive_beta = nil
+        dataset.primitive_gamma = nil
+        dataset.conventional_a = nil
+        dataset.conventional_b = nil
+        dataset.conventional_c = nil
+        dataset.conventional_alpha = nil
+        dataset.conventional_beta = nil
+        dataset.conventional_gamma = nil
+        dataset.conventional_bravais = nil
+        dataset.conventional_distance = nil
+        dataset.save! # Save the cleared data
+      end
     rescue Errno::ENOENT => e
       error_logs = [
         "SCXRD Archive Processing Job: Missing file - #{e.message}",

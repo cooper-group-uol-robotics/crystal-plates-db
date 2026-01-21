@@ -54,18 +54,13 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
           let metadataHTML = '';
 
           // Well information (if available)
-          if (wellId && wellId !== 'null' && wellId !== null) {
-            // We'll need to get well info separately or modify the API to include it
-            // For now, keep the well link but use the existing well context
-            const existingWellLink = metadataDiv.querySelector('a[href*="/plates/"]');
-            if (existingWellLink) {
-              metadataHTML += `<strong>Well:</strong> 
-                <a href="${existingWellLink.href}" class="text-decoration-none" target="_blank">
-                  ${existingWellLink.textContent}
-                </a>`;
-            } else {
-              metadataHTML += `<strong>Well:</strong> Well ${wellId}`;
-            }
+          if (data.well) {
+            const plateBarcode = data.well.plate.barcode;
+            const wellLabel = data.well.label;
+            metadataHTML += `<strong>Well:</strong> 
+              <a href="/plates/${data.well.plate.id}" class="text-decoration-none" target="_blank">
+                ${plateBarcode} ${wellLabel}
+              </a>`;
 
             // Add coordinates if available
             if (data.real_world_coordinates &&
@@ -88,15 +83,31 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
             'Unknown date';
           metadataHTML += `<strong>Measured:</strong> ${measuredDate}`;
 
-          // Unit cell information (using primitive_unit_cell from API)
-          if (data.primitive_unit_cell && data.primitive_unit_cell.a) {
-            metadataHTML += ` | <strong>Unit Cell:</strong> `;
-            metadataHTML += `a=${data.primitive_unit_cell.a} `;
-            metadataHTML += `b=${data.primitive_unit_cell.b} `;
-            metadataHTML += `c=${data.primitive_unit_cell.c} `;
-            metadataHTML += `α=${data.primitive_unit_cell.alpha}° `;
-            metadataHTML += `β=${data.primitive_unit_cell.beta}° `;
-            metadataHTML += `γ=${data.primitive_unit_cell.gamma}°`;
+          // Spot statistics
+          if (data.spots_found !== null && data.spots_found !== undefined) {
+            let spotsHTML = ' | ';
+            spotsHTML += `<strong>Spots:</strong> ${data.spots_found.toLocaleString()}`;
+            
+            if (data.spots_indexed !== null && data.spots_indexed !== undefined && data.spots_found > 0) {
+              const indexedPercentage = ((data.spots_indexed / data.spots_found) * 100).toFixed(1);
+              spotsHTML += ` (${indexedPercentage}% indexed)`;
+            }
+            metadataHTML += spotsHTML;
+          }
+          // Unit cell information (preferring conventional cell with centring)
+          // Try display cell (conventional) first, then fall back to conventional_unit_cell, then primitive
+          const cellData = data.unit_cell || data.conventional_unit_cell || data.primitive_unit_cell;
+          if (cellData && cellData.a) {
+            metadataHTML += `<br><strong>Unit Cell:</strong> `;
+            if (cellData.bravais) {
+              metadataHTML += `<span class="badge bg-secondary me-1">${cellData.bravais}</span> `;
+            }
+            metadataHTML += `a=${cellData.a} `;
+            metadataHTML += `b=${cellData.b} `;
+            metadataHTML += `c=${cellData.c} `;
+            metadataHTML += `α=${cellData.alpha}° `;
+            metadataHTML += `β=${cellData.beta}° `;
+            metadataHTML += `γ=${cellData.gamma}°`;
           }
 
           metadataDiv.innerHTML = metadataHTML;
@@ -107,8 +118,11 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
         if (actionDiv) {
           let actionsHTML = '';
 
-          // Add G6 comparison button if unit cell is available
-          if (data.primitive_unit_cell && data.primitive_unit_cell.a) {
+          // Add G6 comparison button if unit cell is available (check any unit cell type)
+          const hasCellData = (data.unit_cell && data.unit_cell.a) || 
+                             (data.conventional_unit_cell && data.conventional_unit_cell.a) || 
+                             (data.primitive_unit_cell && data.primitive_unit_cell.a);
+          if (hasCellData) {
             actionsHTML += `
               <button type="button" class="btn btn-outline-info btn-sm similarity-button me-2"
                       data-g6-comparison-target="similarityButton"
@@ -140,7 +154,7 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
           actionDiv.innerHTML = actionsHTML;
 
           // Load similarity counts for the newly created button
-          if (data.primitive_unit_cell && data.primitive_unit_cell.a) {
+          if (hasCellData) {
             const newButton = actionDiv.querySelector(`[data-dataset-id="${datasetId}"]`);
             if (newButton) {
               loadSimilarityCountForButton(newButton, datasetId);

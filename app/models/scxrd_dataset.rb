@@ -18,7 +18,11 @@ class ScxrdDataset < ApplicationRecord
 
   validates :experiment_name, :measured_at, presence: true
   validates :primitive_a, :primitive_b, :primitive_c, :primitive_alpha, :primitive_beta, :primitive_gamma, numericality: { greater_than: 0 }, allow_nil: true
+  validates :conventional_a, :conventional_b, :conventional_c, :conventional_alpha, :conventional_beta, :conventional_gamma, numericality: { greater_than: 0 }, allow_nil: true
+  validates :ub11, :ub12, :ub13, :ub21, :ub22, :ub23, :ub31, :ub32, :ub33, numericality: true, allow_nil: true
+  validates :conventional_distance, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :real_world_x_mm, :real_world_y_mm, :real_world_z_mm, numericality: true, allow_nil: true
+  validates :spots_found, :spots_indexed, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
 
   # Callback to compute similarities when dataset is created or unit cell data changes
   after_create :compute_unit_cell_similarities, if: :has_primitive_cell?
@@ -300,6 +304,11 @@ class ScxrdDataset < ApplicationRecord
       parser = PeakTableParserService.new(peak_data)
       @parsed_peak_table_data = parser.parse
 
+      # Enrich data points with indexing information if UB matrix is available
+      if @parsed_peak_table_data[:success] && has_ub_matrix?
+        enrich_with_indexing_info!(@parsed_peak_table_data)
+      end
+
       @parsed_peak_table_data
     rescue => e
       Rails.logger.error "SCXRD Dataset #{id}: Error parsing peak table data: #{e.message}"
@@ -318,10 +327,115 @@ class ScxrdDataset < ApplicationRecord
     parsed_data[:success] && !parsed_data[:data_points].empty?
   end
 
+  private
+
+  # Enrich parsed peak table data with indexing information
+  # Adds an :indexed boolean to each data point
+  def enrich_with_indexing_info!(parsed_data, tolerance: 0.125)
+    return unless parsed_data[:success] && parsed_data[:data_points].present?
+
+    # Get UB matrix as array
+    ub_matrix = ub_matrix_as_array
+    return unless ub_matrix
+
+    # Use SpotIndexingService to enrich the data points
+    success = SpotIndexingService.enrich_with_indexing_info!(
+      parsed_data[:data_points],
+      ub_matrix,
+      tolerance: tolerance
+    )
+
+    unless success
+      Rails.logger.error "SCXRD Dataset #{id}: Failed to enrich peak table data with indexing info"
+    end
+  end
+
+  public
+
+  # Calculate and update spots_found from peak table
+  def calculate_spots_found!
+    parsed_data = parsed_peak_table_data
+    if parsed_data[:success] && parsed_data[:spots_found]
+      update_column(:spots_found, parsed_data[:spots_found])
+      parsed_data[:spots_found]
+    else
+      nil
+    end
+  end
+
+  # Calculate and update spots_indexed using UB matrix
+  def calculate_spots_indexed!(tolerance: 0.125)
+    return nil unless has_ub_matrix?
+    
+    parsed_data = parsed_peak_table_data
+    return nil unless parsed_data[:success] && parsed_data[:data_points].present?
+
+    # Get UB matrix as array
+    ub_matrix = ub_matrix_as_array
+    
+    # Calculate indexed spots
+    result = SpotIndexingService.calculate_indexed_spots(
+      parsed_data[:data_points],
+      ub_matrix,
+      tolerance: tolerance
+    )
+    
+    if result[:indexed_count]
+      update_column(:spots_indexed, result[:indexed_count])
+      result[:indexed_count]
+    else
+      nil
+    end
+  end
+
+  # Calculate both spots_found and spots_indexed in one operation
+  def calculate_spot_statistics!(tolerance: 0.125)
+    spots_found = calculate_spots_found!
+    spots_indexed = calculate_spots_indexed!(tolerance: tolerance)
+    
+    {
+      spots_found: spots_found,
+      spots_indexed: spots_indexed,
+      indexing_rate: (spots_found && spots_indexed && spots_found > 0) ? 
+                      (spots_indexed.to_f / spots_found * 100).round(2) : nil
+    }
+  end
+
+  # UB matrix methods
+  def has_ub_matrix?
+    ub11.present? && ub12.present? && ub13.present? &&
+    ub21.present? && ub22.present? && ub23.present? &&
+    ub31.present? && ub32.present? && ub33.present?
+  end
+
+  def ub_matrix_as_array
+    return nil unless has_ub_matrix?
+    [
+      [ub11, ub12, ub13],
+      [ub21, ub22, ub23],
+      [ub31, ub32, ub33]
+    ]
+  end
+
+  def cell_parameters_from_ub_matrix
+    return nil unless has_ub_matrix?
+    UbMatrixService.ub_matrix_to_cell_parameters(
+      ub11, ub12, ub13,
+      ub21, ub22, ub23,
+      ub31, ub32, ub33,
+      wavelength || 0.71073  # Default to Mo wavelength if not set
+    )
+  end
+
   # Unit cell conversion methods
   def has_primitive_cell?
     primitive_a.present? && primitive_b.present? && primitive_c.present? &&
     primitive_alpha.present? && primitive_beta.present? && primitive_gamma.present?
+  end
+
+  def has_conventional_cell?
+    conventional_a.present? && conventional_b.present? && conventional_c.present? &&
+    conventional_alpha.present? && conventional_beta.present? && conventional_gamma.present?
   end
 
   def conventional_cells
@@ -352,8 +466,23 @@ class ScxrdDataset < ApplicationRecord
   end
 
 
-  # Get conventional cell for display (falls back to primitive if conversion fails)
+  # Get conventional cell for display (prefers stored conventional cell, falls back to API or primitive)
   def display_cell
+    # First priority: use stored conventional cell if available
+    if has_conventional_cell?
+      return {
+        bravais: conventional_bravais || "unknown",
+        a: conventional_a,
+        b: conventional_b,
+        c: conventional_c,
+        alpha: conventional_alpha,
+        beta: conventional_beta,
+        gamma: conventional_gamma,
+        distance: conventional_distance || 0
+      }
+    end
+
+    # Second priority: try API conversion
     conventional = best_conventional_cell
     return conventional if conventional
 

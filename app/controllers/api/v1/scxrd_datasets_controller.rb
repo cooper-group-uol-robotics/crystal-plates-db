@@ -469,12 +469,25 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
       id: dataset.id,
       experiment_name: dataset.experiment_name,
       measured_at: dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
+      plate_barcode: dataset.well&.plate&.barcode,
+      well_label: dataset.well&.well_label,
 
       lattice_centring: dataset.display_cell&.dig(:bravais) || "primitive",
       real_world_coordinates: (dataset.real_world_x_mm || dataset.real_world_y_mm || dataset.real_world_z_mm) ? {
         x_mm: dataset.real_world_x_mm,
         y_mm: dataset.real_world_y_mm,
         z_mm: dataset.real_world_z_mm
+      } : nil,
+      ub_matrix: dataset.has_ub_matrix? ? {
+        ub11: dataset.ub11,
+        ub12: dataset.ub12,
+        ub13: dataset.ub13,
+        ub21: dataset.ub21,
+        ub22: dataset.ub22,
+        ub23: dataset.ub23,
+        ub31: dataset.ub31,
+        ub32: dataset.ub32,
+        ub33: dataset.ub33
       } : nil,
       primitive_unit_cell: dataset.has_primitive_cell? ? {
         a: number_with_precision(dataset.primitive_a, precision: 3),
@@ -483,6 +496,17 @@ class Api::V1::ScxrdDatasetsController < Api::V1::BaseController
         alpha: number_with_precision(dataset.primitive_alpha, precision: 1),
         beta: number_with_precision(dataset.primitive_beta, precision: 1),
         gamma: number_with_precision(dataset.primitive_gamma, precision: 1)
+      } : nil,
+      conventional_unit_cell: dataset.has_conventional_cell? ? {
+        a: number_with_precision(dataset.conventional_a, precision: 3),
+        b: number_with_precision(dataset.conventional_b, precision: 3),
+        c: number_with_precision(dataset.conventional_c, precision: 3),
+        alpha: number_with_precision(dataset.conventional_alpha, precision: 1),
+        beta: number_with_precision(dataset.conventional_beta, precision: 1),
+        gamma: number_with_precision(dataset.conventional_gamma, precision: 1),
+        bravais: dataset.conventional_bravais,
+        cb_op: dataset.conventional_cb_op,
+        conversion_distance: dataset.conventional_distance
       } : nil,
       unit_cell: dataset.display_cell ? {
         a: number_with_precision(dataset.display_cell[:a], precision: 3),

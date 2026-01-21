@@ -142,61 +142,15 @@
                              class: "text-decoration-none") %>
                 </h5>
                 <div class="text-muted small">
-                  <% if dataset.well.present? %>
-                    <strong>Well:</strong> 
-                    <%= link_to "#{dataset.well.plate.barcode}-#{dataset.well.well_label}", 
-                               dataset.well.plate, 
-                               class: "text-decoration-none" %>
-                    <% if dataset.real_world_x_mm.present? && dataset.real_world_y_mm.present? && dataset.real_world_z_mm.present? %>
-                      <span class="text-info ms-2">
-                        (x=<%= number_with_precision(dataset.real_world_x_mm, precision: 2) %>mm, 
-                         y=<%= number_with_precision(dataset.real_world_y_mm, precision: 2) %>mm, 
-                         z=<%= number_with_precision(dataset.real_world_z_mm, precision: 2) %>mm)
-                      </span>
-                    <% end %>
-                    | 
-                  <% else %>
-                    <strong>Type:</strong> <span class="badge bg-secondary">Standalone</span> | 
-                  <% end %>
-                  <strong>Measured:</strong> <%= (dataset.measured_at || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
-                  <% if dataset.has_primitive_cell? %>
-                    | <strong>Unit Cell:</strong> <%= format_unit_cell(dataset) %>
-                  <% end %>
+                  <!-- Metadata populated by JavaScript in scxrd/gallery.js -->
+                  Loading dataset information...
                 </div>
               </div>
               <div class="text-end">
                 <div class="d-flex align-items-center gap-2">
-                  <% if dataset.has_primitive_cell? %>
-                    <button type="button" class="btn btn-outline-info btn-sm similarity-button" 
-                            id="similarity-btn-<%= dataset.id %>"
-                            data-dataset-id="<%= dataset.id %>"
-                            data-bs-toggle="modal" 
-                            data-bs-target="#g6ComparisonModal"
-                            data-g6-comparison-target="similarityButton"
-                            data-action="click->g6-comparison#loadG6Comparison">
-                      <i class="bi bi-box-seam me-1"></i>
-                      <span class="similarity-text">Loading...</span>
-                    </button>
-                  <% end %>
-                  <div class="btn-group btn-group-sm">
-                    <%= link_to scxrd_dataset_path(dataset), 
-                               class: "btn btn-outline-primary btn-sm" do %>
-                      <i class="bi bi-eye"></i> Details
-                    <% end %>
-                    <% if dataset.has_processing_log? %>
-                      <button type="button" 
-                              class="btn btn-outline-info btn-sm" 
-                              data-bs-toggle="modal" 
-                              data-bs-target="#processingLogModal-<%= dataset.id %>">
-                        <i class="bi bi-file-text"></i> Log
-                      </button>
-                    <% end %>
-                    <% if dataset.archive.attached? %>
-                      <%= link_to download_scxrd_dataset_path(dataset), 
-                                 class: "btn btn-outline-success btn-sm" do %>
-                        <i class="bi bi-download"></i> Archive
-                      <% end %>
-                    <% end %>
+                  <!-- Actions populated by JavaScript in scxrd/gallery.js -->
+                  <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
                   </div>
                 </div>
               </div>

@@ -19,6 +19,62 @@ class ScxrdDatasetTest < ActiveSupport::TestCase
     Rails.application.config.lepage_api_enabled = true
   end
 
+  test "has_ub_matrix? returns true when all UB matrix components present" do
+    @dataset.ub11 = 0.1
+    @dataset.ub12 = 0.0
+    @dataset.ub13 = 0.0
+    @dataset.ub21 = 0.0
+    @dataset.ub22 = 0.1
+    @dataset.ub23 = 0.0
+    @dataset.ub31 = 0.0
+    @dataset.ub32 = 0.0
+    @dataset.ub33 = 0.1
+    
+    assert @dataset.has_ub_matrix?
+  end
+
+  test "has_ub_matrix? returns false when components missing" do
+    @dataset.ub11 = 0.1
+    @dataset.ub22 = 0.1
+    # Missing other components
+    assert_not @dataset.has_ub_matrix?
+  end
+
+  test "ub_matrix_as_array returns matrix" do
+    @dataset.ub11 = 0.1
+    @dataset.ub12 = 0.0
+    @dataset.ub13 = 0.0
+    @dataset.ub21 = 0.0
+    @dataset.ub22 = 0.1
+    @dataset.ub23 = 0.0
+    @dataset.ub31 = 0.0
+    @dataset.ub32 = 0.0
+    @dataset.ub33 = 0.1
+    
+    matrix = @dataset.ub_matrix_as_array
+    assert_equal 3, matrix.length
+    assert_equal 3, matrix[0].length
+    assert_equal 0.1, matrix[0][0]
+  end
+
+  test "cell_parameters_from_ub_matrix returns parameters" do
+    @dataset.ub11 = 0.1
+    @dataset.ub12 = 0.0
+    @dataset.ub13 = 0.0
+    @dataset.ub21 = 0.0
+    @dataset.ub22 = 0.1
+    @dataset.ub23 = 0.0
+    @dataset.ub31 = 0.0
+    @dataset.ub32 = 0.0
+    @dataset.ub33 = 0.1
+    
+    params = @dataset.cell_parameters_from_ub_matrix
+    assert_not_nil params
+    assert params[:a] > 0
+    assert params[:b] > 0
+    assert params[:c] > 0
+  end
+
   test "has_primitive_cell? returns true when all parameters present" do
     assert @dataset.has_primitive_cell?
   end
@@ -26,6 +82,23 @@ class ScxrdDatasetTest < ActiveSupport::TestCase
   test "has_primitive_cell? returns false when parameters missing" do
     @dataset.primitive_a = nil
     assert_not @dataset.has_primitive_cell?
+  end
+
+  test "has_conventional_cell? returns true when all parameters present" do
+    @dataset.conventional_a = 10.0
+    @dataset.conventional_b = 11.0
+    @dataset.conventional_c = 12.0
+    @dataset.conventional_alpha = 90.0
+    @dataset.conventional_beta = 90.0
+    @dataset.conventional_gamma = 90.0
+    
+    assert @dataset.has_conventional_cell?
+  end
+
+  test "has_conventional_cell? returns false when parameters missing" do
+    @dataset.conventional_a = 10.0
+    # Missing other parameters
+    assert_not @dataset.has_conventional_cell?
   end
 
   test "display_cell returns fallback primitive cell when API unavailable" do

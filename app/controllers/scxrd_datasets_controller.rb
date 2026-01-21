@@ -78,6 +78,8 @@ class ScxrdDatasetsController < ApplicationController
           measured_at: @scxrd_dataset.measured_at&.strftime("%Y-%m-%d %H:%M:%S"),
           lattice_centring: "primitive",  # Primitive cells are always primitive
           has_peak_table: @scxrd_dataset.has_peak_table?,
+          spots_found: @scxrd_dataset.spots_found,
+          spots_indexed: @scxrd_dataset.spots_indexed,
 
           has_diffraction_images: @scxrd_dataset.has_diffraction_images?,
           diffraction_images_count: @scxrd_dataset.diffraction_images_count,
@@ -85,6 +87,17 @@ class ScxrdDatasetsController < ApplicationController
           has_crystal_image: @scxrd_dataset.has_crystal_image?,
           peak_table_size: @scxrd_dataset.has_peak_table? ? number_to_human_size(@scxrd_dataset.peak_table_size) : nil,
 
+          ub_matrix: @scxrd_dataset.has_ub_matrix? ? {
+            ub11: @scxrd_dataset.ub11,
+            ub12: @scxrd_dataset.ub12,
+            ub13: @scxrd_dataset.ub13,
+            ub21: @scxrd_dataset.ub21,
+            ub22: @scxrd_dataset.ub22,
+            ub23: @scxrd_dataset.ub23,
+            ub31: @scxrd_dataset.ub31,
+            ub32: @scxrd_dataset.ub32,
+            ub33: @scxrd_dataset.ub33
+          } : nil,
           primitive_unit_cell: @scxrd_dataset.primitive_a.present? ? {
             a: number_with_precision(@scxrd_dataset.primitive_a, precision: 3),
             b: number_with_precision(@scxrd_dataset.primitive_b, precision: 3),
@@ -93,10 +106,29 @@ class ScxrdDatasetsController < ApplicationController
             beta: number_with_precision(@scxrd_dataset.primitive_beta, precision: 1),
             gamma: number_with_precision(@scxrd_dataset.primitive_gamma, precision: 1)
           } : nil,
+          conventional_unit_cell: @scxrd_dataset.has_conventional_cell? ? {
+            a: number_with_precision(@scxrd_dataset.conventional_a, precision: 3),
+            b: number_with_precision(@scxrd_dataset.conventional_b, precision: 3),
+            c: number_with_precision(@scxrd_dataset.conventional_c, precision: 3),
+            alpha: number_with_precision(@scxrd_dataset.conventional_alpha, precision: 1),
+            beta: number_with_precision(@scxrd_dataset.conventional_beta, precision: 1),
+            gamma: number_with_precision(@scxrd_dataset.conventional_gamma, precision: 1),
+            bravais: @scxrd_dataset.conventional_bravais,
+            cb_op: @scxrd_dataset.conventional_cb_op,
+            conversion_distance: @scxrd_dataset.conventional_distance
+          } : nil,
           real_world_coordinates: (@scxrd_dataset.real_world_x_mm || @scxrd_dataset.real_world_y_mm || @scxrd_dataset.real_world_z_mm) ? {
             x_mm: @scxrd_dataset.real_world_x_mm,
             y_mm: @scxrd_dataset.real_world_y_mm,
             z_mm: @scxrd_dataset.real_world_z_mm
+          } : nil,
+          well: @scxrd_dataset.well ? {
+            id: @scxrd_dataset.well.id,
+            label: @scxrd_dataset.well.well_label,
+            plate: {
+              id: @scxrd_dataset.well.plate.id,
+              barcode: @scxrd_dataset.well.plate.barcode
+            }
           } : nil
         }
       end
@@ -274,8 +306,21 @@ class ScxrdDatasetsController < ApplicationController
       parsed_data = @scxrd_dataset.parsed_image_data
 
       if parsed_data[:success]
-        # Set cache headers for parsed image data (cache for 1 hour)
-        expires_in 1.hour, public: true
+        # Set cache headers for parsed image data
+        # Cache is based on first diffraction image checksum
+        cache_key_parts = [
+          @scxrd_dataset.updated_at.to_i,
+          first_diffraction_image.rodhypix_file&.blob&.checksum
+        ].compact.join('-')
+        
+        response.headers['ETag'] = %("#{Digest::SHA256.hexdigest(cache_key_parts)}")
+        response.headers['Cache-Control'] = 'public, max-age=3600, must-revalidate'
+        
+        # Return 304 Not Modified if client has current version
+        if request.headers['If-None-Match'] == response.headers['ETag']
+          head :not_modified
+          return
+        end
 
         # Option to send just a sample for testing (add ?sample=true to URL)
         image_data = parsed_data[:image_data]
@@ -318,8 +363,23 @@ class ScxrdDatasetsController < ApplicationController
       parsed_data = @scxrd_dataset.parsed_peak_table_data
 
       if parsed_data[:success]
-        # Set cache headers for parsed peak table data (cache for 1 hour)
-        expires_in 1.hour, public: true
+        # Set cache headers for parsed peak table data
+        # Cache is based on dataset updated_at timestamp to ensure fresh data after changes
+        # Use ETag for cache validation based on UB matrix and peak table attachment
+        cache_key_parts = [
+          @scxrd_dataset.updated_at.to_i,
+          @scxrd_dataset.ub11,
+          @scxrd_dataset.peak_table&.blob&.checksum
+        ].compact.join('-')
+        
+        response.headers['ETag'] = %("#{Digest::SHA256.hexdigest(cache_key_parts)}")
+        response.headers['Cache-Control'] = 'public, max-age=3600, must-revalidate'
+        
+        # Return 304 Not Modified if client has current version
+        if request.headers['If-None-Match'] == response.headers['ETag']
+          head :not_modified
+          return
+        end
 
         # Option to send just a sample for testing (add ?sample=true to URL)
         data_points = parsed_data[:data_points]

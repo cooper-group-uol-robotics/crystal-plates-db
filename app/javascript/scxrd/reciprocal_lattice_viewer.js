@@ -688,6 +688,11 @@ class ScxrdReciprocalLatticeViewer {
 
     console.log(`R value range: ${rMin} to ${rMax}`);
 
+    // Count indexed vs non-indexed spots
+    const indexedCount = this.dataPoints.filter(p => p.indexed).length;
+    const nonIndexedCount = this.dataPoints.length - indexedCount;
+    console.log(`Spot indexing: ${indexedCount} indexed (blue), ${nonIndexedCount} non-indexed (red)`);
+
     // Create geometry and materials
     const geometry = new THREE.BufferGeometry();
     const positions = [];
@@ -698,9 +703,9 @@ class ScxrdReciprocalLatticeViewer {
       // Add position (scaling down for better visualization)
       positions.push(point.x * 0.1, point.y * 0.1, point.z * 0.1);
 
-      // Add color based on r value (intensity)
-      const normalizedR = (point.r - rMin) / (rMax - rMin);
-      const color = this.getColorFromValue(normalizedR);
+      // Add color based on indexing status
+      // Blue for indexed spots, red for non-indexed spots
+      const color = this.getColorFromIndexing(point.indexed);
       colors.push(color.r, color.g, color.b);
     });
 
@@ -727,11 +732,16 @@ class ScxrdReciprocalLatticeViewer {
     console.log('Point cloud bounding box:', this.points.geometry.boundingBox);
     console.log('First few positions:', positions.slice(0, 9));
     console.log('Data range - R:', rMin, 'to', rMax);
+    console.log('Indexing stats:', `${indexedCount} indexed, ${nonIndexedCount} non-indexed`);
   }
 
-  getColorFromValue(normalizedValue) {
-    // Bright cyan color for better visibility
-    return { r: 0.0, g: 1.0, b: 1.0 };
+  getColorFromIndexing(isIndexed) {
+    // Blue for indexed spots, red for non-indexed spots
+    if (isIndexed) {
+      return { r: 0.0, g: 0.5, b: 1.0 }; // Bright blue
+    } else {
+      return { r: 1.0, g: 0.0, b: 0.0 }; // Bright red
+    }
   }
 
   positionCamera() {
@@ -774,14 +784,21 @@ class ScxrdReciprocalLatticeViewer {
     const controlsDiv = document.getElementById(`${this.containerId}-controls`);
     if (!controlsDiv) return;
 
-    // Calculate initial intensity range
-    const rValues = this.dataPoints.map(p => p.r);
-    const rMin = Math.min(...rValues);
-    const rMax = Math.max(...rValues);
+    // Count indexed vs non-indexed spots
+    const spotsCount = this.dataPoints.length;
+    const indexedCount = this.dataPoints.filter(p => p.indexed).length;
+    const nonIndexedCount = spotsCount - indexedCount;
+    const indexingRate = spotsCount > 0 ? 
+      ((indexedCount / spotsCount) * 100).toFixed(1) : 0;
 
     controlsDiv.innerHTML = `
-      <div class="d-flex align-items-center justify-content-center" style="font-size: 0.8rem;">
-        <button id="${this.containerId}-reset" class="btn btn-sm btn-outline-primary">Reset View</button>
+      <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+      <span class="text-secondary small">
+      Indexed: ${indexedCount.toLocaleString()} / ${spotsCount.toLocaleString()}  (${indexingRate}%)
+      </span>
+      </div>
+      <button id="${this.containerId}-reset" class="btn btn-sm btn-outline-primary py-0 px-2">Reset View</button>
       </div>
     `;
 

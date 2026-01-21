@@ -16,42 +16,15 @@
                          class: "text-decoration-none", target: "_blank") %>
             </h5>
             <div class="text-muted small">
-              <% if @well.present? %>
-                <strong>Well:</strong> 
-                <%= link_to "#{@well.plate.barcode}-#{@well.well_label}", 
-                           @well.plate, 
-                           class: "text-decoration-none", target: "_blank" %>
-                <% if dataset.real_world_x_mm.present? && dataset.real_world_y_mm.present? && dataset.real_world_z_mm.present? %>
-                  <span class="text-info ms-2">
-                    (x=<%= number_with_precision(dataset.real_world_x_mm, precision: 2) %>mm, 
-                     y=<%= number_with_precision(dataset.real_world_y_mm, precision: 2) %>mm, 
-                     z=<%= number_with_precision(dataset.real_world_z_mm, precision: 2) %>mm)
-                  </span>
-                <% end %>
-                | 
-              <% end %>
-              <strong>Measured:</strong> <%= (dataset.measured_at || dataset.created_at).strftime('%b %d, %Y at %H:%M') %>
-              <% if dataset.has_primitive_cell? %>
-                | <strong>Unit Cell:</strong> <%= format_unit_cell(dataset) %>
-              <% end %>
+              <!-- Metadata populated by JavaScript in scxrd/gallery.js -->
+              Loading dataset information...
             </div>
           </div>
           <div class="text-end">
             <div class="d-flex align-items-center gap-2">
-              <% if dataset.has_primitive_cell? %>
-                <%= g6_comparison_button(dataset, well_context: true) %>
-              <% end %>
-              <div class="btn-group btn-group-sm">
-                <%= link_to scxrd_dataset_path(dataset), 
-                           class: "btn btn-outline-primary btn-sm", target: "_blank" do %>
-                  <i class="bi bi-eye"></i> Details
-                <% end %>
-                <% if dataset.archive.attached? %>
-                  <%= link_to download_scxrd_dataset_path(dataset), 
-                             class: "btn btn-outline-success btn-sm" do %>
-                    <i class="bi bi-download"></i> Archive
-                  <% end %>
-                <% end %>
+              <!-- Actions populated by JavaScript in scxrd/gallery.js -->
+              <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
               </div>
             </div>
           </div>
