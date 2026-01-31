@@ -1,10 +1,15 @@
 class Image < ApplicationRecord
   belongs_to :well
-  has_one_attached :file
+  has_one_attached :file do |attachable|
+    attachable.variant :thumb, resize_to_limit: [ 150, 150 ]
+    attachable.variant :medium, resize_to_limit: [ 800, 600 ]
+    attachable.variant :large, resize_to_limit: [ 1600, 1200 ]
+  end
   has_many :point_of_interests, dependent: :destroy
 
   # Callbacks
   after_commit :populate_dimensions_if_needed, on: :create
+  after_commit :preprocess_variants, on: :create
 
   # Validations
   validates :pixel_size_x_mm, :pixel_size_y_mm, presence: true, numericality: { greater_than: 0 }
@@ -112,6 +117,15 @@ class Image < ApplicationRecord
   end
 
   private
+
+  def preprocess_variants
+    return unless file.attached?
+
+    # Process variants in background to avoid blocking upload
+    PreprocessImageVariantsJob.perform_later(id)
+  rescue => e
+    Rails.logger.error "Failed to queue variant preprocessing for image #{id}: #{e.message}"
+  end
 
   def populate_dimensions_if_needed
     Rails.logger.debug "populate_dimensions_if_needed callback called for image #{id}"

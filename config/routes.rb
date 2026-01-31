@@ -26,6 +26,7 @@ Rails.application.routes.draw do
       get :search
     end
   end
+  
   resources :wells do
     member do
       get :images
@@ -199,7 +200,6 @@ Rails.application.routes.draw do
         resources :calorimetry_datasets, only: [ :index, :create ]
       end
 
-      # Standalone PXRD pattern routes
       resources :pxrd_patterns, only: [ :index, :show, :create, :update, :destroy ] do
         member do
           get :data
@@ -209,7 +209,6 @@ Rails.application.routes.draw do
         end
       end
 
-      # Standalone Image routes
       resources :images, only: [ :index, :show, :create, :update, :destroy ] do
         collection do
           post "plate/:barcode/well/:well_string", action: :upload_to_well, as: :upload_to_well

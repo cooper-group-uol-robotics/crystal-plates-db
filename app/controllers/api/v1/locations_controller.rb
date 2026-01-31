@@ -36,7 +36,6 @@ module Api::V1
 
     # GET /api/v1/locations/carousel
     def carousel
-      # Use efficient bulk loading to avoid N+1 queries
       locations = Location.with_current_occupation_data
                           .select { |loc| loc.carousel_position.present? && loc.hotel_position.present? }
                           .sort_by { |loc| [ loc.carousel_position, loc.hotel_position ] }
@@ -44,7 +43,6 @@ module Api::V1
       render_success(
         locations.map do |location|
           data = location_json(location)
-          # Use cached current plate data to avoid additional queries
           cached_plate = location.instance_variable_get(:@cached_current_plate)
           data[:current_plate_barcode] = cached_plate&.barcode
           data
@@ -54,7 +52,6 @@ module Api::V1
 
     # GET /api/v1/locations/special
     def special
-      # Use efficient bulk loading to avoid N+1 queries
       locations = Location.with_current_occupation_data
                           .select { |loc| loc.carousel_position.nil? && loc.hotel_position.nil? }
                           .sort_by { |loc| loc.name || "" }
@@ -62,7 +59,6 @@ module Api::V1
       render_success(
         locations.map do |location|
           data = location_json(location)
-          # Use cached current plate data to avoid additional queries
           cached_plate = location.instance_variable_get(:@cached_current_plate)
           data[:current_plate_barcode] = cached_plate&.barcode
           data

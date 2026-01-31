@@ -126,7 +126,7 @@
               <!-- Interactive Image Container -->
               <div id="image-container" class="position-relative d-inline-block">
                 <% begin %>
-                  <%= image_tag url_for(@image.file.variant(resize_to_limit: [800, 600])), 
+                  <%= image_tag url_for(@image.file.representation(:medium)), 
                       class: "img-fluid img-thumbnail",
                       style: "cursor: crosshair; user-select: none;",
                       data: { 
