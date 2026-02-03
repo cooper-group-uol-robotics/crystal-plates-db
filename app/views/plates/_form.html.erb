@@ -24,6 +24,16 @@
     <div class="form-text">Optional descriptive name to help identify this plate</div>
   </div>
 
+  <div class="mb-3">
+    <%= form.label :coshh_form_code, "COSHH Form Code", class: "form-label" %>
+    <%= form.text_field :coshh_form_code, class: "form-control", 
+                        placeholder: "e.g., TFE-045",
+                        pattern: "[A-Za-z0-9\_]+-\\d+",
+                        title: "Format: alphanumeric-number (e.g., TFE-045)" %>
+    <div class="form-text">
+      Sciformation COSHH form code (format: ABC-123). Only chemicals listed in this form can be used in the plate.
+    </div>
+  </div>
 
   <div class="mb-4">
     <label class="form-label fw-bold">Plate Prototype</label>

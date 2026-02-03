@@ -111,21 +111,12 @@ class ChemicalsController < ApplicationController
 
   # POST /chemicals/import_from_sciformation
   def import_from_sciformation
-    cookie = params[:sciformation_cookie]
-    barcode = params[:barcode]
-
-    Rails.logger.info "Import request received - cookie present: #{cookie.present?}, barcode: '#{barcode}'"
-
-    if cookie.blank?
-      Rails.logger.warn "Import failed - no cookie provided"
-      render json: { success: false, error: "Sciformation cookie is required" }, status: :bad_request
-      return
-    end
+    Rails.logger.info "Import request received"
 
     begin
       Rails.logger.info "Calling Chemical.fetch_from_sciformation..."
-      # Use settings cookie by default, but allow override if cookie parameter is provided
-      result = Chemical.fetch_from_sciformation(cookie: cookie.presence, barcode: barcode)
+      # Use credentials from settings (no parameters needed)
+      result = Chemical.fetch_from_sciformation(department_id: "124")
       Rails.logger.info "fetch_from_sciformation returned: #{result.inspect}"
 
       Rails.logger.info "Sending response to client..."

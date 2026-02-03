@@ -107,95 +107,23 @@ class Chemical < ApplicationRecord
   end
 
   # Class method to fetch and import data from Sciformation
-  def self.fetch_from_sciformation(department_id: "124", cookie: nil, barcode: nil)
-    require "net/http"
-    require "uri"
-    require "json"
-
-    # Use cookie from settings if not provided
-    cookie ||= Setting.sciformation_cookie
-
-    # Check if cookie is available
-    if cookie.blank?
-      Rails.logger.error "Sciformation cookie not configured. Please set it in the settings."
-      return { success: false, error: "Sciformation cookie not configured. Please set it in the settings." }
-    end
-
-    uri = URI("https://jfb.liverpool.ac.uk/performSearch")
-
-    # Prepare the request
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
-    http.read_timeout = 60  # 60 second timeout
-    http.open_timeout = 30  # 30 second connection timeout
-
-    Rails.logger.info "HTTP timeout settings - read: #{http.read_timeout}s, open: #{http.open_timeout}s"
-
-    request = Net::HTTP::Post.new(uri)
-    request["Cookie"] = "SCIFORMATION=#{cookie}"
-
-    # Set form data based on whether barcode is provided
-    if barcode.present?
-      # Search for specific barcode
-      form_data = {
-        "table" => "CdbContainer",
-        "format" => "json",
-        "query" => "[0]",
-        "crit0" => "barcode",
-        "val0" => barcode
-      }
-      Rails.logger.info "Form data for barcode search: #{form_data.inspect}"
-      request.set_form_data(form_data)
-    else
-      # Search all containers in department
-      form_data = {
-        "table" => "CdbContainer",
-        "format" => "json",
-        "query" => "[0]",
-        "crit0" => "department",
-        "val0" => department_id
-      }
-      Rails.logger.info "Form data for full department search: #{form_data.inspect}"
-      request.set_form_data(form_data)
-    end
-
-    if barcode.present?
-      Rails.logger.info "Fetching chemical data from Sciformation for barcode '#{barcode}' in department #{department_id}..."
-    else
-      Rails.logger.info "Fetching all chemical data from Sciformation for department #{department_id}..."
-    end
-
+  def self.fetch_from_sciformation(department_id: "124", username: nil, password: nil, barcode: nil)
     begin
-      Rails.logger.info "Making HTTP request to Sciformation..."
-      response = http.request(request)
-      Rails.logger.info "Received response from Sciformation with status: #{response.code}"
+      service = SciformationService.new(username: username, password: password)
+      data = service.fetch_inventory(department_id: department_id, barcode: barcode)
 
-      if response.code.to_i == 200
-        Rails.logger.info "Response body size: #{response.body.length} characters"
-        Rails.logger.debug "Response body preview: #{response.body[0, 500]}..." if response.body.length > 500
+      Rails.logger.info "Fetched #{data.size} records from Sciformation"
+      import_results = import_sciformation_data(data)
 
-        Rails.logger.info "Parsing JSON response..."
-        data = JSON.parse(response.body)
-        Rails.logger.info "Parsed JSON successfully. Data is an array: #{data.is_a?(Array)}, size: #{data.is_a?(Array) ? data.size : 'N/A'}"
+      Rails.logger.info "Sciformation import completed: #{import_results}"
+      import_results
 
-        Rails.logger.info "Starting data import..."
-        import_results = import_sciformation_data(data)
-
-        Rails.logger.info "Sciformation import completed: #{import_results}"
-        import_results
-      else
-        Rails.logger.error "Failed to fetch data from Sciformation: HTTP #{response.code}"
-        Rails.logger.error "Response body: #{response.body}" if response.body
-        { success: false, error: "HTTP #{response.code}" }
-      end
-
-    rescue JSON::ParserError => e
-      Rails.logger.error "JSON parsing error: #{e.message}"
-      Rails.logger.error "Response body that failed to parse: #{response.body}" if defined?(response)
-      { success: false, error: "Invalid JSON response from Sciformation" }
-    rescue Net::TimeoutError => e
-      Rails.logger.error "Timeout error communicating with Sciformation: #{e.message}"
-      { success: false, error: "Request timeout - Sciformation may be slow or unavailable" }
+    rescue SciformationService::AuthenticationError => e
+      Rails.logger.error "Sciformation authentication failed: #{e.message}"
+      { success: false, error: "Authentication failed: #{e.message}" }
+    rescue SciformationService::QueryError => e
+      Rails.logger.error "Sciformation query failed: #{e.message}"
+      { success: false, error: "Query failed: #{e.message}" }
     rescue => e
       Rails.logger.error "Error fetching from Sciformation: #{e.message}"
       Rails.logger.error "Backtrace: #{e.backtrace.join("\n")}"

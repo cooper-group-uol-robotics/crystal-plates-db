@@ -225,6 +225,47 @@ module PlatesHelper
     end
   end
 
+  def coshh_badge(plate)
+    if plate.coshh_form_code.blank?
+      # No COSHH form assigned
+      content_tag :span, "No COSHH",
+                  class: "badge bg-danger",
+                  data: {
+                    controller: "tooltip",
+                    bs_toggle: "tooltip",
+                    bs_placement: "top",
+                    bs_html: "true",
+                    bs_title: "<strong>No COSHH Form</strong><br>No COSHH form number assigned to this plate."
+                  }
+    elsif plate.coshh_compliant?
+      # COSHH compliant
+      content_tag :span, "Valid COSHH",
+                  class: "badge bg-success",
+                  data: {
+                    controller: "tooltip",
+                    bs_toggle: "tooltip",
+                    bs_placement: "top",
+                    bs_html: "true",
+                    bs_title: "<strong>Valid COSHH</strong><br>Form: #{plate.coshh_form_code}<br>All chemicals are compliant."
+                  }
+    else
+      # COSHH non-compliant
+      non_compliant = plate.coshh_non_compliant_chemicals
+      chemical_list = non_compliant.map(&:name).take(5).join("<br>")
+      more_text = non_compliant.size > 5 ? "<br>...and #{non_compliant.size - 5} more" : ""
+      
+      content_tag :span, "Invalid COSHH",
+                  class: "badge bg-danger",
+                  data: {
+                    controller: "tooltip",
+                    bs_toggle: "tooltip",
+                    bs_placement: "top",
+                    bs_html: "true",
+                    bs_title: "<strong>Invalid COSHH</strong><br>Form: #{plate.coshh_form_code}<br><br><strong>Non-compliant chemicals:</strong><br>#{chemical_list}#{more_text}"
+                  }
+    end
+  end
+
   def well_tooltip_text(well)
     tooltip_parts = [ "#{well.well_label_with_subwell}" ]
 

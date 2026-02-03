@@ -45,10 +45,16 @@ class Setting < ApplicationRecord
     end
 
     # Sciformation API settings
-    def sciformation_cookie
-      cookie = get("sciformation_cookie", "")
-      return "" if cookie == "not_configured"
-      cookie
+    def sciformation_username
+      username = get("sciformation_username", "")
+      return "" if username == "not_configured"
+      username
+    end
+
+    def sciformation_password
+      password = get("sciformation_password", "")
+      return "" if password == "not_configured"
+      password
     end
   end
 
@@ -86,9 +92,14 @@ class Setting < ApplicationRecord
         description: "Maximum delta parameter for unit cell conversion tolerance"
       },
       {
-        key: "sciformation_cookie",
+        key: "sciformation_username",
         value: "not_configured",
-        description: "Cookie value for Sciformation API authentication (without SCIFORMATION= prefix)"
+        description: "Username for Sciformation API authentication"
+      },
+      {
+        key: "sciformation_password",
+        value: "not_configured",
+        description: "Password for Sciformation API authentication"
       }
     ].each do |setting_data|
       setting = find_or_initialize_by(key: setting_data[:key])

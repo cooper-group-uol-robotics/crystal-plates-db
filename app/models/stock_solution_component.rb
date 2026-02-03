@@ -3,7 +3,9 @@ class StockSolutionComponent < ApplicationRecord
   belongs_to :chemical
   belongs_to :unit
 
+  validates :chemical, presence: { message: "must be selected" }
   validates :amount, presence: true, numericality: { greater_than: 0 }
+  validates :unit, presence: { message: "must be specified (e.g., 10 mg, 5 ml)" }
   validates :chemical_id, uniqueness: { scope: :stock_solution_id, message: "can only be added once per stock solution" }
 
   # Virtual attribute for combined amount and unit input

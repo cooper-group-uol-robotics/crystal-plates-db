@@ -40,72 +40,53 @@ class SettingsController < ApplicationController
   end
 
   def get_sciformation_cookie
-    cookie = Setting.sciformation_cookie
+    # Deprecated - keeping for backwards compatibility
+    cookie = Setting.sciformation_cookie rescue ""
     render json: { cookie: cookie }
   end
 
-  def test_sciformation_cookie
-    # Use the cookie from the request if provided, otherwise use the settings cookie
-    cookie = params[:cookie].presence || Setting.sciformation_cookie
+  def test_sciformation_credentials
+    # Use credentials from the request if provided, otherwise use the settings
+    username = params[:username].presence || Setting.sciformation_username
+    password = params[:password].presence || Setting.sciformation_password
 
-    if cookie.blank?
+    if username.blank? || password.blank?
       render json: {
         success: false,
-        message: "Sciformation cookie not configured. Please set a valid cookie value in the settings."
+        message: "Sciformation credentials not configured. Please set username and password in the settings."
       }
       return
     end
 
-    # Test a simple request to Sciformation to verify the cookie works
+    # Test authentication with Sciformation
     begin
-      require "net/http"
-      require "uri"
+      service = SciformationService.new(username: username, password: password)
+      service.authenticate!
 
-      uri = URI("https://sciformation.liverpool.ac.uk/performSearch")
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = true
-      http.read_timeout = 10
-      http.open_timeout = 5
-
-      request = Net::HTTP::Post.new(uri)
-      request["Cookie"] = "SCIFORMATION=#{cookie}"
-
-      # Test with a minimal search that should return quickly
-      form_data = {
-        "table" => "CdbContainer",
-        "format" => "json",
-        "query" => "[0]",
-        "crit0" => "department",
-        "op0" => "OP_IN_NUM",
-        "val0" => "124"
+      render json: {
+        success: true,
+        message: "Successfully authenticated with Sciformation"
       }
-      request.set_form_data(form_data)
 
-      response = http.request(request)
-
-      if response.code.to_i == 200
-        render json: {
-          success: true,
-          message: "Sciformation cookie is valid and API is accessible (HTTP #{response.code})"
-        }
-      else
-        render json: {
-          success: false,
-          message: "Sciformation API returned HTTP #{response.code}. Cookie may be invalid or expired."
-        }
-      end
-
-    rescue Net::TimeoutError => e
+    rescue SciformationService::AuthenticationError => e
       render json: {
         success: false,
-        message: "Connection timeout - Sciformation may be slow or unavailable"
+        message: "Authentication failed: #{e.message}"
       }
     rescue => e
       render json: {
         success: false,
-        message: "Error testing Sciformation cookie: #{e.message}"
+        message: "Error testing Sciformation credentials: #{e.message}"
       }
     end
+  end
+
+  def test_sciformation_cookie
+    # Deprecated method - redirect to test_sciformation_credentials
+    render json: {
+      success: false,
+      message: "Cookie-based authentication is deprecated. Please use username/password authentication."
+    }
   end
 
   def test_connection
@@ -173,7 +154,8 @@ class SettingsController < ApplicationController
       :conventional_cell_api_endpoint,
       :conventional_cell_api_timeout,
       :conventional_cell_max_delta,
-      :sciformation_cookie
+      :sciformation_username,
+      :sciformation_password
     )
   end
 end

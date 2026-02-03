@@ -3,15 +3,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h1 class="mb-0">Chemicals</h1>
   <div>
-    <div class="dropdown me-2" style="display: inline-block;">
-      <button class="btn btn-outline-primary dropdown-toggle" type="button" id="importDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-        Import from Sciformation
-      </button>
-      <ul class="dropdown-menu" aria-labelledby="importDropdown">
-        <li><a class="dropdown-item" href="#" onclick="showImportModal('all')">Import All</a></li>
-        <li><a class="dropdown-item" href="#" onclick="showImportModal('barcode')">Import by Barcode</a></li>
-      </ul>
-    </div>
+    <button class="btn btn-outline-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#importModal">
+      <i class="bi bi-download"></i> Import from Sciformation
+    </button>
     <%= link_to "New Chemical", new_chemical_path, class: "btn btn-success" %>
   </div>
 </div>
@@ -222,20 +216,12 @@
       </div>
       <div class="modal-body">
         <div id="instructions">
-          <p id="instructionText">Click the button below to import chemicals from Sciformation.</p>
-          
-          <!-- Barcode input field (hidden by default) -->
-          <div id="barcodeSection" class="d-none mb-3">
-            <label for="barcodeInput" class="form-label">Container Barcode</label>
-            <input type="text" class="form-control" id="barcodeInput" placeholder="Enter container barcode">
-            <div class="form-text">Enter the specific barcode of the container you want to import.</div>
-          </div>
+          <p>This will import all chemicals from Sciformation department 124.</p>
           
           <div class="alert alert-info">
-            <small>
-              <i class="fas fa-info-circle"></i>
-              You'll need to provide your Sciformation authentication cookie. Instructions will be provided to help you find it.
-            </small>
+            <i class="bi bi-info-circle"></i>
+            <strong>Note:</strong> Make sure your Sciformation credentials are configured in Settings.
+            <%= link_to "Configure Settings", settings_path, class: "alert-link" %>
           </div>
         </div>
         
@@ -245,27 +231,28 @@
               <span class="visually-hidden">Loading...</span>
             </div>
             <p class="mt-2">Importing chemicals from Sciformation...</p>
+            <p class="text-muted small">This may take a few moments...</p>
           </div>
         </div>
         
         <div id="results" class="d-none">
           <div class="alert alert-success">
-            <h6>Import completed successfully!</h6>
+            <h6><i class="bi bi-check-circle"></i> Import completed successfully!</h6>
             <div id="resultsSummary"></div>
           </div>
         </div>
         
         <div id="error" class="d-none">
           <div class="alert alert-danger">
-            <h6>Import failed</h6>
+            <h6><i class="bi bi-exclamation-triangle"></i> Import failed</h6>
             <div id="errorMessage"></div>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="closeButton">Close</button>
         <button type="button" class="btn btn-primary" id="importButton" onclick="startImport()">
-          Authenticate & Import
+          <i class="bi bi-download"></i> Import Chemicals
         </button>
       </div>
     </div>
@@ -273,150 +260,22 @@
 </div>
 
 <script>
-let importType = 'all'; // Global variable to track import type
-
-function showImportModal(type) {
-  importType = type;
-  const modal = new bootstrap.Modal(document.getElementById('importModal'));
-  
-  // Update the modal content based on import type
-  const instructionText = document.getElementById('instructionText');
-  const barcodeSection = document.getElementById('barcodeSection');
-  
-  if (type === 'barcode') {
-    instructionText.textContent = 'Enter the barcode of the container you want to import, then click the button below.';
-    barcodeSection.classList.remove('d-none');
-  } else {
-    instructionText.textContent = 'Click the button below to import all chemicals from Sciformation.';
-    barcodeSection.classList.add('d-none');
-  }
-  
-  // Show the modal
-  modal.show();
-}
-
 async function startImport() {
-  console.log("startImport called");
+  showLoading();
   
-  // If importing by barcode, validate the barcode input
-  if (importType === 'barcode') {
-    const barcode = document.getElementById('barcodeInput').value.trim();
-    if (!barcode) {
-      showError('Please enter a barcode before importing.');
-      return;
-    }
-  }
-  
-  showInstructions();
-  await getCookieAndImport();
-}
-
-async function getCookieAndImport() {
   try {
-    // First check if cookie is configured in settings
-    let cookie = await checkSettingsCookie();
-    
-    // If no cookie in settings, prompt the user
-    if (!cookie) {
-      cookie = await getSciFormationCookie();
-    }
-    
-    if (!cookie) {
-      showError("Import cancelled - no cookie provided.");
-      return;
-    }
-
-    // Start the import with the extracted cookie
-    showLoading();
-    await performImport(cookie);
-  } catch (error) {
-    console.error("Import error:", error);
-    showError(`Import failed: ${error.message}`);
-  }
-}
-
-async function checkSettingsCookie() {
-  try {
-    const response = await fetch('/api/v1/settings/sciformation_cookie', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      }
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      // Return the cookie if it exists and is not empty
-      if (data.cookie && data.cookie.trim() !== '') {
-        return data.cookie.trim();
-      }
-    }
-  } catch (error) {
-    console.log("Could not retrieve cookie from settings, will prompt user:", error);
-  }
-  return null;
-}
-
-async function getSciFormationCookie() {
-  const useSettings = confirm(`Sciformation cookie is not configured in settings.
-
-Would you like to:
-- Click OK to go to Settings page and configure it permanently (recommended)
-- Click Cancel to enter it now (temporary)`);
-
-  if (useSettings) {
-    // Redirect to settings page
-    window.location.href = '/settings';
-    return null;
-  }
-
-  const instructions = `
-To get your Sciformation cookie:
-
-1. Keep this dialog open
-2. Open a new tab and go to https://jfb.liverpool.ac.uk
-3. Log in if needed
-4. Press F12 to open Developer Tools
-5. Go to the "Application" or "Storage" tab
-6. Look for "Cookies" in the left sidebar
-7. Click on "https://jfb.liverpool.ac.uk"
-8. Find the cookie named "SCIFORMATION" 
-9. Copy its Value (the long string)
-10. Paste it below
-
-Note: Consider configuring this in Settings for permanent use.
-  `.trim();
-  
-  alert(instructions);
-  
-  const cookie = prompt("Paste your SCIFORMATION cookie value here:");
-  return cookie ? cookie.trim() : null;
-}
-
-async function performImport(cookie) {
-  try {
-    const requestBody = { sciformation_cookie: cookie };
-    
-    // Add barcode if importing by barcode
-    if (importType === 'barcode') {
-      const barcode = document.getElementById('barcodeInput').value.trim();
-      if (barcode) {
-        requestBody.barcode = barcode;
-      }
-    }
-    
     const response = await fetch("/chemicals/import_from_sciformation", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": getCSRFToken()
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({})
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
 
     const result = await response.json();
@@ -427,20 +286,8 @@ async function performImport(cookie) {
       showError(result.error || "Import failed for unknown reason");
     }
   } catch (error) {
-    throw new Error(`Network error: ${error.message}`);
-  }
-}
-
-function showInstructions() {
-  hideAll();
-  document.getElementById("instructions").classList.remove("d-none");
-  
-  // Show/hide barcode section based on import type
-  const barcodeSection = document.getElementById('barcodeSection');
-  if (importType === 'barcode') {
-    barcodeSection.classList.remove('d-none');
-  } else {
-    barcodeSection.classList.add('d-none');
+    console.error("Import error:", error);
+    showError(error.message);
   }
 }
 
@@ -448,21 +295,24 @@ function showLoading() {
   hideAll();
   document.getElementById("loading").classList.remove("d-none");
   document.getElementById("importButton").disabled = true;
+  document.getElementById("closeButton").disabled = true;
 }
 
 function showResults(result) {
   hideAll();
   document.getElementById("results").classList.remove("d-none");
-  document.getElementById("importButton").disabled = false;
+  document.getElementById("importButton").disabled = true;
+  document.getElementById("closeButton").disabled = false;
   
   const summary = `
     <ul class="mb-0">
-      <li>Total records processed: ${result.total_records || 0}</li>
-      <li>New chemicals imported: ${result.imported || 0}</li>
-      <li>Existing chemicals updated: ${result.updated || 0}</li>
-      <li>Records skipped: ${result.skipped || 0}</li>
-      <li>Total chemicals in database: ${result.total_chemicals || 0}</li>
+      <li><strong>Total records processed:</strong> ${result.total_records || 0}</li>
+      <li><strong>New chemicals imported:</strong> ${result.imported || 0}</li>
+      <li><strong>Existing chemicals updated:</strong> ${result.updated || 0}</li>
+      <li><strong>Records skipped:</strong> ${result.skipped || 0}</li>
+      <li><strong>Total chemicals in database:</strong> ${result.total_chemicals || 0}</li>
     </ul>
+    <p class="mt-3 mb-0"><small class="text-muted">Page will refresh in 3 seconds...</small></p>
   `;
   document.getElementById("resultsSummary").innerHTML = summary;
   
@@ -477,6 +327,15 @@ function showError(message) {
   document.getElementById("error").classList.remove("d-none");
   document.getElementById("errorMessage").textContent = message;
   document.getElementById("importButton").disabled = false;
+  document.getElementById("closeButton").disabled = false;
+  
+  // If credentials error, suggest going to settings
+  if (message.includes("credentials") || message.includes("Authentication")) {
+    const settingsLink = document.createElement('div');
+    settingsLink.className = 'mt-2';
+    settingsLink.innerHTML = '<a href="/settings" class="btn btn-sm btn-outline-primary"><i class="bi bi-gear"></i> Go to Settings</a>';
+    document.getElementById("errorMessage").appendChild(settingsLink);
+  }
 }
 
 function hideAll() {
@@ -490,4 +349,14 @@ function getCSRFToken() {
   const token = document.querySelector('meta[name="csrf-token"]');
   return token ? token.getAttribute('content') : '';
 }
+
+// Reset modal state when it's closed
+document.getElementById('importModal').addEventListener('hidden.bs.modal', function () {
+  document.getElementById("instructions").classList.remove("d-none");
+  document.getElementById("loading").classList.add("d-none");
+  document.getElementById("results").classList.add("d-none");
+  document.getElementById("error").classList.add("d-none");
+  document.getElementById("importButton").disabled = false;
+  document.getElementById("closeButton").disabled = false;
+});
 </script>

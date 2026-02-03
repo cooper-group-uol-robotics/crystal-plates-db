@@ -11,6 +11,23 @@
     <td><%= @plate.name %></td>
   </tr>
   <% end %>
+  <% if @plate.coshh_form_code.present? %>
+  <tr>
+    <td><strong>COSHH Form:</strong></td>
+    <td>
+      <%= @plate.coshh_form_code %>
+      <% if @plate.coshh_compliant? %>
+        <span class="badge bg-success ms-2">
+          <i class="fas fa-check-circle"></i> Compliant
+        </span>
+      <% else %>
+        <span class="badge bg-danger ms-2">
+          <i class="fas fa-exclamation-triangle"></i> Non-compliant
+        </span>
+      <% end %>
+    </td>
+  </tr>
+  <% end %>
   <tr>
     <td><strong>Dimensions:</strong></td>
     <td><%= @rows %> rows × <%= @columns %> columns</td>

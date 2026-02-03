@@ -31,11 +31,22 @@
       margin: 0 auto;
     }
   </style>
-  <% if stock_solution.errors.any? %>
+  <% 
+    # Collect all errors from stock solution and nested components
+    all_errors = stock_solution.errors.full_messages.dup
+    stock_solution.stock_solution_components.each_with_index do |component, index|
+      if component.errors.any?
+        component.errors.full_messages.each do |msg|
+          all_errors << "Component #{index + 1}: #{msg}"
+        end
+      end
+    end
+  %>
+  <% if all_errors.any? %>
     <div class="alert alert-danger">
-      <h4><%= pluralize(stock_solution.errors.count, "error") %> prohibited this stock solution from being saved:</h4>
+      <h4><%= pluralize(all_errors.count, "error") %> prohibited this stock solution from being saved:</h4>
       <ul>
-        <% stock_solution.errors.full_messages.each do |message| %>
+        <% all_errors.each do |message| %>
           <li><%= message %></li>
         <% end %>
       </ul>
@@ -62,7 +73,8 @@
                   <% field_index = component_form.index || rand(10000) %>
                   <%= component_form.hidden_field :chemical_id, id: "chemical_id_#{field_index}" %>
                   <% existing_chemical = component_form.object.chemical %>
-                  <input type="text" class="form-control" placeholder="Search by name, CAS, or barcode..." 
+                  <% has_chemical_error = component_form.object.errors[:chemical].any? || component_form.object.errors[:chemical_id].any? %>
+                  <input type="text" class="form-control <%= 'is-invalid' if has_chemical_error %>" placeholder="Search by name, CAS, or barcode..." 
                          value="<%= existing_chemical&.name %>"
                          id="chemical_search_#{field_index}"
                          oninput="searchChemicals(this, 'chemical_id_#{field_index}', 'results_#{field_index}')"
@@ -71,14 +83,25 @@
                        style="top: 100%; max-height: 200px; overflow-y: auto;"
                        id="results_#{field_index}">
                   </div>
+                  <% if has_chemical_error %>
+                    <div class="invalid-feedback d-block">
+                      <%= component_form.object.errors[:chemical].first || component_form.object.errors[:chemical_id].first %>
+                    </div>
+                  <% end %>
                 </div>
               </div>
               <div class="col-md-2">
                 <%= component_form.label :amount_with_unit, "Amount", class: "form-label" %>
+                <% has_amount_error = component_form.object.errors[:amount].any? || component_form.object.errors[:amount_with_unit].any? || component_form.object.errors[:unit].any? %>
                 <%= component_form.text_field :amount_with_unit, 
-                    class: "form-control", 
+                    class: "form-control #{'is-invalid' if has_amount_error}", 
                     placeholder: "e.g., 10 mg, 5.5 ml",
                     title: "Enter amount with unit (e.g., 10 mg, 5.5 ml)" %>
+                <% if has_amount_error %>
+                  <div class="invalid-feedback">
+                    <%= component_form.object.errors[:amount_with_unit].first || component_form.object.errors[:amount].first || component_form.object.errors[:unit].first %>
+                  </div>
+                <% end %>
               </div>
               <div class="col-md-3 d-flex align-items-end">
                 <% component_index = component_form.index || 0 %>

@@ -4,8 +4,9 @@ Rails.application.routes.draw do
   patch "/settings", to: "settings#update"
   post "/settings/test_connection", to: "settings#test_connection"
   post "/settings/test_conventional_cell_api", to: "settings#test_conventional_cell_api"
-  post "/settings/test_sciformation_cookie", to: "settings#test_sciformation_cookie"
-  get "/api/v1/settings/sciformation_cookie", to: "settings#get_sciformation_cookie"
+  post "/settings/test_sciformation_credentials", to: "settings#test_sciformation_credentials"
+  post "/settings/test_sciformation_cookie", to: "settings#test_sciformation_cookie"  # Deprecated
+  get "/api/v1/settings/sciformation_cookie", to: "settings#get_sciformation_cookie"  # Deprecated
 
   resources :stock_solutions do
     collection do
