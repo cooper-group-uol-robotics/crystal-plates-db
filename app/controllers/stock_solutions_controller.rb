@@ -36,7 +36,9 @@ class StockSolutionsController < ApplicationController
     if @stock_solution.save
       redirect_to @stock_solution, notice: "Stock solution was successfully created."
     else
-      render :new
+      # Ensure at least one component field is shown for re-rendering
+      @stock_solution.stock_solution_components.build if @stock_solution.stock_solution_components.empty?
+      render :new, status: :unprocessable_entity
     end
   end
 
@@ -45,7 +47,9 @@ class StockSolutionsController < ApplicationController
     if @stock_solution.update(stock_solution_params)
       redirect_to @stock_solution, notice: "Stock solution was successfully updated."
     else
-      render :edit
+      # Ensure at least one component field is shown for re-rendering
+      @stock_solution.stock_solution_components.build if @stock_solution.stock_solution_components.empty?
+      render :edit, status: :unprocessable_entity
     end
   end
 

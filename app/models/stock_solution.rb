@@ -9,7 +9,11 @@ class StockSolution < ApplicationRecord
   validates :name, presence: true, uniqueness: true
   validate :must_have_at_least_one_component
 
-  accepts_nested_attributes_for :stock_solution_components, allow_destroy: true, reject_if: :all_blank
+  # Don't use reject_if so that validation errors are shown for incomplete components
+  accepts_nested_attributes_for :stock_solution_components, allow_destroy: true, reject_if: proc { |attrs| 
+    # Only reject if ALL fields are blank (no partial input)
+    attrs['chemical_id'].blank? && attrs['amount'].blank? && attrs['amount_with_unit'].blank? && attrs['unit_id'].blank?
+  }
 
   private
 
