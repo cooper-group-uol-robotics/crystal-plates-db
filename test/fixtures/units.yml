@@ -4,13 +4,28 @@ microliters:
   name: Microliters
   symbol: μL
   conversion_to_base: 1.0
+  dimension: volume
 
 milliliters:
   name: Milliliters
   symbol: mL
   conversion_to_base: 1000.0
+  dimension: volume
 
 liters:
   name: Liters
   symbol: L
   conversion_to_base: 1000000.0
+  dimension: volume
+
+milligrams:
+  name: Milligrams
+  symbol: mg
+  conversion_to_base: 1.0
+  dimension: mass
+
+grams:
+  name: Grams
+  symbol: g
+  conversion_to_base: 1000.0
+  dimension: mass

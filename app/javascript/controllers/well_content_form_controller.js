@@ -330,7 +330,7 @@ export default class extends Controller {
         // Find hidden form fields within this controller's element scope
         const contentableTypeField = this.element.querySelector('#contentable_type')
         const contentableIdField = this.element.querySelector('#contentable_id')
-        const formVolumeField = this.element.querySelector('#form_volume')
+        const formAmountField = this.element.querySelector('#form_amount')
 
         console.log('Setting form fields:', {
             contentableType,
@@ -338,7 +338,7 @@ export default class extends Controller {
             volume,
             contentableTypeField: !!contentableTypeField,
             contentableIdField: !!contentableIdField,
-            formVolumeField: !!formVolumeField
+            formAmountField: !!formAmountField
         })
 
         // Set hidden form fields
@@ -354,10 +354,10 @@ export default class extends Controller {
             console.error('contentable_id field not found')
         }
 
-        if (formVolumeField) {
-            formVolumeField.value = volume
+        if (formAmountField) {
+            formAmountField.value = volume
         } else {
-            console.error('form_volume field not found')
+            console.error('form_amount field not found')
         }
 
         return true

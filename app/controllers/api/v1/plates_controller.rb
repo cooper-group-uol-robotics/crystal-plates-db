@@ -158,7 +158,7 @@ module Api::V1
       }
       if include_wells
         # Preload associations for better performance
-        wells_with_contents = plate.wells.includes(well_contents: [ :contentable, :unit, :mass_unit ])
+        wells_with_contents = plate.wells.includes(well_contents: [ :contentable, :amount_unit ])
 
         result[:wells] = wells_with_contents.map do |well|
           {
@@ -179,9 +179,9 @@ module Api::V1
                 name: content.content_name,
                 description: content.content_description,
                 volume: content.volume,
-                volume_unit: content.unit ? { id: content.unit.id, symbol: content.unit.symbol, name: content.unit.name } : nil,
+                volume_unit: content.amount_unit&.volume_unit? ? { id: content.amount_unit.id, symbol: content.amount_unit.symbol, name: content.amount_unit.name } : nil,
                 mass: content.mass,
-                mass_unit: content.mass_unit ? { id: content.mass_unit.id, symbol: content.mass_unit.symbol, name: content.mass_unit.name } : nil,
+                mass_unit: content.amount_unit&.mass_unit? ? { id: content.amount_unit.id, symbol: content.amount_unit.symbol, name: content.amount_unit.name } : nil,
                 display_amount: content.display_amount,
                 contentable: content_details(content.contentable)
               }

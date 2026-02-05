@@ -1173,7 +1173,7 @@ class WellModal {
       body: JSON.stringify({
         well_content: {
           stock_solution_id: stockSolutionId,
-          volume_with_unit: volumeWithUnit
+          amount_with_unit: volumeWithUnit
         }
       })
     })

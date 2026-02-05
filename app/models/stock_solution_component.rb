@@ -21,7 +21,7 @@ class StockSolutionComponent < ApplicationRecord
   before_validation :parse_amount_with_unit, if: :amount_with_unit_changed?
 
   def display_amount
-    "#{amount} #{unit.symbol}"
+    "#{amount} #{unit&.symbol}"
   end
 
   def formatted_component
@@ -30,7 +30,7 @@ class StockSolutionComponent < ApplicationRecord
 
   # Getter for the combined field
   def amount_with_unit
-    @amount_with_unit || (amount && unit ? "#{amount} #{unit.symbol}" : nil)
+    @amount_with_unit || (amount && unit ? "#{amount} #{unit&.symbol}" : nil)
   end
 
   private

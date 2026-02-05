@@ -108,7 +108,7 @@ class WellsController < ApplicationController
 
       # Create well content with polymorphic association
       well_content = well.well_contents.build(contentable: contentable)
-      well_content.volume_with_unit = volume_with_unit if volume_with_unit.present?
+      well_content.amount_with_unit = volume_with_unit if volume_with_unit.present?
 
       if well_content.save
         success_count += 1
@@ -219,7 +219,7 @@ class WellsController < ApplicationController
   def content_form
     @well = Well.find(params[:id])
     @stock_solutions = StockSolution.all.order(:name)
-    @well_contents = @well.well_contents.includes(:contentable, :unit, :mass_unit)
+    @well_contents = @well.well_contents.includes(:contentable, :amount_unit)
     @units = Unit.all.order(:name)
     render partial: "content_form", locals: { well: @well, stock_solutions: @stock_solutions, well_contents: @well_contents, units: @units }
   rescue ActiveRecord::RecordNotFound
@@ -260,7 +260,7 @@ class WellsController < ApplicationController
         volume_with_unit = params[:volume_with_unit] || params["volume_with_unit"]
 
         well_content = @well.well_contents.build(stock_solution: stock_solution)
-        well_content.volume_with_unit = volume_with_unit if volume_with_unit.present?
+        well_content.amount_with_unit = volume_with_unit if volume_with_unit.present?
 
         if well_content.save
           render json: { success: true, message: "Stock solution added successfully" }

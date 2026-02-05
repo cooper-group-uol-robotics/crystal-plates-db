@@ -40,7 +40,7 @@ class StockSolution < ApplicationRecord
 
   def component_summary
     stock_solution_components.includes(:chemical, :unit).map do |component|
-      "#{component.chemical.name}: #{component.amount} #{component.unit.symbol}"
+      "#{component.chemical.name}: #{component.amount} #{component.unit&.symbol}"
     end.join(", ")
   end
 

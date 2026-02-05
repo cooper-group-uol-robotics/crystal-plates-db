@@ -96,6 +96,6 @@ class WellContentsController < ApplicationController
   end
 
   def well_content_params
-    params.require(:well_content).permit(:stock_solution_id, :chemical_id, :contentable_type, :contentable_id, :volume_with_unit, :notes)
+    params.require(:well_content).permit(:stock_solution_id, :chemical_id, :contentable_type, :contentable_id, :amount_with_unit, :notes)
   end
 end

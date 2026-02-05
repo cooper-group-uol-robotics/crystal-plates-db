@@ -355,7 +355,7 @@ export default class extends Controller {
             well_ids: this.wellIdsValue,
             contentable_type: contentableType,
             contentable_id: contentId,
-            volume_with_unit: volume
+            amount_with_unit: volume
         }
     }
 

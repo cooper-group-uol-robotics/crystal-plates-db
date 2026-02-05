@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_28_101536) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_05_144253) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -112,6 +112,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_101536) do
     t.index ["scxrd_dataset_id"], name: "index_diffraction_images_on_scxrd_dataset_id"
   end
 
+  create_table "dimensions", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "symbol", null: false
+    t.string "si_base_unit", null: false
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_dimensions_on_name", unique: true
+    t.index ["symbol"], name: "index_dimensions_on_symbol", unique: true
+  end
+
   create_table "images", force: :cascade do |t|
     t.integer "well_id", null: false
     t.decimal "pixel_size_x_mm", precision: 10, scale: 6, null: false
@@ -174,7 +185,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_101536) do
     t.datetime "deleted_at"
     t.string "name"
     t.integer "plate_prototype_id"
+    t.string "coshh_form_code"
     t.index ["barcode"], name: "index_plates_on_barcode", unique: true
+    t.index ["coshh_form_code"], name: "index_plates_on_coshh_form_code"
     t.index ["deleted_at"], name: "index_plates_on_deleted_at"
     t.index ["plate_prototype_id"], name: "index_plates_on_plate_prototype_id"
     t.check_constraint "columns > 0 AND columns <= 48", name: "plates_columns_range"
@@ -304,23 +317,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_101536) do
     t.float "conversion_to_base"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "dimension_id"
+    t.index ["dimension_id"], name: "index_units_on_dimension_id"
   end
 
   create_table "well_contents", force: :cascade do |t|
     t.integer "well_id", null: false
     t.integer "stock_solution_id"
-    t.float "volume"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.integer "unit_id"
     t.string "contentable_type"
     t.integer "contentable_id"
-    t.decimal "mass", precision: 10, scale: 4
-    t.integer "mass_unit_id"
+    t.decimal "amount", precision: 10, scale: 4
+    t.integer "amount_unit_id"
+    t.index ["amount_unit_id"], name: "index_well_contents_on_amount_unit_id"
     t.index ["contentable_type", "contentable_id"], name: "index_well_contents_on_contentable_type_and_contentable_id"
-    t.index ["mass_unit_id"], name: "index_well_contents_on_mass_unit_id"
     t.index ["stock_solution_id"], name: "index_well_contents_on_stock_solution_id"
-    t.index ["unit_id"], name: "index_well_contents_on_unit_id"
     t.index ["well_id"], name: "index_well_contents_on_well_id"
   end
 
@@ -370,9 +382,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_101536) do
   add_foreign_key "stock_solution_components", "units"
   add_foreign_key "unit_cell_similarities", "scxrd_datasets", column: "dataset_1_id"
   add_foreign_key "unit_cell_similarities", "scxrd_datasets", column: "dataset_2_id"
+  add_foreign_key "units", "dimensions"
   add_foreign_key "well_contents", "stock_solutions"
-  add_foreign_key "well_contents", "units"
-  add_foreign_key "well_contents", "units", column: "mass_unit_id"
+  add_foreign_key "well_contents", "units", column: "amount_unit_id"
   add_foreign_key "well_contents", "wells"
   add_foreign_key "well_scores", "custom_attributes"
   add_foreign_key "well_scores", "wells"

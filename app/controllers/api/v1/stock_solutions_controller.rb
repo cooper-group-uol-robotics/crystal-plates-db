@@ -82,11 +82,11 @@ class Api::V1::StockSolutionsController < Api::V1::BaseController
             name: component.chemical.name
           },
           amount: component.amount,
-          unit: {
+          unit: component.unit ? {
             id: component.unit.id,
             name: component.unit.name,
             symbol: component.unit.symbol
-          },
+          } : nil,
           display_amount: component.display_amount,
           formatted_component: component.formatted_component
         }

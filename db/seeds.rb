@@ -7,23 +7,54 @@
 #   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
+# Initialize dimensions first
+[
+  { name: "Mass", symbol: "M", si_base_unit: "kg", description: "Physical quantity of matter" },
+  { name: "Volume", symbol: "V", si_base_unit: "L", description: "Amount of space occupied by an object" },
+  { name: "Other", symbol: "?", si_base_unit: "-", description: "Miscellaneous measurements" }
+].each do |attrs|
+  dimension = Dimension.find_or_create_by!(symbol: attrs[:symbol]) do |d|
+    d.name = attrs[:name]
+    d.si_base_unit = attrs[:si_base_unit]
+    d.description = attrs[:description]
+  end
+
+  # Update existing dimensions if they differ from expected values
+  if dimension.name != attrs[:name] || dimension.si_base_unit != attrs[:si_base_unit] || dimension.description != attrs[:description]
+    dimension.update!(
+      name: attrs[:name], 
+      si_base_unit: attrs[:si_base_unit], 
+      description: attrs[:description]
+    )
+  end
+end
+
+# Get dimension references
+mass_dimension = Dimension.find_by!(symbol: 'M')
+volume_dimension = Dimension.find_by!(symbol: 'V')
+
 # Initialize default units
 [
-  { name: "milligram", symbol: "mg", conversion_to_base: 1.0 },
-  { name: "nanoliter", symbol: "nl", conversion_to_base: 0.001 },
-  { name: "microgram", symbol: "µg", conversion_to_base: 0.001 },
-  { name: "microliter", symbol: "µl", conversion_to_base: 1.0 },
-  { name: "milliliter", symbol: "ml", conversion_to_base: 1000.0 },
-  { name: "gram", symbol: "g", conversion_to_base: 1000.0 }
+  { name: "milligram", symbol: "mg", conversion_to_base: 1.0, dimension: mass_dimension },
+  { name: "nanoliter", symbol: "nl", conversion_to_base: 0.001, dimension: volume_dimension },
+  { name: "microgram", symbol: "µg", conversion_to_base: 0.001, dimension: mass_dimension },
+  { name: "microliter", symbol: "µl", conversion_to_base: 1.0, dimension: volume_dimension },
+  { name: "milliliter", symbol: "ml", conversion_to_base: 1000.0, dimension: volume_dimension },
+  { name: "gram", symbol: "g", conversion_to_base: 1000.0, dimension: mass_dimension }
 ].each do |attrs|
   unit = Unit.find_or_create_by!(symbol: attrs[:symbol]) do |u|
     u.name = attrs[:name]
     u.conversion_to_base = attrs[:conversion_to_base]
+    u.dimension = attrs[:dimension]
   end
 
   # Update existing units if they differ from the expected values
-  if unit.name != attrs[:name] || unit.conversion_to_base != attrs[:conversion_to_base]
-    unit.update!(name: attrs[:name], conversion_to_base: attrs[:conversion_to_base])
+  if unit.name != attrs[:name] || unit.conversion_to_base != attrs[:conversion_to_base] || unit.dimension != attrs[:dimension]
+    unit.update!(
+      name: attrs[:name], 
+      conversion_to_base: attrs[:conversion_to_base], 
+      dimension: attrs[:dimension]
+    )
   end
 end
 

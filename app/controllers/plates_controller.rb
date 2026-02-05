@@ -295,8 +295,8 @@ class PlatesController < ApplicationController
           # Create well content
           well.well_contents.create!(
             contentable: chemical,
-            mass: mass_in_mg,
-            mass_unit: mg_unit
+            amount: mass_in_mg,
+            amount_unit: mg_unit
           )
         end
       end
@@ -400,7 +400,7 @@ class PlatesController < ApplicationController
 
     # Load well data with contents
     wells_data = {}
-    plate.wells.includes(well_contents: [ :contentable, :mass_unit ]).each do |well|
+    plate.wells.includes(well_contents: [ :contentable, :amount_unit ]).each do |well|
       well_position = "#{('A'.ord + well.well_row - 1).chr}#{well.well_column}"
 
       # Only include wells that have chemical contents
@@ -493,8 +493,8 @@ class PlatesController < ApplicationController
           # Create well content
           well.well_contents.create!(
             contentable: chemical,
-            mass: mass_in_mg,
-            mass_unit: mg_unit
+            amount: mass_in_mg,
+            amount_unit: mg_unit
           )
         end
       end
@@ -800,7 +800,7 @@ class PlatesController < ApplicationController
 
           # Find or create well content using polymorphic association
           well_content = well.well_contents.find_or_initialize_by(contentable: content_info[:object])
-          well_content.volume_with_unit = value_str
+          well_content.amount_with_unit = value_str
           
           if well_content.save
             results[:success_count] += 1
@@ -838,7 +838,7 @@ class PlatesController < ApplicationController
       require "csv"
 
       # Get all wells with their contents
-      wells = plate.wells.includes(well_contents: [ :contentable, :unit, :mass_unit ]).order(:well_row, :well_column, :subwell)
+      wells = plate.wells.includes(well_contents: [ :contentable, :amount_unit ]).order(:well_row, :well_column, :subwell)
 
       # Collect all chemicals and stock solutions used across the plate
       chemicals = Set.new
@@ -861,11 +861,11 @@ class PlatesController < ApplicationController
       CSV.generate do |csv|
         # Always use dual header format with labels
         # First header row: Chemical barcodes with label
-        chemical_header = [ "Chemical Barcode" ] + chemicals.map { |c| c.barcode || "UNKNOWN" } + Array.new(stock_solutions.length, "")
+        chemical_header = [ "Chemical Barcode" ] + chemicals.map { |c| c.barcode || "UNKNOWN" } + Array.new(stock_solutions.length, nil)
         csv << chemical_header
 
         # Second header row: Stock solution IDs with label
-        stock_solution_header = [ "Stock Solution ID" ] + Array.new(chemicals.length, "") + stock_solutions.map { |s| s.id || "UNKNOWN" }
+        stock_solution_header = [ "Stock Solution ID" ] + Array.new(chemicals.length, nil) + stock_solutions.map { |s| s.id || "UNKNOWN" }
         csv << stock_solution_header
 
         # Data rows
@@ -876,12 +876,15 @@ class PlatesController < ApplicationController
           # Add chemical amounts (in mg)
           chemicals.each do |chemical|
             content = well.well_contents.find { |wc| wc.contentable == chemical }
+            Rails.logger.info "Processing content for well #{well_label}, chemical #{chemical.barcode}: amount=#{content&.display_amount || 'not found'}"
             if content&.has_mass?
               # Convert to mg if needed
               amount = content.mass
               unit_symbol = content.mass_unit&.symbol&.downcase
 
               case unit_symbol
+              when "mg"
+                amount *= 1 # mg to mg, no conversion needed
               when "g"
                 amount *= 1000 # g to mg
               when "kg"
@@ -891,7 +894,7 @@ class PlatesController < ApplicationController
 
               row_data << amount.to_s
             else
-              row_data << ""
+              row_data << nil
             end
           end
 
@@ -901,7 +904,7 @@ class PlatesController < ApplicationController
             if content&.has_volume?
               # Convert to µL if needed
               amount = content.volume
-              unit_symbol = content.unit&.symbol&.downcase
+              unit_symbol = content.amount_unit&.symbol&.downcase
 
               case unit_symbol
               when "ml", "mL"
@@ -915,7 +918,7 @@ class PlatesController < ApplicationController
 
               row_data << amount.to_s
             else
-              row_data << ""
+              row_data << nil
             end
           end
 

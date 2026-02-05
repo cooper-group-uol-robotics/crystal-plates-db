@@ -44,7 +44,7 @@
                                   class: "text-decoration-none" %>
                     </td>
                     <td><%= component.amount %></td>
-                    <td><%= component.unit.symbol %></td>
+                    <td><%= component.unit&.symbol %></td>
                   </tr>
                 <% end %>
               </tbody>

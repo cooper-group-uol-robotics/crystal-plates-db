@@ -2,68 +2,87 @@ class WellContent < ApplicationRecord
   belongs_to :well
   belongs_to :contentable, polymorphic: true
   belongs_to :stock_solution, optional: true  # Keep for backward compatibility
-  belongs_to :unit, optional: true
-  belongs_to :mass_unit, class_name: "Unit", optional: true
+  belongs_to :amount_unit, class_name: "Unit", optional: true
 
   validates :contentable, presence: true
   validate :contentable_must_be_valid_type
-  validate :must_have_volume_or_mass
-  validates :volume, numericality: { greater_than: 0 }, allow_nil: true
-  validates :mass, numericality: { greater_than: 0 }, allow_nil: true
-  validates :unit, presence: true, if: -> { volume.present? && volume > 0 }
-  validates :mass_unit, presence: true, if: -> { mass.present? && mass > 0 }
+  validates :amount, presence: true, numericality: { greater_than: 0 }
+  validates :amount_unit, presence: true
 
-  attr_accessor :volume_with_unit, :mass_with_unit
+  attr_accessor :amount_with_unit
 
-  before_validation :parse_volume_with_unit_if_present
-  before_validation :parse_mass_with_unit_if_present
+  before_validation :parse_amount_with_unit_if_present
 
-  def volume_with_unit
-    return @volume_with_unit if @volume_with_unit.present?
-    return volume.to_s if unit.nil?
-    "#{volume} #{unit.symbol}"
+  def amount_with_unit
+    return @amount_with_unit if @amount_with_unit.present?
+    return amount.to_s if amount_unit.nil?
+    "#{amount} #{amount_unit&.symbol}"
   end
 
-  def volume_with_unit=(value)
-    @volume_with_unit = value
-  end
-
-  def mass_with_unit
-    return @mass_with_unit if @mass_with_unit.present?
-    return mass.to_s if mass_unit.nil?
-    "#{mass} #{mass_unit.symbol}"
-  end
-
-  def mass_with_unit=(value)
-    @mass_with_unit = value
-  end
-
-  def display_volume
-    return volume.to_s if unit.nil?
-    "#{volume} #{unit.symbol}"
-  end
-
-  def display_mass
-    return mass.to_s if mass_unit.nil?
-    "#{mass} #{mass_unit.symbol}"
+  def amount_with_unit=(value)
+    @amount_with_unit = value
   end
 
   def display_amount
-    if has_mass?
-      display_mass
-    elsif has_volume?
-      display_volume
-    else
-      "No amount specified"
-    end
+    return amount.to_s if amount_unit.nil?
+    "#{amount} #{amount_unit&.symbol}"
+  end
+
+  # Backward compatibility methods
+  def volume
+    return amount if amount_unit&.volume_unit?
+    nil
+  end
+
+  def mass
+    return amount if amount_unit&.mass_unit?
+    nil
+  end
+
+  def unit
+    return amount_unit if amount_unit&.volume_unit?
+    nil
+  end
+
+  def mass_unit
+    return amount_unit if amount_unit&.mass_unit?
+    nil
   end
 
   def has_volume?
-    volume.present? && volume > 0
+    amount.present? && amount > 0 && amount_unit&.volume_unit?
   end
 
   def has_mass?
-    mass.present? && mass > 0
+    amount.present? && amount > 0 && amount_unit&.mass_unit?
+  end
+
+  def volume_with_unit
+    return display_amount if has_volume?
+    nil
+  end
+
+  def volume_with_unit=(value)
+    self.amount_with_unit = value
+  end
+
+  def mass_with_unit
+    return display_amount if has_mass?
+    nil
+  end
+
+  def mass_with_unit=(value)
+    self.amount_with_unit = value
+  end
+
+  def display_volume
+    return display_amount if has_volume?
+    nil
+  end
+
+  def display_mass
+    return display_amount if has_mass?
+    nil
   end
 
   # Helper methods to determine content type
@@ -94,100 +113,47 @@ class WellContent < ApplicationRecord
 
   private
 
-  def must_have_volume_or_mass
-    unless has_volume? || has_mass?
-      errors.add(:base, "Must specify either volume or mass")
-    end
-
-    if has_volume? && has_mass?
-      errors.add(:base, "Cannot specify both volume and mass")
-    end
-  end
-
-  def parse_volume_with_unit_if_present
-    return unless @volume_with_unit.present?
+  def parse_amount_with_unit_if_present
+    return unless @amount_with_unit.present?
 
     # Remove extra whitespace and normalize
-    input = @volume_with_unit.strip
+    input = @amount_with_unit.strip
 
     # Try to match number followed by unit
     match = input.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Zμ]+)$/)
 
     if match
-      volume_value = match[1].to_f
+      amount_value = match[1].to_f
       unit_symbol = match[2]
 
       # Normalize common unit symbol variations
       unit_symbol = normalize_unit_symbol(unit_symbol)
       
-      Rails.logger.debug "Parsing volume with unit: '#{input}' -> volume: #{volume_value}, unit: '#{unit_symbol}'"
+      Rails.logger.debug "Parsing amount with unit: '#{input}' -> amount: #{amount_value}, unit: '#{unit_symbol}'"
 
       # Find unit by symbol (case insensitive)
       found_unit = Unit.where("LOWER(symbol) = ?", unit_symbol.downcase).first
 
       if found_unit
-        self.volume = volume_value
-        self.unit = found_unit
+        self.amount = amount_value
+        self.amount_unit = found_unit
       else
         # If unit not found, try to find by partial match
         found_unit = Unit.where("LOWER(symbol) LIKE ?", "%#{unit_symbol.downcase}%").first
         if found_unit
-          self.volume = volume_value
-          self.unit = found_unit
+          self.amount = amount_value
+          self.amount_unit = found_unit
         else
-          errors.add(:volume_with_unit, "Unknown unit: #{unit_symbol}")
+          errors.add(:amount_with_unit, "Unknown unit: #{unit_symbol}")
         end
       end
     else
       # Try to parse as just a number (no unit)
       if input.match(/^\d+(?:\.\d+)?$/)
-        self.volume = input.to_f
-        self.unit = nil
+        self.amount = input.to_f
+        self.amount_unit = nil
       else
-        errors.add(:volume_with_unit, "Invalid format. Please use format like '50 μL' or '1.5 mL'")
-      end
-    end
-  end
-
-  def parse_mass_with_unit_if_present
-    return unless @mass_with_unit.present?
-
-    # Remove extra whitespace and normalize
-    input = @mass_with_unit.strip
-
-    # Try to match number followed by unit
-    match = input.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Zμ]+)$/)
-
-    if match
-      mass_value = match[1].to_f
-      unit_symbol = match[2]
-
-      # Normalize common unit symbol variations
-      unit_symbol = normalize_unit_symbol(unit_symbol)
-
-      # Find unit by symbol (case insensitive)
-      found_unit = Unit.where("LOWER(symbol) = ?", unit_symbol.downcase).first
-
-      if found_unit
-        self.mass = mass_value
-        self.mass_unit = found_unit
-      else
-        # If unit not found, try to find by partial match
-        found_unit = Unit.where("LOWER(symbol) LIKE ?", "%#{unit_symbol.downcase}%").first
-        if found_unit
-          self.mass = mass_value
-          self.mass_unit = found_unit
-        else
-          errors.add(:mass_with_unit, "Unknown unit: #{unit_symbol}")
-        end
-      end
-    else
-      # Try to parse as just a number (no unit)
-      if input.match(/^\d+(?:\.\d+)?$/)
-        self.mass = input.to_f
-        self.mass_unit = nil
-      else
-        errors.add(:mass_with_unit, "Invalid format. Please use format like '50 mg' or '1.5 g'")
+        errors.add(:amount_with_unit, "Invalid format. Please use format like '50 μL' or '1.5 mg'")
       end
     end
   end

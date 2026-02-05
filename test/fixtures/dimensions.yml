@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+mass:
+  name: "Mass"
+  symbol: "M"
+  si_base_unit: "kg"
+  description: "Physical quantity of matter"
+
+volume:
+  name: "Volume" 
+  symbol: "V"
+  si_base_unit: "L"
+  description: "Amount of space occupied by an object"
+
+other:
+  name: "Other"
+  symbol: "?"
+  si_base_unit: "-"
+  description: "Miscellaneous measurements"

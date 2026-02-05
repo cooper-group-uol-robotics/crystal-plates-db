@@ -3,11 +3,15 @@
 one:
   well: one
   stock_solution: one
-  volume: 1.5
-  unit: microliters
+  amount: 1.5
+  amount_unit: microliters
+  contentable_type: "StockSolution"
+  contentable: one (StockSolution)
 
 two:
   well: two
   stock_solution: two
-  volume: 2.0
-  unit: milliliters
+  amount: 2.0
+  amount_unit: milliliters
+  contentable_type: "StockSolution"
+  contentable: two (StockSolution)
