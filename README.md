@@ -140,17 +140,6 @@ bundle exec rails test        # Test suite
   - `app/javascript/scxrd/reciprocal_lattice_viewer.js` - Frontend visualization
   - Files matching pattern `*peakhunt.tabbin` with twin crystal data
 
-### Turbo Integration
-- **Issue**: Turbo Drive causes compatibility issues with dynamic content updates
-- **Current State**: Turbo imported but not fully activated
-- **Recommended Approach**: Gradual adoption on isolated pages first
-- **Affected Areas**: Form submissions, AJAX-heavy pages, dynamic content updates
-
-### Asset Pipeline Migration
-- **Status**: Successfully migrated from Sprockets to Propsharp (Rails 8 default)
-- **Note**: Some legacy asset references may need updating
-- **Module System**: Using Importmap + ES6 modules (no build step required)
-
 ## API Endpoints
 
 ### Plates
@@ -171,10 +160,6 @@ bundle exec rails test        # Test suite
 ### Utilities
 - `GET /api/v1/health` - System health check
 - `GET /api/v1/stats` - System statistics
-
-## Deployment
-
-For production deployment instructions using GitHub Actions, see [DEPLOYMENT_GITHUB_ACTIONS.md](DEPLOYMENT_GITHUB_ACTIONS.md).
 
 ## Contributing
 

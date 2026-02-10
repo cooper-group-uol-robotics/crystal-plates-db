@@ -4,7 +4,7 @@ module Api::V1
 
     # GET /api/v1/plates
     def index
-      plates = Plate.includes(:wells, :plate_locations)
+      plates = Plate.includes(:wells, :plate_locations, :plate_prototype)
 
       # Filter by assignment status if requested
       if params[:assigned].present?
@@ -15,12 +15,17 @@ module Api::V1
         end
       end
 
-      render_success(plates.all.map { |plate| plate_json(plate, include_wells: false, include_points_of_interest: false) })
+      # Preload counts for efficient queries
+      plates_with_counts = plates.all.map do |plate|
+        plate_json(plate, include_wells: false, include_points_of_interest: false, include_counts: true)
+      end
+      
+      render_success(plates_with_counts)
     end
 
     # GET /api/v1/plates/:barcode
     def show
-      render_success(plate_json(@plate, include_wells: true, include_points_of_interest: true))
+      render_success(plate_json(@plate, include_wells: true, include_points_of_interest: true, include_counts: true))
     end
 
     # POST /api/v1/plates
@@ -145,7 +150,7 @@ module Api::V1
       end
     end
 
-    def plate_json(plate, include_wells: false, include_points_of_interest: false)
+    def plate_json(plate, include_wells: false, include_points_of_interest: false, include_counts: false)
       result = {
         barcode: plate.barcode,
         name: plate.name,
@@ -154,11 +159,26 @@ module Api::V1
         updated_at: plate.updated_at,
         rows: plate.rows,
         columns: plate.columns,
+        plate_type: plate.plate_prototype ? plate_prototype_json(plate.plate_prototype) : nil,
         current_location: plate.current_location ? location_json(plate.current_location) : nil
       }
+
+      # Add counts at plate level if requested
+      if include_counts
+        result[:images_count] = Image.joins(:well).where(wells: { plate_id: plate.id }).count
+        result[:scxrd_datasets_count] = ScxrdDataset.joins(:well).where(wells: { plate_id: plate.id }).count
+        result[:pxrd_patterns_count] = PxrdPattern.joins(:well).where(wells: { plate_id: plate.id }).count
+        result[:well_contents_count] = WellContent.joins(:well).where(wells: { plate_id: plate.id }).count
+      end
+
       if include_wells
-        # Preload associations for better performance
-        wells_with_contents = plate.wells.includes(well_contents: [ :contentable, :amount_unit ])
+        # Preload associations for better performance including counts
+        wells_with_contents = plate.wells.includes(
+          :images,
+          :scxrd_datasets,
+          :pxrd_patterns,
+          well_contents: [ :contentable, :amount_unit ]
+        )
 
         result[:wells] = wells_with_contents.map do |well|
           {
@@ -172,6 +192,10 @@ module Api::V1
               y_mm: well.y_mm,
               z_mm: well.z_mm
             } : nil,
+            images_count: well.images.size,
+            scxrd_datasets_count: well.scxrd_datasets.size,
+            pxrd_patterns_count: well.pxrd_patterns.size,
+            contents_count: well.well_contents.size,
             contents: well.well_contents.map do |content|
               {
                 id: content.id,
@@ -212,6 +236,13 @@ module Api::V1
         carousel_position: location.carousel_position,
         hotel_position: location.hotel_position,
         name: location.name
+      }
+    end
+
+    def plate_prototype_json(prototype)
+      {
+        id: prototype.id,
+        name: prototype.name
       }
     end
 

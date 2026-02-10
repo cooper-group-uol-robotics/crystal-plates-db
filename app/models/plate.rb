@@ -1,6 +1,7 @@
 class Plate < ApplicationRecord
     acts_as_paranoid
 
+    belongs_to :plate_prototype, optional: true
     has_many :wells
     has_many :point_of_interests, through: :wells
     has_many :plate_locations
