@@ -6,7 +6,7 @@ export default class extends Controller {
     "chemicalPanel", "selectedWellLabel", "chemicalBarcode", "chemicalFeedback",
     "massInputSection", "chemicalMass", "chemicalInfo", "chemicalName", "chemicalCas",
     "wellsFilledCount", "currentPlateBarcode", "savePlateBtn", "screenFlash", "plateStatus",
-    "resetBtn"
+    "resetBtn", "allowDuplicatesCheckbox"
   ]
 
   static values = {
@@ -352,90 +352,98 @@ export default class extends Controller {
       if (data && data.length > 0) {
         const chemical = data[0]
 
-        // First check if this chemical is already used in the current plate
-        const conflictingWell = Object.keys(this.wellData).find(wellId =>
-          this.wellData[wellId].chemical_cas === chemical.cas
-        )
+        // Check if duplicates are allowed
+        const allowDuplicates = this.hasAllowDuplicatesCheckboxTarget && this.allowDuplicatesCheckboxTarget.checked
 
-        if (conflictingWell) {
-          // Flash red and clear input - chemical already used in current plate
-          this.flashScreen('red')
-          this.chemicalBarcodeTarget.value = ''
-          this.setFeedbackMessage(`This chemical (CAS: ${chemical.cas}) is already used in well ${conflictingWell} on this plate`, 'form-text text-danger')
+        // First check if this chemical is already used in the current plate (unless duplicates allowed)
+        if (!allowDuplicates) {
+          const conflictingWell = Object.keys(this.wellData).find(wellId =>
+            this.wellData[wellId].chemical_cas === chemical.cas
+          )
 
-          // Mark well as error
-          this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
-            el.classList.add('error')
-          })
+          if (conflictingWell) {
+            // Flash red and clear input - chemical already used in current plate
+            this.flashScreen('red')
+            this.chemicalBarcodeTarget.value = ''
+            this.setFeedbackMessage(`This chemical (CAS: ${chemical.cas}) is already used in well ${conflictingWell} on this plate`, 'form-text text-danger')
 
-          // Keep focus in the chemical barcode input
-          this.chemicalBarcodeTarget.focus()
-          return
+            // Mark well as error
+            this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
+              el.classList.add('error')
+            })
+
+            // Keep focus in the chemical barcode input
+            this.chemicalBarcodeTarget.focus()
+            return
+          }
         }
 
-        // Then check CAS usage in other plates in the database
-        const casUrl = new URL(this.checkChemicalCasUrlValue, window.location.origin)
-        casUrl.searchParams.set('chemical_id', chemical.id)
+        // Then check CAS usage in other plates in the database (unless duplicates allowed)
+        if (!allowDuplicates) {
+          const casUrl = new URL(this.checkChemicalCasUrlValue, window.location.origin)
+          casUrl.searchParams.set('chemical_id', chemical.id)
 
-        const casResponse = await fetch(casUrl)
-        const casData = await casResponse.json()
+          const casResponse = await fetch(casUrl)
+          const casData = await casResponse.json()
 
-        if (casData.cas_used) {
-          // Flash red and clear input - chemical used in other plates
-          this.flashScreen('red')
-          this.chemicalBarcodeTarget.value = ''
+          if (casData.cas_used) {
+            // Flash red and clear input - chemical used in other plates
+            this.flashScreen('red')
+            this.chemicalBarcodeTarget.value = ''
 
-          // Show detailed conflict information
-          let conflictMessage = `This chemical (CAS: ${chemical.cas}) has already been used:`
-          if (casData.conflicts && casData.conflicts.length > 0) {
-            const conflicts = casData.conflicts.slice(0, 3) // Show max 3 conflicts to avoid UI overflow
-            const conflictDetails = conflicts.map(conflict =>
-              `\n• Plate ${conflict.plate_barcode}${conflict.plate_name ? ` (${conflict.plate_name})` : ''}, Well ${conflict.well_position}: ${conflict.chemical_name}${conflict.chemical_barcode ? ` [${conflict.chemical_barcode}]` : ''}`
-            ).join('')
-            conflictMessage += conflictDetails
+            // Show detailed conflict information
+            let conflictMessage = `This chemical (CAS: ${chemical.cas}) has already been used:`
+            if (casData.conflicts && casData.conflicts.length > 0) {
+              const conflicts = casData.conflicts.slice(0, 3) // Show max 3 conflicts to avoid UI overflow
+              const conflictDetails = conflicts.map(conflict =>
+                `\n• Plate ${conflict.plate_barcode}${conflict.plate_name ? ` (${conflict.plate_name})` : ''}, Well ${conflict.well_position}: ${conflict.chemical_name}${conflict.chemical_barcode ? ` [${conflict.chemical_barcode}]` : ''}`
+              ).join('')
+              conflictMessage += conflictDetails
 
-            if (casData.conflicts.length > 3) {
-              conflictMessage += `\n• ...and ${casData.conflicts.length - 3} more`
+              if (casData.conflicts.length > 3) {
+                conflictMessage += `\n• ...and ${casData.conflicts.length - 3} more`
+              }
+            } else {
+              conflictMessage += ' in another plate'
             }
-          } else {
-            conflictMessage += ' in another plate'
+
+            this.setFeedbackMessage(conflictMessage, 'form-text text-danger', true)
+
+            // Mark well as error
+            this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
+              el.classList.add('error')
+            })
+
+            // Keep focus in the chemical barcode input
+            this.chemicalBarcodeTarget.focus()
+            return
           }
-
-          this.setFeedbackMessage(conflictMessage, 'form-text text-danger', true)
-
-          // Mark well as error
-          this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
-            el.classList.add('error')
-          })
-
-          // Keep focus in the chemical barcode input
-          this.chemicalBarcodeTarget.focus()
-        } else {
-          // Flash green and proceed
-          this.flashScreen('green')
-          this.setFeedbackMessage('Chemical approved - ready for weighing', 'form-text text-success')
-
-          // Show chemical info
-          this.showChemicalInfo(chemical.name, chemical.cas)
-          this.massInputSectionTarget.style.display = 'block'
-
-          // Store chemical info
-          if (!this.wellData[this.selectedWell]) {
-            this.wellData[this.selectedWell] = {}
-          }
-          this.wellData[this.selectedWell].chemical_id = chemical.id
-          this.wellData[this.selectedWell].chemical_name = chemical.name
-          this.wellData[this.selectedWell].chemical_cas = chemical.cas
-          this.wellData[this.selectedWell].chemical_barcode = chemical.barcode
-
-          // Mark well as valid
-          this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
-            el.classList.remove('error')
-            el.classList.add('valid')
-          })
-
-          this.chemicalMassTarget.focus()
         }
+
+        // Flash green and proceed
+        this.flashScreen('green')
+        this.setFeedbackMessage('Chemical approved - ready for weighing', 'form-text text-success')
+
+        // Show chemical info
+        this.showChemicalInfo(chemical.name, chemical.cas)
+        this.massInputSectionTarget.style.display = 'block'
+
+        // Store chemical info
+        if (!this.wellData[this.selectedWell]) {
+          this.wellData[this.selectedWell] = {}
+        }
+        this.wellData[this.selectedWell].chemical_id = chemical.id
+        this.wellData[this.selectedWell].chemical_name = chemical.name
+        this.wellData[this.selectedWell].chemical_cas = chemical.cas
+        this.wellData[this.selectedWell].chemical_barcode = chemical.barcode
+
+        // Mark well as valid
+        this.element.querySelectorAll(`[data-well-id="${this.selectedWell}"]`).forEach(el => {
+          el.classList.remove('error')
+          el.classList.add('valid')
+        })
+
+        this.chemicalMassTarget.focus()
       } else {
         // Flash red for chemical not found
         this.flashScreen('red')

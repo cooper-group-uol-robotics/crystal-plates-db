@@ -6,12 +6,12 @@ class PlatesController < ApplicationController
   def index
     # Handle sorting
     sort_column = params[:sort] || "barcode"
-    sort_direction = params[:direction] || "asc"
+    sort_direction = params[:direction] || "desc"
 
     # Validate sort parameters
     allowed_columns = %w[barcode created_at]
     sort_column = "barcode" unless allowed_columns.include?(sort_column)
-    sort_direction = "asc" unless %w[asc desc].include?(sort_direction)
+    sort_direction = "desc" unless %w[asc desc].include?(sort_direction)
 
     case sort_column
     when "barcode"
