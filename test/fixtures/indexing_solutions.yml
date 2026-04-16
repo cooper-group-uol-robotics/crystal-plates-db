@@ -1,0 +1,57 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  scxrd_dataset: one
+  ub11: 0.097656
+  ub12: -0.004123
+  ub13: 0.013245
+  ub21: 0.001234
+  ub22: 0.116789
+  ub23: -0.002345
+  ub31: -0.003456
+  ub32: 0.000987
+  ub33: 0.115678
+  wavelength: 0.71073
+  primitive_a: 7.2218583
+  primitive_b: 8.5410638
+  primitive_c: 8.5902173
+  primitive_alpha: 107.6582105
+  primitive_beta: 91.8679754
+  primitive_gamma: 90.9411566
+  spots_found: 1000
+  spots_indexed: 785
+  source: "CIF"
+
+two:
+  scxrd_dataset: one
+  ub11: 0.098234
+  ub12: -0.004567
+  ub13: 0.012987
+  ub21: 0.001456
+  ub22: 0.117234
+  ub23: -0.002189
+  ub31: -0.003789
+  ub32: 0.001123
+  ub33: 0.116012
+  wavelength: 0.71073
+  primitive_a: 7.2356789
+  primitive_b: 8.5289123
+  primitive_c: 8.5780234
+  primitive_alpha: 107.5123456
+  primitive_beta: 91.7845678
+  primitive_gamma: 90.8234567
+  spots_found: 1000
+  spots_indexed: 723
+  source: "PAR"
+
+three:
+  scxrd_dataset: two
+  primitive_a: 10.5
+  primitive_b: 11.2
+  primitive_c: 9.8
+  primitive_alpha: 90.0
+  primitive_beta: 95.3
+  primitive_gamma: 90.0
+  spots_found: 500
+  spots_indexed: 450
+  source: "Migrated from dataset"

@@ -93,6 +93,7 @@ Rails.application.routes.draw do
       post :csd_search
       get :similarity_counts
     end
+    resources :indexing_solutions, only: [ :index, :show, :create, :destroy ]
     resources :diffraction_images, only: [ :index, :show ] do
       member do
         get :image_data
@@ -227,6 +228,7 @@ Rails.application.routes.draw do
           post :upload_archive
           post "plate/:barcode/well/:well_string", action: :upload_to_well, as: :upload_to_well
         end
+        resources :indexing_solutions, only: [ :index, :show, :create, :destroy ]
         resources :diffraction_images, only: [ :index, :show ] do
           member do
             get :image_data

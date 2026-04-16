@@ -1233,6 +1233,184 @@ Search SCXRD datasets with various filters.
 }
 ```
 
+### Indexing Solutions API
+
+SCXRD datasets can have multiple proposed indexing solutions, each representing a different interpretation of the diffraction pattern with its own UB matrix, unit cell parameters, and indexing statistics. The system automatically selects the best solution based on indexing rate (spots_indexed).
+
+#### List Indexing Solutions
+
+**GET** `/api/v1/scxrd_datasets/:scxrd_dataset_id/indexing_solutions`
+
+List all indexing solutions for a specific SCXRD dataset, ordered by quality (highest indexing rate first).
+
+##### Parameters
+- `scxrd_dataset_id` (path, required) - SCXRD Dataset ID
+
+##### Response Example
+```json
+{
+  "scxrd_dataset_id": 456,
+  "count": 2,
+  "active_solution_id": 789,
+  "solutions": [
+    {
+      "id": 789,
+      "source": "CIF",
+      "created_at": "2024-01-15T14:30:22.123Z",
+      "ub_matrix": {
+        "ub11": 0.097656,
+        "ub12": -0.004123,
+        "ub13": 0.013245,
+        "ub21": 0.001234,
+        "ub22": 0.116789,
+        "ub23": -0.002345,
+        "ub31": -0.003456,
+        "ub32": 0.000987,
+        "ub33": 0.115678,
+        "wavelength": 0.71073
+      },
+      "primitive_unit_cell": {
+        "a": 7.222,
+        "b": 8.541,
+        "c": 8.590,
+        "alpha": 107.658,
+        "beta": 91.868,
+        "gamma": 90.941
+      },
+      "conventional_unit_cell": {
+        "a": 7.222,
+        "b": 8.541,
+        "c": 8.590,
+        "alpha": 107.658,
+        "beta": 91.868,
+        "gamma": 90.941,
+        "bravais": "aP",
+        "cb_op": "a,b,c",
+        "distance": 0.0
+      },
+      "spots_found": 1000,
+      "spots_indexed": 785,
+      "indexing_rate": 78.5,
+      "is_active": true
+    },
+    {
+      "id": 790,
+      "source": "PAR",
+      "created_at": "2024-01-15T14:30:23.456Z",
+      "ub_matrix": { ... },
+      "primitive_unit_cell": { ... },
+      "spots_found": 1000,
+      "spots_indexed": 723,
+      "indexing_rate": 72.3,
+      "is_active": false
+    }
+  ]
+}
+```
+
+#### Get Indexing Solution Details
+
+**GET** `/api/v1/scxrd_datasets/:scxrd_dataset_id/indexing_solutions/:id`
+
+Get detailed information about a specific indexing solution.
+
+##### Parameters
+- `scxrd_dataset_id` (path, required) - SCXRD Dataset ID
+- `id` (path, required) - Indexing Solution ID
+
+##### Response Example
+```json
+{
+  "solution": {
+    "id": 789,
+    "source": "CIF",
+    "display_label": "CIF (78.5% indexed) created 2024-01-15 14:30",
+    "created_at": "2024-01-15T14:30:22.123Z",
+    "ub_matrix": { ... },
+    "primitive_unit_cell": { ... },
+    "conventional_unit_cell": { ... },
+    "spots_found": 1000,
+    "spots_indexed": 785,
+    "indexing_rate": 78.5,
+    "is_active": true
+  }
+}
+```
+
+#### Create Indexing Solution
+
+**POST** `/api/v1/scxrd_datasets/:scxrd_dataset_id/indexing_solutions`
+
+Create a new indexing solution manually (e.g., from external refinement software).
+
+##### Parameters
+- `scxrd_dataset_id` (path, required) - SCXRD Dataset ID
+
+##### Request Body
+```json
+{
+  "indexing_solution": {
+    "source": "Manual refinement",
+    "ub11": 0.098234,
+    "ub12": -0.004567,
+    "ub13": 0.012987,
+    "ub21": 0.001456,
+    "ub22": 0.117234,
+    "ub23": -0.002189,
+    "ub31": -0.003789,
+    "ub32": 0.001123,
+    "ub33": 0.116012,
+    "wavelength": 0.71073,
+    "primitive_a": 7.236,
+    "primitive_b": 8.529,
+    "primitive_c": 8.578,
+    "primitive_alpha": 107.512,
+    "primitive_beta": 91.785,
+    "primitive_gamma": 90.823,
+    "spots_found": 1000,
+    "spots_indexed": 850
+  }
+}
+```
+
+##### Response Example
+```json
+{
+  "message": "Indexing solution created successfully",
+  "solution": {
+    "id": 791,
+    "source": "Manual refinement",
+    "indexing_rate": 85.0,
+    "is_active": true
+  }
+}
+```
+
+#### Delete Indexing Solution
+
+**DELETE** `/api/v1/scxrd_datasets/:scxrd_dataset_id/indexing_solutions/:id`
+
+Delete an indexing solution.
+
+##### Parameters
+- `scxrd_dataset_id` (path, required) - SCXRD Dataset ID
+- `id` (path, required) - Indexing Solution ID
+
+##### Response Example
+```json
+{
+  "message": "Indexing solution deleted successfully"
+}
+```
+
+#### Indexing Solution Selection Logic
+
+The system automatically selects the "active" solution based on the following criteria:
+1. **Primary**: Highest `spots_indexed` count (best indexing statistics)
+2. **Fallback**: If indexing rates are equal, most recent solution (`created_at DESC`)
+
+When displaying unit cell parameters or UB matrices via the SCXRD dataset endpoints, the data from the active solution is used. The SCXRD dataset model delegates these attributes to its active solution transparently.
+
 ### SCXRD Data Models
 
 #### SCXRD Dataset Object

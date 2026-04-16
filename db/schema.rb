@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_05_144253) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_21_172947) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -138,6 +138,43 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_05_144253) do
     t.datetime "updated_at", null: false
     t.index ["captured_at"], name: "index_images_on_captured_at"
     t.index ["well_id"], name: "index_images_on_well_id"
+  end
+
+  create_table "indexing_solutions", force: :cascade do |t|
+    t.integer "scxrd_dataset_id", null: false
+    t.float "ub11"
+    t.float "ub12"
+    t.float "ub13"
+    t.float "ub21"
+    t.float "ub22"
+    t.float "ub23"
+    t.float "ub31"
+    t.float "ub32"
+    t.float "ub33"
+    t.float "wavelength"
+    t.float "primitive_a"
+    t.float "primitive_b"
+    t.float "primitive_c"
+    t.float "primitive_alpha"
+    t.float "primitive_beta"
+    t.float "primitive_gamma"
+    t.float "conventional_a"
+    t.float "conventional_b"
+    t.float "conventional_c"
+    t.float "conventional_alpha"
+    t.float "conventional_beta"
+    t.float "conventional_gamma"
+    t.string "conventional_bravais"
+    t.string "conventional_cb_op"
+    t.float "conventional_distance"
+    t.integer "spots_found"
+    t.integer "spots_indexed"
+    t.string "source"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["scxrd_dataset_id", "spots_indexed"], name: "index_indexing_solutions_on_scxrd_dataset_id_and_spots_indexed"
+    t.index ["scxrd_dataset_id"], name: "index_indexing_solutions_on_scxrd_dataset_id"
+    t.index ["spots_indexed"], name: "index_indexing_solutions_on_spots_indexed"
   end
 
   create_table "lattice_centrings", force: :cascade do |t|
@@ -370,6 +407,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_05_144253) do
   add_foreign_key "calorimetry_experiments", "plates"
   add_foreign_key "diffraction_images", "scxrd_datasets"
   add_foreign_key "images", "wells"
+  add_foreign_key "indexing_solutions", "scxrd_datasets"
   add_foreign_key "plate_locations", "locations"
   add_foreign_key "plate_locations", "plates"
   add_foreign_key "plates", "plate_prototypes"

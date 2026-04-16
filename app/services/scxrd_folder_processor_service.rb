@@ -150,11 +150,11 @@ class ScxrdFolderProcessorService
       @metadata.merge!(coordinates) if coordinates
     end
 
-    # Parse UB matrices from both CIF and PAR files, then choose the best one
-    ub_matrix = select_best_ub_matrix
-    if ub_matrix
+    # Parse UB matrices from both CIF and PAR files, return all solutions
+    solutions = extract_all_ub_matrices
+    if solutions && solutions.any?
       @metadata ||= {}
-      @metadata.merge!(ub_matrix)
+      @metadata[:solutions] = solutions
     end
 
     # Extract crystal image from movie/oneclickmovie*.jpg
@@ -656,77 +656,97 @@ class ScxrdFolderProcessorService
     end
   end
 
-  def select_best_ub_matrix
-    Rails.logger.info "SCXRD: Selecting best UB matrix by comparing indexing rates"
+  def extract_all_ub_matrices
+    Rails.logger.info "SCXRD: Extracting all UB matrices from CIF and PAR files"
+    
+    solutions = []
     
     # Parse both UB matrices
     cif_ub_matrix = parse_cif_file_for_ub_matrix
     par_ub_matrix = parse_cracker_par_file
     
-    # If we only have one, return it
-    return cif_ub_matrix if cif_ub_matrix && !par_ub_matrix
-    return par_ub_matrix if par_ub_matrix && !cif_ub_matrix
-    return nil unless cif_ub_matrix && par_ub_matrix
+    # If neither found, return empty array
+    return [] unless cif_ub_matrix || par_ub_matrix
     
-    # We have both - calculate indexing rate for each
-    Rails.logger.info "SCXRD: Both CIF and PAR UB matrices found, comparing indexing rates..."
+    # Calculate indexing statistics if peak table data is available
+    spots_found = nil
+    data_points = nil
     
-    # Need peak table data to calculate indexing rates
-    unless @peak_table_data
-      Rails.logger.warn "SCXRD: No peak table data available, defaulting to CIF UB matrix"
-      return cif_ub_matrix
+    if @peak_table_data
+      begin
+        parser = PeakTableParserService.new(@peak_table_data)
+        parsed_data = parser.parse
+        
+        if parsed_data[:success] && parsed_data[:data_points].present?
+          data_points = parsed_data[:data_points]
+          spots_found = data_points.length
+          Rails.logger.info "SCXRD: Parsed #{spots_found} spots from peak table for indexing calculation"
+        else
+          Rails.logger.warn "SCXRD: Failed to parse peak table, cannot calculate indexing statistics"
+        end
+      rescue => e
+        Rails.logger.error "SCXRD: Error parsing peak table: #{e.message}"
+      end
+    else
+      Rails.logger.info "SCXRD: No peak table data available, indexing statistics will not be calculated"
     end
     
-    # Parse peak table
-    begin
-      parser = PeakTableParserService.new(@peak_table_data)
-      parsed_data = parser.parse
+    # Process CIF UB matrix
+    if cif_ub_matrix
+      solution = { ub_matrix: cif_ub_matrix, source: "CIF" }
       
-      unless parsed_data[:success] && parsed_data[:data_points].present?
-        Rails.logger.warn "SCXRD: Failed to parse peak table, defaulting to CIF UB matrix"
-        return cif_ub_matrix
+      # Calculate indexing statistics if we have data points
+      if data_points
+        begin
+          cif_ub_array = [
+            [cif_ub_matrix[:ub11], cif_ub_matrix[:ub12], cif_ub_matrix[:ub13]],
+            [cif_ub_matrix[:ub21], cif_ub_matrix[:ub22], cif_ub_matrix[:ub23]],
+            [cif_ub_matrix[:ub31], cif_ub_matrix[:ub32], cif_ub_matrix[:ub33]]
+          ]
+          
+          result = SpotIndexingService.calculate_indexed_spots(data_points, cif_ub_array, tolerance: 0.125)
+          solution[:spots_found] = spots_found
+          solution[:spots_indexed] = result[:indexed_count]
+          solution[:indexing_rate] = result[:indexing_rate]
+          
+          Rails.logger.info "SCXRD: CIF UB matrix indexing: #{result[:indexing_rate]}% (#{result[:indexed_count]}/#{spots_found} spots)"
+        rescue => e
+          Rails.logger.error "SCXRD: Error calculating CIF indexing statistics: #{e.message}"
+        end
       end
       
-      data_points = parsed_data[:data_points]
-      Rails.logger.info "SCXRD: Parsed #{data_points.length} spots from peak table"
-      
-      # Calculate indexing rate for CIF UB matrix
-      cif_ub_array = [
-        [cif_ub_matrix[:ub11], cif_ub_matrix[:ub12], cif_ub_matrix[:ub13]],
-        [cif_ub_matrix[:ub21], cif_ub_matrix[:ub22], cif_ub_matrix[:ub23]],
-        [cif_ub_matrix[:ub31], cif_ub_matrix[:ub32], cif_ub_matrix[:ub33]]
-      ]
-      
-      cif_result = SpotIndexingService.calculate_indexed_spots(data_points, cif_ub_array, tolerance: 0.125)
-      cif_rate = cif_result[:indexing_rate] || 0.0
-      Rails.logger.info "SCXRD: CIF UB matrix indexing rate: #{cif_rate}% (#{cif_result[:indexed_count]}/#{cif_result[:total_count]} spots)"
-      
-      # Calculate indexing rate for PAR UB matrix
-      par_ub_array = [
-        [par_ub_matrix[:ub11], par_ub_matrix[:ub12], par_ub_matrix[:ub13]],
-        [par_ub_matrix[:ub21], par_ub_matrix[:ub22], par_ub_matrix[:ub23]],
-        [par_ub_matrix[:ub31], par_ub_matrix[:ub32], par_ub_matrix[:ub33]]
-      ]
-      
-      par_result = SpotIndexingService.calculate_indexed_spots(data_points, par_ub_array, tolerance: 0.125)
-      par_rate = par_result[:indexing_rate] || 0.0
-      Rails.logger.info "SCXRD: PAR UB matrix indexing rate: #{par_rate}% (#{par_result[:indexed_count]}/#{par_result[:total_count]} spots)"
-      
-      # Select the one with higher indexing rate
-      if cif_rate >= par_rate
-        Rails.logger.info "SCXRD: Selected CIF UB matrix (#{cif_rate}% vs #{par_rate}%)"
-        cif_ub_matrix
-      else
-        Rails.logger.info "SCXRD: Selected PAR UB matrix (#{par_rate}% vs #{cif_rate}%)"
-        par_ub_matrix
-      end
-      
-    rescue => e
-      Rails.logger.error "SCXRD: Error comparing UB matrices: #{e.message}"
-      Rails.logger.error "SCXRD: Backtrace: #{e.backtrace.first(5).join("\n")}"
-      Rails.logger.warn "SCXRD: Defaulting to CIF UB matrix due to comparison error"
-      cif_ub_matrix
+      solutions << solution
     end
+    
+    # Process PAR UB matrix
+    if par_ub_matrix
+      solution = { ub_matrix: par_ub_matrix, source: "PAR" }
+      
+      # Calculate indexing statistics if we have data points
+      if data_points
+        begin
+          par_ub_array = [
+            [par_ub_matrix[:ub11], par_ub_matrix[:ub12], par_ub_matrix[:ub13]],
+            [par_ub_matrix[:ub21], par_ub_matrix[:ub22], par_ub_matrix[:ub23]],
+            [par_ub_matrix[:ub31], par_ub_matrix[:ub32], par_ub_matrix[:ub33]]
+          ]
+          
+          result = SpotIndexingService.calculate_indexed_spots(data_points, par_ub_array, tolerance: 0.125)
+          solution[:spots_found] = spots_found
+          solution[:spots_indexed] = result[:indexed_count]
+          solution[:indexing_rate] = result[:indexing_rate]
+          
+          Rails.logger.info "SCXRD: PAR UB matrix indexing: #{result[:indexing_rate]}% (#{result[:indexed_count]}/#{spots_found} spots)"
+        rescue => e
+          Rails.logger.error "SCXRD: Error calculating PAR indexing statistics: #{e.message}"
+        end
+      end
+      
+      solutions << solution
+    end
+    
+    Rails.logger.info "SCXRD: Extracted #{solutions.length} UB matrix solution(s)"
+    solutions
   end
 
   def parse_cif_file_for_ub_matrix

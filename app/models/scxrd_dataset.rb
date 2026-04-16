@@ -1,6 +1,7 @@
 class ScxrdDataset < ApplicationRecord
   belongs_to :well, optional: true
   has_many :diffraction_images, dependent: :destroy
+  has_many :indexing_solutions, dependent: :destroy
   has_one_attached :archive
   has_one_attached :peak_table
   has_one_attached :crystal_image
@@ -24,9 +25,11 @@ class ScxrdDataset < ApplicationRecord
   validates :real_world_x_mm, :real_world_y_mm, :real_world_z_mm, numericality: true, allow_nil: true
   validates :spots_found, :spots_indexed, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
 
-  # Callback to compute similarities when dataset is created or unit cell data changes
-  after_create :compute_unit_cell_similarities, if: :has_primitive_cell?
-  after_update :compute_unit_cell_similarities, if: -> { saved_change_to_primitive_cell? && has_primitive_cell? }
+  # DEPRECATED: Callbacks moved to IndexingSolution model
+  # These are kept for backward compatibility with existing data on the dataset model
+  # TODO: Remove after full migration to IndexingSolution
+  # after_create :compute_unit_cell_similarities, if: :has_primitive_cell?
+  # after_update :compute_unit_cell_similarities, if: -> { saved_change_to_primitive_cell? && has_primitive_cell? }
 
   # Processing log methods
   def has_processing_log?
@@ -36,6 +39,18 @@ class ScxrdDataset < ApplicationRecord
   def processing_log_lines
     return [] unless has_processing_log?
     processing_log.split("\n")
+  end
+
+  # Indexing solution methods
+  # Returns the best indexing solution based on spots_indexed (highest indexing rate)
+  # Falls back to newest solution if indexing rates are equal
+  def best_solution
+    indexing_solutions.ordered_by_quality.first
+  end
+
+  # Alias for clarity - the currently active/displayed solution
+  def active_solution
+    best_solution
   end
 
   # Scopes
@@ -402,84 +417,145 @@ class ScxrdDataset < ApplicationRecord
   end
 
   # UB matrix methods
+  # Delegates to active_solution if available, falls back to dataset columns for backward compatibility
   def has_ub_matrix?
-    ub11.present? && ub12.present? && ub13.present? &&
-    ub21.present? && ub22.present? && ub23.present? &&
-    ub31.present? && ub32.present? && ub33.present?
+    if active_solution.present?
+      active_solution.has_ub_matrix?
+    else
+      # Fallback to dataset model columns (deprecated)
+      ub11.present? && ub12.present? && ub13.present? &&
+      ub21.present? && ub22.present? && ub23.present? &&
+      ub31.present? && ub32.present? && ub33.present?
+    end
   end
 
   def ub_matrix_as_array
-    return nil unless has_ub_matrix?
-    [
-      [ub11, ub12, ub13],
-      [ub21, ub22, ub23],
-      [ub31, ub32, ub33]
-    ]
+    if active_solution.present?
+      active_solution.ub_matrix_as_array
+    else
+      # Fallback to dataset model columns (deprecated)
+      return nil unless has_ub_matrix?
+      [
+        [ub11, ub12, ub13],
+        [ub21, ub22, ub23],
+        [ub31, ub32, ub33]
+      ]
+    end
   end
 
   def cell_parameters_from_ub_matrix
-    return nil unless has_ub_matrix?
-    UbMatrixService.ub_matrix_to_cell_parameters(
-      ub11, ub12, ub13,
-      ub21, ub22, ub23,
-      ub31, ub32, ub33,
-      wavelength || 0.71073  # Default to Mo wavelength if not set
-    )
+    if active_solution.present?
+      active_solution.cell_parameters_from_ub_matrix
+    else
+      # Fallback to dataset model columns (deprecated)
+      return nil unless has_ub_matrix?
+      UbMatrixService.ub_matrix_to_cell_parameters(
+        ub11, ub12, ub13,
+        ub21, ub22, ub23,
+        ub31, ub32, ub33,
+        wavelength || 0.71073  # Default to Mo wavelength if not set
+      )
+    end
   end
 
   # Unit cell conversion methods
+  # Delegates to active_solution if available, falls back to dataset columns for backward compatibility
   def has_primitive_cell?
-    primitive_a.present? && primitive_b.present? && primitive_c.present? &&
-    primitive_alpha.present? && primitive_beta.present? && primitive_gamma.present?
+    if active_solution.present?
+      active_solution.has_primitive_cell?
+    else
+      # Fallback to dataset model columns (deprecated)
+      primitive_a.present? && primitive_b.present? && primitive_c.present? &&
+      primitive_alpha.present? && primitive_beta.present? && primitive_gamma.present?
+    end
   end
 
   def has_conventional_cell?
-    conventional_a.present? && conventional_b.present? && conventional_c.present? &&
-    conventional_alpha.present? && conventional_beta.present? && conventional_gamma.present?
+    if active_solution.present?
+      active_solution.has_conventional_cell?
+    else
+      # Fallback to dataset model columns (deprecated)
+      conventional_a.present? && conventional_b.present? && conventional_c.present? &&
+      conventional_alpha.present? && conventional_beta.present? && conventional_gamma.present?
+    end
   end
 
   def conventional_cells
     return [] unless has_primitive_cell?
 
-    @conventional_cells ||= ConventionalCellService.convert_to_conventional(
-      primitive_a, primitive_b, primitive_c,
-      primitive_alpha, primitive_beta, primitive_gamma
-    ) || []
+    if active_solution.present?
+      primitive_params = [
+        active_solution.primitive_a, active_solution.primitive_b, active_solution.primitive_c,
+        active_solution.primitive_alpha, active_solution.primitive_beta, active_solution.primitive_gamma
+      ]
+    else
+      primitive_params = [primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma]
+    end
+
+    @conventional_cells ||= ConventionalCellService.convert_to_conventional(*primitive_params) || []
   end
 
   def best_conventional_cell
     return nil unless has_primitive_cell?
 
-    @best_conventional_cell ||= ConventionalCellService.best_conventional_cell(
-      primitive_a, primitive_b, primitive_c,
-      primitive_alpha, primitive_beta, primitive_gamma
-    )
+    if active_solution.present?
+      primitive_params = [
+        active_solution.primitive_a, active_solution.primitive_b, active_solution.primitive_c,
+        active_solution.primitive_alpha, active_solution.primitive_beta, active_solution.primitive_gamma
+      ]
+    else
+      primitive_params = [primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma]
+    end
+
+    @best_conventional_cell ||= ConventionalCellService.best_conventional_cell(*primitive_params)
   end
 
   def conventional_cell_as_input
     return nil unless has_primitive_cell?
 
-    @conventional_cell_as_input ||= ConventionalCellService.conventional_cell_as_input(
-      primitive_a, primitive_b, primitive_c,
-      primitive_alpha, primitive_beta, primitive_gamma
-    )
+    if active_solution.present?
+      primitive_params = [
+        active_solution.primitive_a, active_solution.primitive_b, active_solution.primitive_c,
+        active_solution.primitive_alpha, active_solution.primitive_beta, active_solution.primitive_gamma
+      ]
+    else
+      primitive_params = [primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma]
+    end
+
+    @conventional_cell_as_input ||= ConventionalCellService.conventional_cell_as_input(*primitive_params)
   end
 
 
   # Get conventional cell for display (prefers stored conventional cell, falls back to API or primitive)
   def display_cell
+    solution = active_solution
+    
     # First priority: use stored conventional cell if available
     if has_conventional_cell?
-      return {
-        bravais: conventional_bravais || "unknown",
-        a: conventional_a,
-        b: conventional_b,
-        c: conventional_c,
-        alpha: conventional_alpha,
-        beta: conventional_beta,
-        gamma: conventional_gamma,
-        distance: conventional_distance || 0
-      }
+      if solution.present?
+        return {
+          bravais: solution.conventional_bravais || "unknown",
+          a: solution.conventional_a,
+          b: solution.conventional_b,
+          c: solution.conventional_c,
+          alpha: solution.conventional_alpha,
+          beta: solution.conventional_beta,
+          gamma: solution.conventional_gamma,
+          distance: solution.conventional_distance || 0
+        }
+      else
+        # Fallback to dataset columns (deprecated)
+        return {
+          bravais: conventional_bravais || "unknown",
+          a: conventional_a,
+          b: conventional_b,
+          c: conventional_c,
+          alpha: conventional_alpha,
+          beta: conventional_beta,
+          gamma: conventional_gamma,
+          distance: conventional_distance || 0
+        }
+      end
     end
 
     # Second priority: try API conversion
@@ -489,16 +565,30 @@ class ScxrdDataset < ApplicationRecord
     # Fallback to primitive cell
     return nil unless has_primitive_cell?
 
-    {
-      bravais: "aP",  # Primitive triclinic as fallback
-      a: primitive_a,
-      b: primitive_b,
-      c: primitive_c,
-      alpha: primitive_alpha,
-      beta: primitive_beta,
-      gamma: primitive_gamma,
-      distance: 0
-    }
+    if solution.present?
+      {
+        bravais: "aP",  # Primitive triclinic as fallback
+        a: solution.primitive_a,
+        b: solution.primitive_b,
+        c: solution.primitive_c,
+        alpha: solution.primitive_alpha,
+        beta: solution.primitive_beta,
+        gamma: solution.primitive_gamma,
+        distance: 0
+      }
+    else
+      # Fallback to dataset columns (deprecated)
+      {
+        bravais: "aP",  # Primitive triclinic as fallback
+        a: primitive_a,
+        b: primitive_b,
+        c: primitive_c,
+        alpha: primitive_alpha,
+        beta: primitive_beta,
+        gamma: primitive_gamma,
+        distance: 0
+      }
+    end
   end
 
   # Unit cell similarity methods using G6 distance API
@@ -519,15 +609,29 @@ class ScxrdDataset < ApplicationRecord
 
   # Extract cell parameters for G6 calculations
   def extract_cell_params_for_g6
+    solution = active_solution
+    
     # Use conventional cell if available, fallback to primitive
-    conventional_cell_as_input || {
-      a: primitive_a,
-      b: primitive_b,
-      c: primitive_c,
-      alpha: primitive_alpha,
-      beta: primitive_beta,
-      gamma: primitive_gamma
-    }
+    if solution.present?
+      conventional_cell_as_input || {
+        a: solution.primitive_a,
+        b: solution.primitive_b,
+        c: solution.primitive_c,
+        alpha: solution.primitive_alpha,
+        beta: solution.primitive_beta,
+        gamma: solution.primitive_gamma
+      }
+    else
+      # Fallback to dataset columns (deprecated)
+      conventional_cell_as_input || {
+        a: primitive_a,
+        b: primitive_b,
+        c: primitive_c,
+        alpha: primitive_alpha,
+        beta: primitive_beta,
+        gamma: primitive_gamma
+      }
+    end
   end
 
   # Get all chemical formulas associated with this dataset's well

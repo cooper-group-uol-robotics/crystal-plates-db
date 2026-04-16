@@ -72,14 +72,126 @@ class ScxrdArchiveProcessingJob < ApplicationJob
 
 
 
-          # Store UB matrix and derive unit cell parameters
+          # Store UB matrices and derive unit cell parameters
+          # NEW: Process multiple indexing solutions
           Rails.logger.info "SCXRD Job: Checking for parsed metadata..."
           if result[:metadata]
             metadata = result[:metadata]
-            Rails.logger.info "SCXRD Job: Found metadata: #{metadata.inspect}"
+            Rails.logger.info "SCXRD Job: Found metadata: #{metadata.keys.inspect}"
 
-            # Check for UB matrix (preferred source of truth)
-            if metadata[:ub11] && metadata[:ub22] && metadata[:ub33]
+            # Check for multiple solutions (new format)
+            if metadata[:solutions] && metadata[:solutions].is_a?(Array) && metadata[:solutions].any?
+              Rails.logger.info "SCXRD Job: Found #{metadata[:solutions].length} indexing solution(s)"
+              solutions_created = 0
+              
+              metadata[:solutions].each do |solution_data|
+                begin
+                  ub_matrix = solution_data[:ub_matrix]
+                  source = solution_data[:source] || "Unknown"
+                  
+                  next unless ub_matrix && ub_matrix[:ub11] && ub_matrix[:ub22] && ub_matrix[:ub33]
+                  
+                  Rails.logger.info "SCXRD Job: Processing #{source} solution..."
+                  
+                  # Convert UB matrix to cell parameters
+                  cell_params = UbMatrixService.ub_matrix_to_cell_parameters(
+                    ub_matrix[:ub11], ub_matrix[:ub12], ub_matrix[:ub13],
+                    ub_matrix[:ub21], ub_matrix[:ub22], ub_matrix[:ub23],
+                    ub_matrix[:ub31], ub_matrix[:ub32], ub_matrix[:ub33],
+                    ub_matrix[:wavelength] || 0.71073
+                  )
+                  
+                  unless cell_params
+                    Rails.logger.error "SCXRD Job: Failed to convert #{source} UB matrix to cell parameters"
+                    next
+                  end
+                  
+                  Rails.logger.info "SCXRD Job: Cell parameters from #{source} UB matrix: a=#{cell_params[:a].round(3)}, b=#{cell_params[:b].round(3)}, c=#{cell_params[:c].round(3)}"
+                  
+                  # Get conventional and primitive cells using API
+                  primitive_cell = nil
+                  conventional_cell = nil
+                  
+                  if ConventionalCellService.enabled?
+                    conventional_cells = ConventionalCellService.convert_to_conventional(
+                      cell_params[:a], cell_params[:b], cell_params[:c],
+                      cell_params[:alpha], cell_params[:beta], cell_params[:gamma]
+                    )
+                    
+                    if conventional_cells && conventional_cells.any?
+                      conventional_cell = conventional_cells.first  # Highest symmetry
+                      primitive_cell = conventional_cells.last       # Primitive cell
+                      Rails.logger.info "SCXRD Job: #{source} conventional cell: #{conventional_cell[:bravais]}"
+                    else
+                      Rails.logger.warn "SCXRD Job: Cell reduction API failed for #{source}, using UB-derived as primitive"
+                      primitive_cell = {
+                        a: cell_params[:a], b: cell_params[:b], c: cell_params[:c],
+                        alpha: cell_params[:alpha], beta: cell_params[:beta], gamma: cell_params[:gamma]
+                      }
+                    end
+                  else
+                    Rails.logger.warn "SCXRD Job: Cell reduction API disabled, using UB-derived as primitive"
+                    primitive_cell = {
+                      a: cell_params[:a], b: cell_params[:b], c: cell_params[:c],
+                      alpha: cell_params[:alpha], beta: cell_params[:beta], gamma: cell_params[:gamma]
+                    }
+                  end
+                  
+                  # Create IndexingSolution record
+                  indexing_solution = dataset.indexing_solutions.create!(
+                    # UB matrix
+                    ub11: ub_matrix[:ub11],
+                    ub12: ub_matrix[:ub12],
+                    ub13: ub_matrix[:ub13],
+                    ub21: ub_matrix[:ub21],
+                    ub22: ub_matrix[:ub22],
+                    ub23: ub_matrix[:ub23],
+                    ub31: ub_matrix[:ub31],
+                    ub32: ub_matrix[:ub32],
+                    ub33: ub_matrix[:ub33],
+                    wavelength: ub_matrix[:wavelength] || 0.71073,
+                    
+                    # Primitive cell
+                    primitive_a: primitive_cell[:a],
+                    primitive_b: primitive_cell[:b],
+                    primitive_c: primitive_cell[:c],
+                    primitive_alpha: primitive_cell[:alpha],
+                    primitive_beta: primitive_cell[:beta],
+                    primitive_gamma: primitive_cell[:gamma],
+                    
+                    # Conventional cell (if available)
+                    conventional_a: conventional_cell&.dig(:a),
+                    conventional_b: conventional_cell&.dig(:b),
+                    conventional_c: conventional_cell&.dig(:c),
+                    conventional_alpha: conventional_cell&.dig(:alpha),
+                    conventional_beta: conventional_cell&.dig(:beta),
+                    conventional_gamma: conventional_cell&.dig(:gamma),
+                    conventional_bravais: conventional_cell&.dig(:bravais),
+                    conventional_cb_op: conventional_cell&.dig(:cb_op),
+                    conventional_distance: conventional_cell&.dig(:distance),
+                    
+                    # Indexing statistics
+                    spots_found: solution_data[:spots_found],
+                    spots_indexed: solution_data[:spots_indexed],
+                    
+                    # Source tracking
+                    source: source
+                  )
+                  
+                  solutions_created += 1
+                  indexing_rate = indexing_solution.indexing_rate
+                  Rails.logger.info "SCXRD Job: Created #{source} solution (indexing: #{indexing_rate}%)" if indexing_rate
+                  
+                rescue => e
+                  Rails.logger.error "SCXRD Job: Error creating #{source} solution: #{e.message}"
+                  Rails.logger.error "SCXRD Job: Backtrace: #{e.backtrace.first(5).join("\n")}"
+                end
+              end
+              
+              Rails.logger.info "SCXRD Job: Created #{solutions_created} indexing solution(s)"
+              
+            # Fallback: Check for old single UB matrix format (backward compatibility)
+            elsif metadata[:ub11] && metadata[:ub22] && metadata[:ub33]
               Rails.logger.info "SCXRD Job: UB matrix found, using as source of truth"
               
               # Store UB matrix
