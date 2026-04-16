@@ -149,6 +149,28 @@
     
     <div class="card mt-3">
       <div class="card-header">
+        <h5 class="card-title mb-0">Usage in Wells</h5>
+      </div>
+      <div class="card-body">
+        <% if @chemical.wells.count > 0 %>
+          <% @chemical.wells.includes(:plate).group_by { |well| well.plate.barcode }.each do |barcode, wells| %>
+            <div class="border-bottom pb-2 mb-2">
+              <div class="fw-medium">
+                <%= link_to barcode, plate_path(wells.first.plate), class: "text-decoration-none" %>
+              </div>
+              <small class="text-muted">
+                Wells: <%= wells.map(&:well_label).join(", ") %>
+              </small>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-muted mb-0">This chemical is not used in any wells yet.</p>
+        <% end %>
+      </div>
+    </div>
+    
+    <div class="card mt-3">
+      <div class="card-header">
         <h5 class="card-title mb-0">Record Information</h5>
       </div>
       <div class="card-body">
