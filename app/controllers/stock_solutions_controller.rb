@@ -3,6 +3,7 @@ class StockSolutionsController < ApplicationController
 
   # GET /stock_solutions
   def index
+    authorize StockSolution
     @stock_solutions = StockSolution.includes(:stock_solution_components, :chemicals)
 
     if params[:search].present?
@@ -14,6 +15,7 @@ class StockSolutionsController < ApplicationController
 
   # GET /stock_solutions/1
   def show
+    authorize @stock_solution
     @stock_solution_components = @stock_solution.stock_solution_components
                                                 .includes(:chemical, :unit)
                                                 .ordered_by_chemical_name
@@ -21,16 +23,19 @@ class StockSolutionsController < ApplicationController
 
   # GET /stock_solutions/new
   def new
+    authorize StockSolution
     @stock_solution = StockSolution.new
     @stock_solution.stock_solution_components.build
   end
 
   # GET /stock_solutions/1/edit
   def edit
+    authorize @stock_solution
   end
 
   # POST /stock_solutions
   def create
+    authorize StockSolution
     @stock_solution = StockSolution.new(stock_solution_params)
 
     if @stock_solution.save
@@ -44,6 +49,7 @@ class StockSolutionsController < ApplicationController
 
   # PATCH/PUT /stock_solutions/1
   def update
+    authorize @stock_solution
     if @stock_solution.update(stock_solution_params)
       redirect_to @stock_solution, notice: "Stock solution was successfully updated."
     else
@@ -55,6 +61,7 @@ class StockSolutionsController < ApplicationController
 
   # DELETE /stock_solutions/1
   def destroy
+    authorize @stock_solution
     unless @stock_solution.can_be_deleted?
       redirect_to @stock_solution, alert: "Cannot delete stock solution that is used in wells."
       return

@@ -68,9 +68,9 @@ class StockSolutionComponent < ApplicationRecord
       { regex: /^([\d,.]+)\s*(mg|milligram|milligrams)$/i, unit_symbol: "mg" },
       { regex: /^([\d,.]+)\s*(g|gram|grams)$/i, unit_symbol: "g" },
       { regex: /^([\d,.]+)\s*(kg|kilogram|kilograms)$/i, unit_symbol: "kg" },
-      { regex: /^([\d,.]+)\s*(µl|ul|microliter|microliters)$/i, unit_symbol: "µl" },
-      { regex: /^([\d,.]+)\s*(ml|milliliter|milliliters)$/i, unit_symbol: "ml" },
-      { regex: /^([\d,.]+)\s*(l|liter|liters)$/i, unit_symbol: "l" }
+      { regex: /^([\d,.]+)\s*(µl|μl|ul|microliter|microliters)$/i, unit_symbol: "μL" },  # Accept both micro symbols
+      { regex: /^([\d,.]+)\s*(ml|milliliter|milliliters)$/i, unit_symbol: "mL" },
+      { regex: /^([\d,.]+)\s*(l|liter|liters)$/i, unit_symbol: "L" }
   ]
 
     # Try to match against each pattern
@@ -81,20 +81,17 @@ class StockSolutionComponent < ApplicationRecord
         amount_value = Float(amount_str) rescue nil
 
         if amount_value && amount_value > 0
-          # Find or create the unit
-          unit = Unit.find_by(symbol: pattern[:unit_symbol]) ||
+          # Find the unit (case-insensitive lookup)
+          unit = Unit.where("LOWER(symbol) = ?", pattern[:unit_symbol].downcase).first ||
                  Unit.where("LOWER(name) = ?", pattern[:unit_symbol].downcase).first
 
           if unit
             return { amount: amount_value, unit: unit }
           else
-            # Create a new unit if it doesn't exist
-            unit = Unit.create!(
-              name: pattern[:unit_symbol],
-              symbol: pattern[:unit_symbol],
-              conversion_to_base: 1.0 # Default conversion
-            )
-            return { amount: amount_value, unit: unit }
+            # Log error - should not create units dynamically without proper dimension
+            Rails.logger.error "Unit not found for symbol: #{pattern[:unit_symbol]}"
+            errors.add(:amount_with_unit, "unknown unit '#{pattern[:unit_symbol]}'")
+            return nil
           end
         end
       end

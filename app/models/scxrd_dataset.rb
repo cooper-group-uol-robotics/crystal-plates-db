@@ -8,13 +8,13 @@ class ScxrdDataset < ApplicationRecord
   has_one_attached :structure_file
 
   # Unit cell similarity associations
-  has_many :unit_cell_similarities_as_dataset_1, 
-           class_name: 'UnitCellSimilarity', 
-           foreign_key: 'dataset_1_id',
+  has_many :unit_cell_similarities_as_dataset_1,
+           class_name: "UnitCellSimilarity",
+           foreign_key: "dataset_1_id",
            dependent: :destroy
-  has_many :unit_cell_similarities_as_dataset_2, 
-           class_name: 'UnitCellSimilarity', 
-           foreign_key: 'dataset_2_id',
+  has_many :unit_cell_similarities_as_dataset_2,
+           class_name: "UnitCellSimilarity",
+           foreign_key: "dataset_2_id",
            dependent: :destroy
 
   validates :experiment_name, :measured_at, presence: true
@@ -370,6 +370,8 @@ class ScxrdDataset < ApplicationRecord
   # Calculate and update spots_found from peak table
   def calculate_spots_found!
     parsed_data = parsed_peak_table_data
+    return nil unless parsed_data  # Guard against nil parsed_data
+
     if parsed_data[:success] && parsed_data[:spots_found]
       update_column(:spots_found, parsed_data[:spots_found])
       parsed_data[:spots_found]
@@ -381,20 +383,21 @@ class ScxrdDataset < ApplicationRecord
   # Calculate and update spots_indexed using UB matrix
   def calculate_spots_indexed!(tolerance: 0.125)
     return nil unless has_ub_matrix?
-    
+
     parsed_data = parsed_peak_table_data
+    return nil unless parsed_data  # Guard against nil parsed_data
     return nil unless parsed_data[:success] && parsed_data[:data_points].present?
 
     # Get UB matrix as array
     ub_matrix = ub_matrix_as_array
-    
+
     # Calculate indexed spots
     result = SpotIndexingService.calculate_indexed_spots(
       parsed_data[:data_points],
       ub_matrix,
       tolerance: tolerance
     )
-    
+
     if result[:indexed_count]
       update_column(:spots_indexed, result[:indexed_count])
       result[:indexed_count]
@@ -407,11 +410,11 @@ class ScxrdDataset < ApplicationRecord
   def calculate_spot_statistics!(tolerance: 0.125)
     spots_found = calculate_spots_found!
     spots_indexed = calculate_spots_indexed!(tolerance: tolerance)
-    
+
     {
       spots_found: spots_found,
       spots_indexed: spots_indexed,
-      indexing_rate: (spots_found && spots_indexed && spots_found > 0) ? 
+      indexing_rate: (spots_found && spots_indexed && spots_found > 0) ?
                       (spots_indexed.to_f / spots_found * 100).round(2) : nil
     }
   end
@@ -436,9 +439,9 @@ class ScxrdDataset < ApplicationRecord
       # Fallback to dataset model columns (deprecated)
       return nil unless has_ub_matrix?
       [
-        [ub11, ub12, ub13],
-        [ub21, ub22, ub23],
-        [ub31, ub32, ub33]
+        [ ub11, ub12, ub13 ],
+        [ ub21, ub22, ub23 ],
+        [ ub31, ub32, ub33 ]
       ]
     end
   end
@@ -489,7 +492,7 @@ class ScxrdDataset < ApplicationRecord
         active_solution.primitive_alpha, active_solution.primitive_beta, active_solution.primitive_gamma
       ]
     else
-      primitive_params = [primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma]
+      primitive_params = [ primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma ]
     end
 
     @conventional_cells ||= ConventionalCellService.convert_to_conventional(*primitive_params) || []
@@ -504,7 +507,7 @@ class ScxrdDataset < ApplicationRecord
         active_solution.primitive_alpha, active_solution.primitive_beta, active_solution.primitive_gamma
       ]
     else
-      primitive_params = [primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma]
+      primitive_params = [ primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma ]
     end
 
     @best_conventional_cell ||= ConventionalCellService.best_conventional_cell(*primitive_params)
@@ -519,7 +522,7 @@ class ScxrdDataset < ApplicationRecord
         active_solution.primitive_alpha, active_solution.primitive_beta, active_solution.primitive_gamma
       ]
     else
-      primitive_params = [primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma]
+      primitive_params = [ primitive_a, primitive_b, primitive_c, primitive_alpha, primitive_beta, primitive_gamma ]
     end
 
     @conventional_cell_as_input ||= ConventionalCellService.conventional_cell_as_input(*primitive_params)
@@ -529,7 +532,7 @@ class ScxrdDataset < ApplicationRecord
   # Get conventional cell for display (prefers stored conventional cell, falls back to API or primitive)
   def display_cell
     solution = active_solution
-    
+
     # First priority: use stored conventional cell if available
     if has_conventional_cell?
       if solution.present?
@@ -610,7 +613,7 @@ class ScxrdDataset < ApplicationRecord
   # Extract cell parameters for G6 calculations
   def extract_cell_params_for_g6
     solution = active_solution
-    
+
     # Use conventional cell if available, fallback to primitive
     if solution.present?
       conventional_cell_as_input || {
@@ -638,18 +641,18 @@ class ScxrdDataset < ApplicationRecord
   # Returns array of empirical formulas from both direct chemicals and stock solution components
   def associated_chemical_formulas
     return [] unless well.present?
-    
+
     begin
       formulas = []
-      
+
       # Get formulas from direct chemicals in the well
       well.chemicals.each do |chemical|
         if chemical.empirical_formula.present?
           formulas << chemical.empirical_formula
         end
       end
-      
-      # Get formulas from stock solution components  
+
+      # Get formulas from stock solution components
       well.polymorphic_stock_solutions.each do |stock_solution|
         stock_solution.chemicals.each do |chemical|
           if chemical.empirical_formula.present?
@@ -657,7 +660,7 @@ class ScxrdDataset < ApplicationRecord
           end
         end
       end
-      
+
       # Remove duplicates and blanks
       formulas.compact.uniq.reject(&:blank?)
     rescue StandardError => e
@@ -669,10 +672,10 @@ class ScxrdDataset < ApplicationRecord
   # Check if any of the associated formulas match a given CSD formula
   def formula_matches_well_contents?(csd_formula, tolerance_percent: 10.0)
     return false if csd_formula.blank?
-    
+
     well_formulas = associated_chemical_formulas
     return false if well_formulas.empty?
-    
+
     well_formulas.any? do |well_formula|
       FormulaComparisonService.formulas_match?(csd_formula, well_formula, tolerance_percent: tolerance_percent)
     end
@@ -714,10 +717,10 @@ class ScxrdDataset < ApplicationRecord
   # Get best matching formula from well contents for a given CSD formula
   def best_matching_formula(csd_formula, tolerance_percent: 10.0)
     return nil if csd_formula.blank?
-    
+
     well_formulas = associated_chemical_formulas
     return nil if well_formulas.empty?
-    
+
     matches = FormulaComparisonService.find_matching_formulas(csd_formula, well_formulas, tolerance_percent: tolerance_percent)
     matches.first&.dig(:formula)
   end

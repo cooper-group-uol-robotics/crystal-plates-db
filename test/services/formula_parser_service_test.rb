@@ -1,4 +1,4 @@
-require 'test_helper'
+require "test_helper"
 
 class FormulaParserServiceTest < ActiveSupport::TestCase
   test "parses simple molecular formulas" do
@@ -19,8 +19,8 @@ class FormulaParserServiceTest < ActiveSupport::TestCase
 
   test "parses hydrates and dot notation" do
     assert_equal({ "Ca" => 1, "Cl" => 2, "H" => 4, "O" => 2 }, FormulaParserService.parse("CaCl2·2H2O"))
-    assert_equal({ "Cu" => 1, "S" => 1, "O" => 4, "H" => 10 }, FormulaParserService.parse("CuSO4•5H2O"))
-    assert_equal({ "Na" => 2, "S" => 1, "O" => 3, "H" => 14 }, FormulaParserService.parse("Na2SO3*7H2O"))
+    assert_equal({ "Cu" => 1, "S" => 1, "O" => 9, "H" => 10 }, FormulaParserService.parse("CuSO4•5H2O"))
+    assert_equal({ "Na" => 2, "S" => 1, "O" => 10, "H" => 14 }, FormulaParserService.parse("Na2SO3*7H2O"))
   end
 
   test "handles single atoms without numbers" do

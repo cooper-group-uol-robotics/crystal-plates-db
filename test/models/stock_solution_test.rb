@@ -36,8 +36,15 @@ class StockSolutionTest < ActiveSupport::TestCase
   end
 
   test "can_be_deleted should return true if no well contents" do
-    # Create a stock solution with no well contents
-    empty_solution = StockSolution.create!(name: "Empty Solution")
+    # Create a stock solution with a component but no well contents
+    empty_solution = StockSolution.new(name: "Empty Solution")
+    empty_solution.stock_solution_components.build(
+      chemical: chemicals(:one),
+      amount: 10.0,
+      unit: units(:milligrams)
+    )
+    empty_solution.save!
+
     assert_equal 0, empty_solution.well_contents.count
     assert empty_solution.can_be_deleted?
   end

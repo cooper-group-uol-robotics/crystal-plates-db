@@ -47,7 +47,7 @@ class StockSolutionAmountParsingTest < ActionDispatch::IntegrationTest
 
     component = StockSolution.last.stock_solution_components.first
     assert_equal 5.5, component.amount
-    assert_equal "ml", component.unit.symbol
+    assert_equal "mL", component.unit.symbol  # Fixture uses mL not ml
   end
 
   test "should reject invalid amount format" do
