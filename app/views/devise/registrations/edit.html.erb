@@ -1,0 +1,64 @@
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="card-title mb-4">Account Settings</h2>
+
+        <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :put }) do |f| %>
+          <%= render "devise/shared/error_messages", resource: resource %>
+
+          <div class="mb-3">
+            <%= f.label :email, class: "form-label" %>
+            <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "form-control", readonly: true %>
+            <div class="form-text">Email cannot be changed</div>
+          </div>
+
+          <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
+            <div class="alert alert-warning">Currently waiting confirmation for: <%= resource.unconfirmed_email %></div>
+          <% end %>
+
+          <hr class="my-4">
+          <h5>Change Password</h5>
+
+          <div class="mb-3">
+            <%= f.label :password, "New Password", class: "form-label" %>
+            <%= f.password_field :password, autocomplete: "new-password", class: "form-control", placeholder: "Leave blank to keep current password" %>
+            <% if @minimum_password_length %>
+              <div class="form-text"><%= @minimum_password_length %> characters minimum</div>
+            <% end %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :password_confirmation, "Confirm New Password", class: "form-label" %>
+            <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "form-control" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :current_password, class: "form-label" %>
+            <%= f.password_field :current_password, autocomplete: "current-password", class: "form-control", required: true %>
+            <div class="form-text">We need your current password to confirm your changes</div>
+          </div>
+
+          <div class="d-grid gap-2">
+            <%= f.submit "Update Account", class: "btn btn-primary" %>
+            <%= link_to "Cancel", root_path, class: "btn btn-secondary" %>
+          </div>
+        <% end %>
+
+        <hr class="my-4">
+        
+        <div class="card bg-light">
+          <div class="card-body">
+            <h6 class="card-title">Account Information</h6>
+            <ul class="mb-0">
+              <li><strong>Role:</strong> <%= current_user.role.titleize %></li>
+              <li><strong>Status:</strong> <%= current_user.active? ? "Active" : "Inactive" %></li>
+              <li><strong>Account Type:</strong> <%= current_user.ldap_user? ? "LDAP/Active Directory" : "Local" %></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

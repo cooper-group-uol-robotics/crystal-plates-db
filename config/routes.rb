@@ -1,4 +1,9 @@
 Rails.application.routes.draw do
+  devise_for :users
+
+  # API Keys management
+  resources :api_keys, only: [ :index, :show, :new, :create, :destroy ]
+
   # Settings
   get "/settings", to: "settings#index"
   patch "/settings", to: "settings#update"
@@ -27,7 +32,7 @@ Rails.application.routes.draw do
       get :search
     end
   end
-  
+
   resources :wells do
     member do
       get :images

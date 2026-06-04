@@ -4,6 +4,7 @@ class PlatesController < ApplicationController
 
   # GET /plates or /plates.json
   def index
+    authorize Plate
     # Handle sorting
     sort_column = params[:sort] || "barcode"
     sort_direction = params[:direction] || "desc"
@@ -34,33 +35,34 @@ class PlatesController < ApplicationController
 
   # GET /plates/1 or /plates/1.json
   def show
-    @wells = @plate.wells.includes(:images, :pxrd_patterns, :scxrd_datasets, :calorimetry_datasets, 
+    authorize @plate
+    @wells = @plate.wells.includes(:images, :pxrd_patterns, :scxrd_datasets, :calorimetry_datasets,
                                    :chemicals, :stock_solutions, :polymorphic_stock_solutions,
                                    :well_contents, well_scores: :custom_attribute)
-    
+
     # Preload all wells into memory to avoid N+1 queries in the view
     @wells = @wells.to_a
-    
+
     # Pre-group wells by position to avoid expensive selects in the view
-    @wells_by_position = @wells.group_by { |w| [w.well_row, w.well_column] }
-                         
-    # Preload polymorphic associations for well_contents manually 
+    @wells_by_position = @wells.group_by { |w| [ w.well_row, w.well_column ] }
+
+    # Preload polymorphic associations for well_contents manually
     # since Rails can't eager load polymorphic associations directly
     ActiveRecord::Associations::Preloader.new(
       records: @wells.flat_map(&:well_contents),
       associations: :contentable
     ).call
-    
+
     # Get custom attributes that have well scores in this plate for layer system
     @plate_custom_attributes = CustomAttribute.with_well_scores_in_plate(@plate)
                                              .select(:id, :name, :description, :data_type)
-    
+
     # Pre-index well scores by well_id and custom_attribute_id for O(1) lookup
     @well_scores_index = {}
     @wells.each do |well|
       @well_scores_index[well.id] = well.well_scores.index_by(&:custom_attribute_id)
     end
-    
+
     @rows = @wells.maximum(:well_row) || 0
     @columns = @wells.maximum(:well_column) || 0
 
@@ -73,6 +75,7 @@ class PlatesController < ApplicationController
 
   # GET /plates/new
   def new
+    authorize Plate
     @plate = Plate.new
 
     # If location_id is provided, pre-populate the location
@@ -83,10 +86,12 @@ class PlatesController < ApplicationController
 
   # GET /plates/1/edit
   def edit
+    authorize @plate
   end
 
   # POST /plates or /plates.json
   def create
+    authorize Plate
     @plate = Plate.new(plate_params.except(:location_id))
 
     # Validate location before saving the plate
@@ -155,6 +160,7 @@ class PlatesController < ApplicationController
 
   # PATCH/PUT /plates/1 or /plates/1.json
   def update
+    authorize @plate
     respond_to do |format|
       if @plate.update(plate_params.except(:location_id))
         # Handle location assignment/unassignment
@@ -197,6 +203,7 @@ class PlatesController < ApplicationController
 
   # DELETE /plates/1 or /plates/1.json
   def destroy
+    authorize @plate
     @plate.destroy!
 
     respond_to do |format|
@@ -801,11 +808,11 @@ class PlatesController < ApplicationController
           # Find or create well content using polymorphic association
           well_content = well.well_contents.find_or_initialize_by(contentable: content_info[:object])
           well_content.amount_with_unit = value_str
-          
+
           if well_content.save
             results[:success_count] += 1
           else
-            error_msg = well_content.errors.full_messages.join(', ')
+            error_msg = well_content.errors.full_messages.join(", ")
             results[:errors] << "Well #{well_label} (#{content_info[:identifier]}): #{error_msg}"
           end
         end
@@ -988,9 +995,9 @@ class PlatesController < ApplicationController
             well: well,
             custom_attribute: custom_attribute
           )
-          
+
           well_score.set_display_value(numeric_value)
-          
+
           if well_score.save
             results[:success_count] += 1 if well_score.saved_changes?
           else
@@ -1022,13 +1029,13 @@ class PlatesController < ApplicationController
 
       CSV.generate do |csv|
         # Header row: Well, then all attribute names
-        headers = ["Well"] + attribute_names
+        headers = [ "Well" ] + attribute_names
         csv << headers
 
         # Data rows: one per well
         wells.each do |well|
           well_label = well.subwell == 1 ? well.well_label : "#{well.well_label}.#{well.subwell}"
-          row_data = [well_label]
+          row_data = [ well_label ]
 
           # Add value for each attribute (or empty string if not set)
           attribute_names.each do |attr_name|

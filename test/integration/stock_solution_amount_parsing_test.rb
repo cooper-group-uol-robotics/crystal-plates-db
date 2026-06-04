@@ -4,6 +4,7 @@ class StockSolutionAmountParsingTest < ActionDispatch::IntegrationTest
   setup do
     @chemical = chemicals(:one)
     @mg_unit = Unit.find_by(symbol: "mg") || Unit.create!(name: "milligram", symbol: "mg", conversion_to_base: 1.0)
+    sign_in users(:writable)
   end
 
   test "should create stock solution with amount_with_unit" do

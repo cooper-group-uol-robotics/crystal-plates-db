@@ -3,24 +3,29 @@ class WellsController < ApplicationController
 
   # GET /wells or /wells.json
   def index
+    authorize Well
     @wells = Well.all
   end
 
   # GET /wells/1 or /wells/1.json
   def show
+    authorize @well
   end
 
   # GET /wells/new
   def new
+    authorize Well
     @well = Well.new
   end
 
   # GET /wells/1/edit
   def edit
+    authorize @well
   end
 
   # POST /wells or /wells.json
   def create
+    authorize Well
     @well = Well.new(well_params)
 
     respond_to do |format|
@@ -133,6 +138,7 @@ class WellsController < ApplicationController
 
   # PATCH/PUT /wells/1 or /wells/1.json
   def update
+    authorize @well
     respond_to do |format|
       if @well.update(well_params)
         format.html { redirect_to @well.plate, notice: "Well was successfully updated." }
@@ -146,6 +152,7 @@ class WellsController < ApplicationController
 
   # DELETE /wells/1 or /wells/1.json
   def destroy
+    authorize @well
     plate = @well.plate  # Store plate reference before destroying well
     @well.destroy!
 
@@ -300,7 +307,7 @@ class WellsController < ApplicationController
 
     respond_to do |format|
       format.html { render partial: "wells/custom_attributes", locals: { well: @well, plate: @plate, available_attributes: @available_attributes } }
-      format.json { 
+      format.json {
         render json: {
           well: {
             id: @well.id,

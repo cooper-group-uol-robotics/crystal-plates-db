@@ -3,6 +3,7 @@ require "test_helper"
 class PlatesControllerTest < ActionDispatch::IntegrationTest
   setup do
     @plate = plates(:one)
+    sign_in users(:writable)
   end
 
   test "should get index" do
@@ -10,53 +11,53 @@ class PlatesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "should sort plates by barcode ascending by default" do
-    # Create plates with different barcodes
-    Plate.create!(barcode: "AAAA")
-    Plate.create!(barcode: "ZZZZ")
-    Plate.create!(barcode: "MMMM")
+  test "should sort plates by barcode descending by default" do
+    # Use barcodes that sort predictably
+    Plate.create!(barcode: "AAA-TEST-001")
+    Plate.create!(barcode: "ZZZ-TEST-003")
+    Plate.create!(barcode: "MMM-TEST-002")
 
     get plates_url
     assert_response :success
 
-    # Check that barcodes appear in sorted order in the response
+    # Default sort is descending, so check ZZZ appears before MMM appears before AAA
     response_body = response.body
-    aaaa_pos = response_body.index("AAAA")
-    mmmm_pos = response_body.index("MMMM")
-    zzzz_pos = response_body.index("ZZZZ")
+    aaa_pos = response_body.index("AAA-TEST-001")
+    mmm_pos = response_body.index("MMM-TEST-002")
+    zzz_pos = response_body.index("ZZZ-TEST-003")
 
-    assert aaaa_pos < mmmm_pos, "AAAA should appear before MMMM"
-    assert mmmm_pos < zzzz_pos, "MMMM should appear before ZZZZ"
+    assert zzz_pos < mmm_pos, "ZZZ-TEST-003 should appear before MMM-TEST-002 (desc order)"
+    assert mmm_pos < aaa_pos, "MMM-TEST-002 should appear before AAA-TEST-001 (desc order)"
   end
 
   test "should sort plates by barcode descending when requested" do
-    # Create plates with different barcodes
-    Plate.create!(barcode: "AAAA")
-    Plate.create!(barcode: "ZZZZ")
+    # Use unique test barcodes
+    Plate.create!(barcode: "AAA-DESC-TEST")
+    Plate.create!(barcode: "ZZZ-DESC-TEST")
 
     get plates_url, params: { sort: "barcode", direction: "desc" }
     assert_response :success
 
     # Check that barcodes appear in reverse sorted order
     response_body = response.body
-    aaaa_pos = response_body.index("AAAA")
-    zzzz_pos = response_body.index("ZZZZ")
+    aaa_pos = response_body.index("AAA-DESC-TEST")
+    zzz_pos = response_body.index("ZZZ-DESC-TEST")
 
-    assert zzzz_pos < aaaa_pos, "ZZZZ should appear before AAAA in desc order"
+    assert zzz_pos < aaa_pos, "ZZZ-DESC-TEST should appear before AAA-DESC-TEST in desc order"
   end
 
   test "should sort plates by created_at when requested" do
-    # Create plates at different times
-    Plate.create!(barcode: "NEWER", created_at: 1.day.ago)
-    Plate.create!(barcode: "OLDER", created_at: 2.days.ago)
+    # Create plates at different times with unique barcodes
+    Plate.create!(barcode: "NEWER-TIME-TEST", created_at: 1.day.ago)
+    Plate.create!(barcode: "OLDER-TIME-TEST", created_at: 2.days.ago)
 
     get plates_url, params: { sort: "created_at", direction: "asc" }
     assert_response :success
 
     # Check that older plate appears first
     response_body = response.body
-    older_pos = response_body.index("OLDER")
-    newer_pos = response_body.index("NEWER")
+    older_pos = response_body.index("OLDER-TIME-TEST")
+    newer_pos = response_body.index("NEWER-TIME-TEST")
 
     assert older_pos < newer_pos, "Older plate should appear before newer plate"
   end

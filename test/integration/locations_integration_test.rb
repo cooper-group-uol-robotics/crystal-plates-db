@@ -6,6 +6,7 @@ class LocationsIntegrationTest < ActionDispatch::IntegrationTest
     @imager_location = locations(:imager)
     @plate1 = plates(:one)
     @plate2 = plates(:two)
+    sign_in users(:writable)
   end
 
   test "location index shows all locations with status" do

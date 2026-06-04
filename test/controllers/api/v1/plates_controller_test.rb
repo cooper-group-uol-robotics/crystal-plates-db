@@ -7,7 +7,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get index" do
-    get api_v1_plates_url, as: :json
+    get api_v1_plates_url, headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -23,7 +23,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     # Assign the existing plate
     @plate.move_to_location!(@location)
 
-    get api_v1_plates_url(assigned: "false"), as: :json
+    get api_v1_plates_url(assigned: "false"), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -40,7 +40,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     # Assign the existing plate
     @plate.move_to_location!(@location)
 
-    get api_v1_plates_url(assigned: "true"), as: :json
+    get api_v1_plates_url(assigned: "true"), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -50,7 +50,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show plate" do
-    get api_v1_plate_url(@plate.barcode), as: :json
+    get api_v1_plate_url(@plate.barcode), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -62,7 +62,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     assert_difference("Plate.count") do
       post api_v1_plates_url, params: {
         plate: { barcode: "API_TEST_001" }
-      }, as: :json
+      }, headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -73,7 +73,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
   test "should update plate" do
     patch api_v1_plate_url(@plate.barcode), params: {
       plate: { barcode: "UPDATED_001" }
-    }, as: :json
+    }, headers: api_auth_headers, as: :json
 
     assert_response :success
     json_response = JSON.parse(response.body)
@@ -82,7 +82,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
 
   test "should destroy plate" do
     assert_difference("Plate.count", -1) do
-      delete api_v1_plate_url(@plate.barcode), as: :json
+      delete api_v1_plate_url(@plate.barcode), headers: api_auth_headers, as: :json
     end
 
     assert_response :success
@@ -91,7 +91,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
   test "should move plate to location" do
     post move_to_location_api_v1_plate_url(@plate.barcode), params: {
       location_id: @location.id
-    }, as: :json
+    }, headers: api_auth_headers, as: :json
 
     assert_response :success
     json_response = JSON.parse(response.body)
@@ -106,7 +106,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     @plate.move_to_location!(@location)
 
     # Then unassign it
-    post unassign_location_api_v1_plate_url(@plate.barcode), as: :json
+    post unassign_location_api_v1_plate_url(@plate.barcode), headers: api_auth_headers, as: :json
 
     assert_response :success
     json_response = JSON.parse(response.body)
@@ -124,7 +124,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     # Then move to null location (unassign)
     post move_to_location_api_v1_plate_url(@plate.barcode), params: {
       location_id: nil
-    }, as: :json
+    }, headers: api_auth_headers, as: :json
 
     assert_response :success
     json_response = JSON.parse(response.body)
@@ -137,7 +137,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
   test "should get location history" do
     @plate.move_to_location!(@location)
 
-    get location_history_api_v1_plate_url(@plate.barcode), as: :json
+    get location_history_api_v1_plate_url(@plate.barcode), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -146,7 +146,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should handle not found" do
-    get api_v1_plate_url("NONEXISTENT"), as: :json
+    get api_v1_plate_url("NONEXISTENT"), headers: api_auth_headers, as: :json
     assert_response :not_found
 
     json_response = JSON.parse(response.body)
@@ -157,7 +157,7 @@ class Api::V1::PlatesControllerTest < ActionDispatch::IntegrationTest
     assert_difference("Plate.count") do
       post api_v1_plates_url, params: {
         plate: {}
-      }, as: :json
+      }, headers: api_auth_headers, as: :json
     end
 
     assert_response :created

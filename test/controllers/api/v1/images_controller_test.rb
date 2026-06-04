@@ -21,7 +21,7 @@ module Api
       end
 
       test "should get index" do
-        get api_v1_well_images_url(@well), as: :json
+        get api_v1_well_images_url(@well), headers: api_auth_headers, as: :json
 
         assert_response :success
 
@@ -35,7 +35,7 @@ module Api
       end
 
       test "should show image" do
-        get api_v1_well_image_url(@well, @image), as: :json
+        get api_v1_well_image_url(@well, @image), headers: api_auth_headers, as: :json
 
         assert_response :success
 
@@ -76,7 +76,7 @@ module Api
               reference_z_mm: 5.0,
               description: "Test image via API"
             }
-          }
+          }, headers: api_auth_headers
         end
 
         assert_response :created
@@ -111,7 +111,7 @@ module Api
             reference_y_mm: 2.0,
             reference_z_mm: 3.0
           }
-        }
+        }, headers: api_auth_headers
 
         assert_response :created
 
@@ -139,7 +139,7 @@ module Api
               # Missing required fields
               description: "Invalid image"
             }
-          }
+          }, headers: api_auth_headers
         end
 
         assert_response :unprocessable_entity
@@ -161,7 +161,7 @@ module Api
               reference_z_mm: 5.0
               # Missing file
             }
-          }
+          }, headers: api_auth_headers
         end
 
         assert_response :unprocessable_entity
@@ -189,7 +189,7 @@ module Api
             reference_z_mm: 30.0,
             description: "Updated description"
           }
-        }, as: :json
+        }, headers: api_auth_headers, as: :json
 
         assert_response :success
 
@@ -219,7 +219,7 @@ module Api
             reference_y_mm: 0.0,
             reference_z_mm: 5.0
           }
-        }, as: :json
+        }, headers: api_auth_headers, as: :json
 
         assert_response :unprocessable_entity
 
@@ -230,7 +230,7 @@ module Api
 
       test "should destroy image" do
         assert_difference("Image.count", -1) do
-          delete api_v1_well_image_url(@well, @image), as: :json
+          delete api_v1_well_image_url(@well, @image), headers: api_auth_headers, as: :json
         end
 
         assert_response :success
@@ -242,7 +242,7 @@ module Api
       test "should return 404 for non-existent well" do
         non_existent_well_id = Well.maximum(:id).to_i + 1
 
-        get api_v1_well_images_url(non_existent_well_id), as: :json
+        get api_v1_well_images_url(non_existent_well_id), headers: api_auth_headers, as: :json
 
         assert_response :not_found
       end
@@ -250,7 +250,7 @@ module Api
       test "should return 404 for non-existent image" do
         non_existent_image_id = Image.maximum(:id).to_i + 1
 
-        get api_v1_well_image_url(@well, non_existent_image_id), as: :json
+        get api_v1_well_image_url(@well, non_existent_image_id), headers: api_auth_headers, as: :json
 
         assert_response :not_found
       end
@@ -267,7 +267,7 @@ module Api
           content_type: "image/png"
         ) unless other_image.file.attached?
 
-        get api_v1_well_image_url(@well, other_image), as: :json
+        get api_v1_well_image_url(@well, other_image), headers: api_auth_headers, as: :json
 
         assert_response :not_found
       end
@@ -281,7 +281,7 @@ module Api
           subwell: 1
         )
 
-        get api_v1_well_images_url(empty_well), as: :json
+        get api_v1_well_images_url(empty_well), headers: api_auth_headers, as: :json
 
         assert_response :success
 
@@ -303,7 +303,7 @@ module Api
               reference_y_mm: 0.0,
               reference_z_mm: 5.0
             }
-          }
+          }, headers: api_auth_headers
 
           assert_response :created
 
@@ -331,7 +331,7 @@ module Api
             reference_z_mm: 5.0,
             captured_at: custom_time.iso8601
           }
-        }
+        }, headers: api_auth_headers
 
         assert_response :created
 
@@ -358,7 +358,7 @@ module Api
               reference_z_mm: 3.0,
               description: "Test image uploaded via plate/well endpoint"
             }
-          }
+          }, headers: api_auth_headers
         end
 
         assert_response :created
@@ -394,7 +394,7 @@ module Api
               reference_y_mm: 0.0,
               reference_z_mm: 5.0
             }
-          }
+          }, headers: api_auth_headers
         end
 
         assert_response :not_found
@@ -418,7 +418,7 @@ module Api
               reference_y_mm: 0.0,
               reference_z_mm: 5.0
             }
-          }
+          }, headers: api_auth_headers
         end
 
         assert_response :not_found
@@ -442,7 +442,7 @@ module Api
               reference_y_mm: 0.0,
               reference_z_mm: 5.0
             }
-          }
+          }, headers: api_auth_headers
         end
 
         assert_response :unprocessable_entity

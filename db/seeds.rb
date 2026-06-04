@@ -7,6 +7,52 @@
 #   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
+
+# Create default admin user if it doesn't exist
+puts "Creating default admin user..."
+admin_email = "admin@example.com"
+admin = User.find_or_initialize_by(email: admin_email)
+if admin.new_record?
+  admin.assign_attributes(
+    password: "changeme123",
+    password_confirmation: "changeme123",
+    role: "admin",
+    active: true
+  )
+  if admin.save
+    puts "✓ Admin user created: #{admin_email}"
+    puts "  Password: changeme123"
+    puts "  ⚠️  IMPORTANT: Change this password immediately after first login!"
+  else
+    puts "✗ Failed to create admin user: #{admin.errors.full_messages.join(', ')}"
+  end
+else
+  puts "✓ Admin user already exists: #{admin_email}"
+end
+
+# Create test users for different roles
+[
+  { email: "writable@example.com", role: "writable" },
+  { email: "readable@example.com", role: "readable" }
+].each do |user_attrs|
+  user = User.find_or_initialize_by(email: user_attrs[:email])
+  if user.new_record?
+    user.assign_attributes(
+      password: "password123",
+      password_confirmation: "password123",
+      role: user_attrs[:role],
+      active: true
+    )
+    if user.save
+      puts "✓ Test user created: #{user_attrs[:email]} (#{user_attrs[:role]})"
+    else
+      puts "✗ Failed to create user: #{user.errors.full_messages.join(', ')}"
+    end
+  end
+end
+
+puts "\n"
+
 # Initialize dimensions first
 [
   { name: "Mass", symbol: "M", si_base_unit: "kg", description: "Physical quantity of matter" },
@@ -22,8 +68,8 @@
   # Update existing dimensions if they differ from expected values
   if dimension.name != attrs[:name] || dimension.si_base_unit != attrs[:si_base_unit] || dimension.description != attrs[:description]
     dimension.update!(
-      name: attrs[:name], 
-      si_base_unit: attrs[:si_base_unit], 
+      name: attrs[:name],
+      si_base_unit: attrs[:si_base_unit],
       description: attrs[:description]
     )
   end
@@ -51,8 +97,8 @@ volume_dimension = Dimension.find_by!(symbol: 'V')
   # Update existing units if they differ from the expected values
   if unit.name != attrs[:name] || unit.conversion_to_base != attrs[:conversion_to_base] || unit.dimension != attrs[:dimension]
     unit.update!(
-      name: attrs[:name], 
-      conversion_to_base: attrs[:conversion_to_base], 
+      name: attrs[:name],
+      conversion_to_base: attrs[:conversion_to_base],
       dimension: attrs[:dimension]
     )
   end

@@ -8,7 +8,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get index" do
-    get api_v1_locations_url, as: :json
+    get api_v1_locations_url, headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -17,7 +17,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get carousel locations" do
-    get carousel_api_v1_locations_url, as: :json
+    get carousel_api_v1_locations_url, headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -25,7 +25,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get special locations" do
-    get special_api_v1_locations_url, as: :json
+    get special_api_v1_locations_url, headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -33,7 +33,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show location" do
-    get api_v1_location_url(@location), as: :json
+    get api_v1_location_url(@location), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -49,7 +49,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
           hotel_position: 15
         },
         location_type: "carousel"
-      }, as: :json
+      }, headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -65,7 +65,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
           name: "api_storage"
         },
         location_type: "special"
-      }, as: :json
+      }, headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -80,7 +80,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
         hotel_position: 12
       },
       location_type: "carousel"
-    }, as: :json
+    }, headers: api_auth_headers, as: :json
 
     assert_response :success
     json_response = JSON.parse(response.body)
@@ -92,7 +92,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
     empty_location = Location.create!(name: "api_test_delete")
 
     assert_difference("Location.count", -1) do
-      delete api_v1_location_url(empty_location), as: :json
+      delete api_v1_location_url(empty_location), headers: api_auth_headers, as: :json
     end
 
     assert_response :success
@@ -102,7 +102,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
     @plate.move_to_location!(@location)
 
     assert_no_difference("Location.count") do
-      delete api_v1_location_url(@location), as: :json
+      delete api_v1_location_url(@location), headers: api_auth_headers, as: :json
     end
 
     assert_response :unprocessable_entity
@@ -113,7 +113,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   test "should get current plates" do
     @plate.move_to_location!(@location)
 
-    get current_plates_api_v1_location_url(@location), as: :json
+    get current_plates_api_v1_location_url(@location), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -124,7 +124,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   test "should get history" do
     @plate.move_to_location!(@location)
 
-    get history_api_v1_location_url(@location), as: :json
+    get history_api_v1_location_url(@location), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -136,7 +136,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
       location: {
         carousel_position: -1
       }
-    }, as: :json
+    }, headers: api_auth_headers, as: :json
 
     assert_response :unprocessable_entity
     json_response = JSON.parse(response.body)
@@ -157,7 +157,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal test_location.id, plate.current_location.id
 
     # Unassign all plates from the location
-    post unassign_all_plates_api_v1_location_url(test_location), as: :json
+    post unassign_all_plates_api_v1_location_url(test_location), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -174,7 +174,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
     # Ensure location has no plates
     assert_equal 0, @location.current_plates.count
 
-    post unassign_all_plates_api_v1_location_url(@location), as: :json
+    post unassign_all_plates_api_v1_location_url(@location), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -184,7 +184,7 @@ class Api::V1::LocationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should return 404 for unassign all plates on non-existent location" do
-    post unassign_all_plates_api_v1_location_url(99999), as: :json
+    post unassign_all_plates_api_v1_location_url(99999), headers: api_auth_headers, as: :json
     assert_response :not_found
 
     json_response = JSON.parse(response.body)

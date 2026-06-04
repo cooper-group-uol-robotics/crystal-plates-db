@@ -4,6 +4,7 @@ class DiffractionImagesControllerTest < ActionDispatch::IntegrationTest
   setup do
     @scxrd_dataset = scxrd_datasets(:one)
     @diffraction_image = diffraction_images(:one)
+    sign_in users(:writable)
   end
 
   test "should get index" do

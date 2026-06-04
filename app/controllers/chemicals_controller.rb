@@ -3,6 +3,7 @@ class ChemicalsController < ApplicationController
 
   # GET /chemicals or /chemicals.json
   def index
+    authorize Chemical
     # Handle search
     @search_query = params[:search]&.strip
 
@@ -43,6 +44,7 @@ class ChemicalsController < ApplicationController
 
   # GET /chemicals/1 or /chemicals/1.json
   def show
+    authorize @chemical
     respond_to do |format|
       format.html # show.html.erb
       format.json { render json: @chemical }
@@ -51,15 +53,18 @@ class ChemicalsController < ApplicationController
 
   # GET /chemicals/new
   def new
+    authorize Chemical
     @chemical = Chemical.new
   end
 
   # GET /chemicals/1/edit
   def edit
+    authorize @chemical
   end
 
   # POST /chemicals or /chemicals.json
   def create
+    authorize Chemical
     @chemical = Chemical.new(chemical_params)
 
     respond_to do |format|
@@ -75,6 +80,7 @@ class ChemicalsController < ApplicationController
 
   # PATCH/PUT /chemicals/1 or /chemicals/1.json
   def update
+    authorize @chemical
     respond_to do |format|
       if @chemical.update(chemical_params)
         format.html { redirect_to @chemical, notice: "Chemical was successfully updated." }
@@ -88,6 +94,7 @@ class ChemicalsController < ApplicationController
 
   # DELETE /chemicals/1 or /chemicals/1.json
   def destroy
+    authorize @chemical
     unless @chemical.can_be_deleted?
       respond_to do |format|
         format.html { redirect_to chemicals_path, alert: "Cannot delete chemical that is used in wells or stock solutions." }

@@ -19,7 +19,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
 
   # Test well-associated pattern endpoints
   test "should get index for well patterns" do
-    get api_v1_well_pxrd_patterns_url(@well), as: :json
+    get api_v1_well_pxrd_patterns_url(@well), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -41,7 +41,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
     assert_difference("PxrdPattern.count") do
       post api_v1_well_pxrd_patterns_url(@well),
            params: { pxrd_pattern: { title: "New Well Pattern" } },
-           as: :json
+           headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -53,7 +53,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
 
   # Test standalone pattern endpoints
   test "should get index for all patterns" do
-    get api_v1_pxrd_patterns_url, as: :json
+    get api_v1_pxrd_patterns_url, headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -75,7 +75,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
     assert_difference("PxrdPattern.count") do
       post api_v1_pxrd_patterns_url,
            params: { pxrd_pattern: { title: "New Standalone Pattern" } },
-           as: :json
+           headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -87,7 +87,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show well-associated pattern" do
-    get api_v1_pxrd_pattern_url(@well_pattern), as: :json
+    get api_v1_pxrd_pattern_url(@well_pattern), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -98,7 +98,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show standalone pattern" do
-    get api_v1_pxrd_pattern_url(@standalone_pattern), as: :json
+    get api_v1_pxrd_pattern_url(@standalone_pattern), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -111,7 +111,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
   test "should update well-associated pattern" do
     patch api_v1_pxrd_pattern_url(@well_pattern),
           params: { pxrd_pattern: { title: "Updated Well Pattern" } },
-          as: :json
+          headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -122,7 +122,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
   test "should update standalone pattern" do
     patch api_v1_pxrd_pattern_url(@standalone_pattern),
           params: { pxrd_pattern: { title: "Updated Standalone Pattern" } },
-          as: :json
+          headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -133,14 +133,14 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
 
   test "should destroy well-associated pattern" do
     assert_difference("PxrdPattern.count", -1) do
-      delete api_v1_pxrd_pattern_url(@well_pattern), as: :json
+      delete api_v1_pxrd_pattern_url(@well_pattern), headers: api_auth_headers, as: :json
     end
     assert_response :success
   end
 
   test "should destroy standalone pattern" do
     assert_difference("PxrdPattern.count", -1) do
-      delete api_v1_pxrd_pattern_url(@standalone_pattern), as: :json
+      delete api_v1_pxrd_pattern_url(@standalone_pattern), headers: api_auth_headers, as: :json
     end
     assert_response :success
   end
@@ -148,7 +148,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
   test "should get pattern data for pattern with file" do
     # This test would require attaching an actual PXRD file
     # For now, just test that the endpoint exists and handles missing data gracefully
-    get data_api_v1_pxrd_pattern_url(@standalone_pattern), as: :json
+    get data_api_v1_pxrd_pattern_url(@standalone_pattern), headers: api_auth_headers, as: :json
 
     # Should return success with empty data arrays since no file is attached
     assert_response :success
@@ -161,7 +161,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
   test "should handle errors gracefully when creating invalid pattern" do
     post api_v1_pxrd_patterns_url,
          params: { pxrd_pattern: { title: "" } },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     # Should handle any validation errors gracefully
     # The exact response depends on model validations
@@ -169,7 +169,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should return 404 for non-existent pattern" do
-    get api_v1_pxrd_pattern_url(99999), as: :json
+    get api_v1_pxrd_pattern_url(99999), headers: api_auth_headers, as: :json
     assert_response :not_found
   end
 
@@ -181,7 +181,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
              well_string: "A1"
            ),
            params: { pxrd_pattern: { title: "Pattern for A1" } },
-           as: :json
+           headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -203,7 +203,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
              well_string: "B3_2"
            ),
            params: { pxrd_pattern: { title: "Pattern for B3 subwell 2" } },
-           as: :json
+           headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -219,7 +219,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
            well_string: "A1"
          ),
          params: { pxrd_pattern: { title: "Pattern for nonexistent plate" } },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     assert_response :not_found
     json_response = JSON.parse(response.body)
@@ -233,7 +233,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
            well_string: "Z99"
          ),
          params: { pxrd_pattern: { title: "Pattern for nonexistent well" } },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     assert_response :not_found
     json_response = JSON.parse(response.body)
@@ -247,7 +247,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
            well_string: "INVALID"
          ),
          params: { pxrd_pattern: { title: "Pattern for malformed well" } },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     assert_response :not_found
     json_response = JSON.parse(response.body)
@@ -262,7 +262,7 @@ class Api::V1::PxrdPatternsControllerTest < ActionDispatch::IntegrationTest
            well_string: "A1"
          ),
          params: { pxrd_pattern: { title: "" } },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     # Response depends on PxrdPattern model validations
     # If title is required and empty, should get unprocessable_entity

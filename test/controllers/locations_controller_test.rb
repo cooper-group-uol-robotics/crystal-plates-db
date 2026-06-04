@@ -4,6 +4,7 @@ class LocationsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @carousel_location = locations(:carousel_1_hotel_1)
     @imager_location = locations(:imager)
+    sign_in users(:writable)
   end
 
   test "should get index" do

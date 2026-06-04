@@ -5,6 +5,7 @@ class ImagesControllerTest < ActionDispatch::IntegrationTest
     @well = wells(:one)
     @plate = plates(:one)
     @well.update!(plate: @plate)
+    sign_in users(:writable)
   end
 
   test "should get new" do
@@ -44,7 +45,7 @@ class ImagesControllerTest < ActionDispatch::IntegrationTest
     image = create_test_image
     get well_image_url(@well, image)
     assert_response :success
-    assert_select "h4", text: /Image for Well/
+    assert_match /Image \d+\/\d+ for Well/, response.body
   end
 
   test "should get edit" do

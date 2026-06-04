@@ -3,26 +3,31 @@ class LocationsController < ApplicationController
 
   # GET /locations
   def index
+    authorize Location
     redirect_to grid_locations_path
   end
 
   # GET /locations/1
   def show
+    authorize @location
     @current_plates = @location.current_plates
     @location_history = @location.plate_locations.recent_first.includes(:plate).limit(20)
   end
 
   # GET /locations/new
   def new
+    authorize Location
     @location = Location.new
   end
 
   # GET /locations/1/edit
   def edit
+    authorize @location
   end
 
   # POST /locations
   def create
+    authorize Location
     @location = Location.new(location_params_processed)
 
     respond_to do |format|
@@ -38,6 +43,7 @@ class LocationsController < ApplicationController
 
   # PATCH/PUT /locations/1
   def update
+    authorize @location
     respond_to do |format|
       if @location.update(location_params_processed)
         format.html { redirect_to @location, notice: "Location was successfully updated." }
@@ -51,6 +57,7 @@ class LocationsController < ApplicationController
 
   # DELETE /locations/1
   def destroy
+    authorize @location
     if @location.current_plates.exists?
       redirect_to grid_locations_path, alert: "Cannot delete location that currently contains plates."
     else

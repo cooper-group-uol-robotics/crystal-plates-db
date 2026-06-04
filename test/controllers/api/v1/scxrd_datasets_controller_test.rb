@@ -21,7 +21,7 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
 
   # Test well-associated dataset endpoints
   test "should get index for well datasets" do
-    get api_v1_well_scxrd_datasets_url(@well), as: :json
+    get api_v1_well_scxrd_datasets_url(@well), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -39,13 +39,13 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
   test "should create well-associated dataset" do
     assert_difference("ScxrdDataset.count") do
       post api_v1_well_scxrd_datasets_url(@well),
-           params: { 
-             scxrd_dataset: { 
+           params: {
+             scxrd_dataset: {
                experiment_name: "New Well Dataset",
-               measured_at: Time.current 
-             } 
+               measured_at: Time.current
+             }
            },
-           as: :json
+           headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -55,7 +55,7 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
 
   # Test standalone dataset endpoints
   test "should get index for all datasets" do
-    get api_v1_scxrd_datasets_url, as: :json
+    get api_v1_scxrd_datasets_url, headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -72,13 +72,13 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
   test "should create standalone dataset" do
     assert_difference("ScxrdDataset.count") do
       post api_v1_scxrd_datasets_url,
-           params: { 
-             scxrd_dataset: { 
+           params: {
+             scxrd_dataset: {
                experiment_name: "New Standalone Dataset",
-               measured_at: Time.current 
-             } 
+               measured_at: Time.current
+             }
            },
-           as: :json
+           headers: api_auth_headers, as: :json
     end
 
     assert_response :created
@@ -87,7 +87,7 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show well-associated dataset" do
-    get api_v1_scxrd_dataset_url(@well_dataset), as: :json
+    get api_v1_scxrd_dataset_url(@well_dataset), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -96,7 +96,7 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show standalone dataset" do
-    get api_v1_scxrd_dataset_url(@standalone_dataset), as: :json
+    get api_v1_scxrd_dataset_url(@standalone_dataset), headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -106,12 +106,12 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
 
   test "should update well-associated dataset" do
     patch api_v1_scxrd_dataset_url(@well_dataset),
-          params: { 
-            scxrd_dataset: { 
-              experiment_name: "Updated Well Dataset" 
-            } 
+          params: {
+            scxrd_dataset: {
+              experiment_name: "Updated Well Dataset"
+            }
           },
-          as: :json
+          headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -120,12 +120,12 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
 
   test "should update standalone dataset" do
     patch api_v1_scxrd_dataset_url(@standalone_dataset),
-          params: { 
-            scxrd_dataset: { 
-              experiment_name: "Updated Standalone Dataset" 
-            } 
+          params: {
+            scxrd_dataset: {
+              experiment_name: "Updated Standalone Dataset"
+            }
           },
-          as: :json
+          headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)
@@ -134,20 +134,20 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
 
   test "should destroy well-associated dataset" do
     assert_difference("ScxrdDataset.count", -1) do
-      delete api_v1_scxrd_dataset_url(@well_dataset), as: :json
+      delete api_v1_scxrd_dataset_url(@well_dataset), headers: api_auth_headers, as: :json
     end
     assert_response :success
   end
 
   test "should destroy standalone dataset" do
     assert_difference("ScxrdDataset.count", -1) do
-      delete api_v1_scxrd_dataset_url(@standalone_dataset), as: :json
+      delete api_v1_scxrd_dataset_url(@standalone_dataset), headers: api_auth_headers, as: :json
     end
     assert_response :success
   end
 
   test "should return 404 for non-existent dataset" do
-    get api_v1_scxrd_dataset_url(99999), as: :json
+    get api_v1_scxrd_dataset_url(99999), headers: api_auth_headers, as: :json
     assert_response :not_found
   end
 
@@ -158,7 +158,7 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
            well_string: "A1"
          ),
          params: { scxrd_dataset: { experiment_name: "Test Dataset" } },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     assert_response :unprocessable_entity
     json_response = JSON.parse(response.body)
@@ -168,14 +168,14 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
 
   test "should handle invalid plate barcode in upload_to_well" do
     # Create a mock file upload
-    mock_file = fixture_file_upload('test_archive.zip', 'application/zip')
-    
+    mock_file = fixture_file_upload("test_archive.zip", "application/zip")
+
     post upload_to_well_api_v1_scxrd_datasets_url(
            barcode: "INVALID_BARCODE",
            well_string: "A1"
          ),
          params: { archive: mock_file },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     assert_response :not_found
     json_response = JSON.parse(response.body)
@@ -185,14 +185,14 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
 
   test "should handle invalid well identifier in upload_to_well" do
     # Create a mock file upload
-    mock_file = fixture_file_upload('test_archive.zip', 'application/zip')
-    
+    mock_file = fixture_file_upload("test_archive.zip", "application/zip")
+
     post upload_to_well_api_v1_scxrd_datasets_url(
            barcode: @plate.barcode,
            well_string: "Z99"
          ),
          params: { archive: mock_file },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     assert_response :not_found
     json_response = JSON.parse(response.body)
@@ -202,14 +202,14 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
 
   test "should handle malformed well identifier in upload_to_well" do
     # Create a mock file upload
-    mock_file = fixture_file_upload('test_archive.zip', 'application/zip')
-    
+    mock_file = fixture_file_upload("test_archive.zip", "application/zip")
+
     post upload_to_well_api_v1_scxrd_datasets_url(
            barcode: @plate.barcode,
            well_string: "INVALID"
          ),
          params: { archive: mock_file },
-         as: :json
+         headers: api_auth_headers, as: :json
 
     assert_response :not_found
     json_response = JSON.parse(response.body)
@@ -221,7 +221,7 @@ class Api::V1::ScxrdDatasetsControllerTest < ActionDispatch::IntegrationTest
   # test "should upload SCXRD dataset to well using human-readable identifier" do
   #   # This would require a proper test archive file and background job processing
   #   mock_file = fixture_file_upload('test_archive.zip', 'application/zip')
-  #   
+  #
   #   assert_difference("ScxrdDataset.count") do
   #     post upload_to_well_api_v1_scxrd_datasets_url(
   #            barcode: @plate.barcode,

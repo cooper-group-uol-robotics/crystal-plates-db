@@ -1,0 +1,25 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+admin_key:
+  user: admin
+  name: Admin API Key
+  token_digest: <%= Digest::SHA256.hexdigest('test_admin_token_1234567890abcdef') %>
+  last_used_at: <%= 1.day.ago %>
+  expires_at: <%= 30.days.from_now %>
+  active: true
+
+writable_key:
+  user: writable
+  name: Writable API Key
+  token_digest: <%= Digest::SHA256.hexdigest('test_writable_token_abcdef1234567890') %>
+  last_used_at: <%= 2.days.ago %>
+  expires_at: <%= 60.days.from_now %>
+  active: true
+
+readable_key:
+  user: readable
+  name: Readable API Key
+  token_digest: <%= Digest::SHA256.hexdigest('test_readable_token_fedcba0987654321') %>
+  last_used_at: <%= 3.days.ago %>
+  expires_at: <%= 90.days.from_now %>
+  active: true

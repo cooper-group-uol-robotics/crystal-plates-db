@@ -1,5 +1,8 @@
 module Api::V1
   class HealthController < BaseController
+    # Skip API key authentication for health check
+    skip_before_action :authenticate_api_key!
+
     def show
       render_success({
         status: "healthy",

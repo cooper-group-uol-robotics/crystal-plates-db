@@ -3,6 +3,7 @@ require "test_helper"
 class WellsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @well = wells(:one)
+    sign_in users(:writable)
   end
 
   test "should get index" do

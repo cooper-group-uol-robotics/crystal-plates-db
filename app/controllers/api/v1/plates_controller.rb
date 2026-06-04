@@ -4,6 +4,7 @@ module Api::V1
 
     # GET /api/v1/plates
     def index
+      authorize Plate
       plates = Plate.includes(:wells, :plate_locations, :plate_prototype)
 
       # Filter by assignment status if requested
@@ -19,17 +20,19 @@ module Api::V1
       plates_with_counts = plates.all.map do |plate|
         plate_json(plate, include_wells: false, include_points_of_interest: false, include_counts: true)
       end
-      
+
       render_success(plates_with_counts)
     end
 
     # GET /api/v1/plates/:barcode
     def show
+      authorize @plate
       render_success(plate_json(@plate, include_wells: true, include_points_of_interest: true, include_counts: true))
     end
 
     # POST /api/v1/plates
     def create
+      authorize Plate
       plate = Plate.new(plate_params)
 
       # Accept plate_prototype_id from params (for API)
@@ -306,7 +309,6 @@ module Api::V1
           id: contentable.id,
           name: contentable.name,
           display_name: contentable.display_name,
-          description: contentable.description,
           components_count: contentable.total_components,
           component_summary: contentable.component_summary
         }

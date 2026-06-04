@@ -1,0 +1,62 @@
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <h1 class="mb-4">Create New API Key</h1>
+    
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <%= form_with model: @api_key, local: true do |f| %>
+          <% if @api_key.errors.any? %>
+            <div class="alert alert-danger">
+              <h6>Please fix the following errors:</h6>
+              <ul class="mb-0">
+                <% @api_key.errors.full_messages.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+
+          <div class="mb-3">
+            <%= f.label :name, "Name", class: "form-label" %>
+            <%= f.text_field :name, class: "form-control", placeholder: "e.g., Robot System API Key", required: true %>
+            <div class="form-text">Give this API key a descriptive name to help you identify it later.</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :expires_at, "Expiration Date (Optional)", class: "form-label" %>
+            <%= f.datetime_field :expires_at, class: "form-control", min: Time.current.iso8601 %>
+            <div class="form-text">Leave blank for an API key that never expires. You can always revoke it manually.</div>
+          </div>
+
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Important:</strong> The API key will only be displayed once after creation. Make sure to copy and store it securely.
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <%= link_to "Cancel", api_keys_path, class: "btn btn-secondary" %>
+            <%= f.submit "Create API Key", class: "btn btn-primary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <h5>Current Permissions</h5>
+      <p>This API key will have the same permissions as your user account:</p>
+      <ul>
+        <li><strong>Role:</strong> <%= current_user.role.titleize %></li>
+        <li>
+          <strong>Permissions:</strong>
+          <% if current_user.admin? %>
+            Full access to all resources including user management
+          <% elsif current_user.writable? %>
+            Read and write access to all data (plates, wells, locations, etc.)
+          <% else %>
+            Read-only access to all data
+          <% end %>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

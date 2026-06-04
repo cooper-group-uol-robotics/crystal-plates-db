@@ -2,7 +2,7 @@ require "test_helper"
 
 class Api::V1::StatsControllerTest < ActionDispatch::IntegrationTest
   test "should get system statistics" do
-    get api_v1_stats_url, as: :json
+    get api_v1_stats_url, headers: api_auth_headers, as: :json
     assert_response :success
 
     json_response = JSON.parse(response.body)

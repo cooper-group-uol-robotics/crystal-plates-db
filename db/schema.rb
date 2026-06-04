@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_21_172947) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_04_140712) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -37,6 +37,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_21_172947) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "api_keys", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "name", null: false
+    t.string "token_digest", null: false
+    t.datetime "last_used_at"
+    t.datetime "expires_at"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_api_keys_on_active"
+    t.index ["token_digest"], name: "index_api_keys_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_api_keys_on_user_id"
   end
 
   create_table "calorimetry_datapoints", force: :cascade do |t|
@@ -358,6 +372,29 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_21_172947) do
     t.index ["dimension_id"], name: "index_units_on_dimension_id"
   end
 
+  create_table "users", force: :cascade do |t|
+    t.string "email", default: "", null: false
+    t.string "encrypted_password", default: "", null: false
+    t.string "reset_password_token"
+    t.datetime "reset_password_sent_at"
+    t.datetime "remember_created_at"
+    t.integer "sign_in_count", default: 0, null: false
+    t.datetime "current_sign_in_at"
+    t.datetime "last_sign_in_at"
+    t.string "current_sign_in_ip"
+    t.string "last_sign_in_ip"
+    t.string "role", default: "readable", null: false
+    t.string "ldap_uid"
+    t.string "ldap_dn"
+    t.boolean "active", default: true, null: false
+    t.boolean "last_sign_in_from_ad", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["ldap_uid"], name: "index_users_on_ldap_uid", unique: true
+    t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+  end
+
   create_table "well_contents", force: :cascade do |t|
     t.integer "well_id", null: false
     t.integer "stock_solution_id"
@@ -401,6 +438,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_21_172947) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "api_keys", "users"
   add_foreign_key "calorimetry_datapoints", "calorimetry_datasets"
   add_foreign_key "calorimetry_datasets", "calorimetry_experiments"
   add_foreign_key "calorimetry_datasets", "wells"
