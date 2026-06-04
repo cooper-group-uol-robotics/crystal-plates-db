@@ -43,6 +43,7 @@ class WellsController < ApplicationController
     end
 
     well_ids = params[:well_ids] || params["well_ids"]
+    amount_with_unit = params[:amount_with_unit] || params["amount_with_unit"]
     volume_with_unit = params[:volume_with_unit] || params["volume_with_unit"]
 
     # Support both new polymorphic approach and legacy stock solution approach
@@ -108,7 +109,8 @@ class WellsController < ApplicationController
 
       # Create well content with polymorphic association
       well_content = well.well_contents.build(contentable: contentable)
-      well_content.amount_with_unit = volume_with_unit if volume_with_unit.present?
+      well_content.amount_with_unit = amount_with_unit if amount_with_unit.present?
+      well_content.amount_with_unit = volume_with_unit if amount_with_unit.blank? && volume_with_unit.present?
 
       if well_content.save
         success_count += 1
@@ -260,7 +262,9 @@ class WellsController < ApplicationController
         volume_with_unit = params[:volume_with_unit] || params["volume_with_unit"]
 
         well_content = @well.well_contents.build(stock_solution: stock_solution)
-        well_content.amount_with_unit = volume_with_unit if volume_with_unit.present?
+        well_content.amount_with_unit = amount_with_unit if amount_with_unit.present?
+        well_content.amount_with_unit = volume_with_unit if amount_with_unit.blank? && volume_with_unit.present?
+
 
         if well_content.save
           render json: { success: true, message: "Stock solution added successfully" }
@@ -300,7 +304,7 @@ class WellsController < ApplicationController
 
     respond_to do |format|
       format.html { render partial: "wells/custom_attributes", locals: { well: @well, plate: @plate, available_attributes: @available_attributes } }
-      format.json { 
+      format.json {
         render json: {
           well: {
             id: @well.id,
