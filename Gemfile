@@ -70,6 +70,7 @@ gem "redcarpet"
 gem "rubyzip"
 gem "faraday"
 gem "faraday-multipart"
+gem "net-ldap"
 gem "aws-sdk-s3", require: false
 gem "pg"
 gem "bullet", require: false
