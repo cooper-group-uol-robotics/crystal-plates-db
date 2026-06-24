@@ -119,9 +119,8 @@ window.showScxrdDatasetInMain = function (datasetId, experimentName, datasetUrl,
           let actionsHTML = '';
 
           // Add G6 comparison button if unit cell is available (check any unit cell type)
-          const hasCellData = (data.unit_cell && data.unit_cell.a) || 
-                             (data.conventional_unit_cell && data.conventional_unit_cell.a) || 
-                             (data.primitive_unit_cell && data.primitive_unit_cell.a);
+          const hasCellData = true
+          
           if (hasCellData) {
             actionsHTML += `
               <button type="button" class="btn btn-outline-info btn-sm similarity-button me-2"
