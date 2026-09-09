@@ -1,4 +1,5 @@
 class SciformationService
+  require "digest"
   require "net/http"
   require "uri"
   require "json"
@@ -6,6 +7,7 @@ class SciformationService
   BASE_URL = "https://sciformation.liverpool.ac.uk"
   LOGIN_URL = "#{BASE_URL}/login"
   SEARCH_URL = "#{BASE_URL}/performSearch"
+  COSHH_CACHE_TTL = 12.hours
 
   class AuthenticationError < StandardError; end
   class QueryError < StandardError; end
@@ -64,8 +66,6 @@ class SciformationService
 
   # Fetch chemicals from a COSHH form code (e.g., "TFE-045")
   def fetch_coshh_chemicals(coshh_code)
-    authenticate! unless @cookies.present?
-
     # Parse COSHH code (e.g., "TFE-045" -> prefix: "TFE", number: 45)
     coshh_prefix, coshh_number = parse_coshh_code(coshh_code)
 
@@ -73,16 +73,23 @@ class SciformationService
       raise QueryError, "Invalid COSHH code format: #{coshh_code}"
     end
 
-    # Build query for Sciformation
-    criteria = {
-      "elnReactionComponentCollection.elnReaction.elnLabNotebook.code" => coshh_prefix,
-      "elnReactionComponentCollection.elnReaction.nrInLabJournal" => coshh_number
-    }
+    cache_key = "sciformation:coshh-chemicals:#{Digest::SHA256.hexdigest([ @username, coshh_prefix, coshh_number ].join(":"))}"
 
-    results = perform_search("CdbContainer", criteria)
+    cache_hit = true
+    sciformation_ids = Rails.cache.fetch(cache_key, expires_in: COSHH_CACHE_TTL) do
+      cache_hit = false
+      authenticate! unless @cookies.present?
 
-    # Extract only the Sciformation IDs (pk) from containers
-    sciformation_ids = results.map { |item| item["pk"] }.compact
+      criteria = {
+        "elnReactionComponentCollection.elnReaction.elnLabNotebook.code" => coshh_prefix,
+        "elnReactionComponentCollection.elnReaction.nrInLabJournal" => coshh_number
+      }
+
+      results = perform_search("CdbContainer", criteria)
+      results.map { |item| item["pk"] }.compact
+    end
+
+    Rails.logger.info "[Sciformation] Using cached COSHH chemicals for #{coshh_code}" if cache_hit
 
     Rails.logger.info "Found #{sciformation_ids.size} chemical IDs for COSHH form #{coshh_code}"
     sciformation_ids
