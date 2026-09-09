@@ -12,6 +12,12 @@ export default class extends Controller {
     connect() {
         console.log("Well modal controller connected")
 
+        this.keyboardHandler = null
+        this.currentRow = null
+        this.currentCol = null
+        this.currentSubwell = null
+        this.activeTab = 'content'
+
         // Set up modal event listeners
         if (this.hasModalTarget) {
             this.modalTarget.addEventListener('shown.bs.modal', this.onModalShown.bind(this))
@@ -25,6 +31,7 @@ export default class extends Controller {
             this.modalTarget.removeEventListener('shown.bs.modal', this.onModalShown.bind(this))
             this.modalTarget.removeEventListener('hidden.bs.modal', this.onModalHidden.bind(this))
         }
+        this.removeKeyboardNavigation()
     }
 
     // Called when modal is shown
@@ -55,6 +62,9 @@ export default class extends Controller {
             this.wellIdValue = parseInt(wellId) || 0
             this.wellLabelValue = wellLabel || ''
             this.plateBarcodeValue = plateBarcode || ''
+            this.setCurrentPositionFromButton(triggerButton)
+        } else {
+            this.setCurrentPositionFromWellId(this.wellIdValue)
         }
 
         console.log("Well modal shown for well:", this.wellIdValue, "type:", typeof this.wellIdValue)
@@ -65,6 +75,7 @@ export default class extends Controller {
         }
 
         // Ensure content tab is active by default
+        this.activeTab = 'content'
         this.activateContentTab()
 
         // Load content form immediately if we have a valid well ID
@@ -84,6 +95,7 @@ export default class extends Controller {
             // Load calorimetry data in background (this was working before)
             this.loadCalorimetryInBackground()
             // Note: Custom attributes will be loaded on tab click for better UX
+            this.setupKeyboardNavigation()
         } else {
             console.error("Invalid well ID for loading content:", this.wellIdValue)
             if (this.hasContentFormTarget) {
@@ -105,6 +117,7 @@ export default class extends Controller {
         }
 
         console.log("Well modal hidden")
+        this.removeKeyboardNavigation()
         this.resetModal()
     }
 
@@ -118,12 +131,188 @@ export default class extends Controller {
         modal.show()
     }
 
+    setCurrentPositionFromButton(button) {
+        if (!button) return
+
+        this.currentRow = parseInt(button.getAttribute('data-row'), 10) || null
+        this.currentCol = parseInt(button.getAttribute('data-col'), 10) || null
+        this.currentSubwell = button.getAttribute('data-subwell') || null
+    }
+
+    setCurrentPositionFromWellId(wellId) {
+        if (!wellId) {
+            this.currentRow = null
+            this.currentCol = null
+            this.currentSubwell = null
+            return
+        }
+
+        const button = document.querySelector(`[data-well-id="${wellId}"]`)
+        if (button) {
+            this.setCurrentPositionFromButton(button)
+        } else {
+            this.currentRow = null
+            this.currentCol = null
+            this.currentSubwell = null
+        }
+    }
+
+    setupKeyboardNavigation() {
+        if (this.keyboardHandler) {
+            document.removeEventListener('keydown', this.keyboardHandler)
+        }
+
+        this.keyboardHandler = this.handleModalKeydown.bind(this)
+        document.addEventListener('keydown', this.keyboardHandler)
+    }
+
+    removeKeyboardNavigation() {
+        if (this.keyboardHandler) {
+            document.removeEventListener('keydown', this.keyboardHandler)
+            this.keyboardHandler = null
+        }
+    }
+
+    handleModalKeydown(event) {
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+            return
+        }
+
+        if (!this.modalTarget.classList.contains('show')) {
+            return
+        }
+
+        event.preventDefault()
+
+        const targetButton = this.findAdjacentWellButton(event.key)
+        if (targetButton) {
+            this.navigateToWellButton(targetButton)
+        }
+    }
+
+    findAdjacentWellButton(direction) {
+        const buttons = Array.from(document.querySelectorAll('.well-select-btn'))
+            .map(button => ({
+                button,
+                wellId: button.getAttribute('data-well-id'),
+                row: parseInt(button.getAttribute('data-row'), 10),
+                col: parseInt(button.getAttribute('data-col'), 10),
+                subwell: button.getAttribute('data-subwell') || ''
+            }))
+            .filter(item => item.row && item.col)
+
+        if (!buttons.length || this.currentRow === null || this.currentCol === null) {
+            return null
+        }
+
+        const isSameSubwell = (item) => item.subwell === this.currentSubwell
+        let candidates = []
+
+        switch (direction) {
+            case 'ArrowRight':
+                candidates = buttons
+                    .filter(item => item.row === this.currentRow && item.col > this.currentCol)
+                    .sort((a, b) => a.col - b.col)
+                break
+            case 'ArrowLeft':
+                candidates = buttons
+                    .filter(item => item.row === this.currentRow && item.col < this.currentCol)
+                    .sort((a, b) => b.col - a.col)
+                break
+            case 'ArrowDown':
+                candidates = buttons
+                    .filter(item => item.col === this.currentCol && item.row > this.currentRow)
+                    .sort((a, b) => a.row - b.row)
+                break
+            case 'ArrowUp':
+                candidates = buttons
+                    .filter(item => item.col === this.currentCol && item.row < this.currentRow)
+                    .sort((a, b) => b.row - a.row)
+                break
+        }
+
+        if (!candidates.length) {
+            return null
+        }
+
+        const sameSubwellCandidates = candidates.filter(isSameSubwell)
+        return sameSubwellCandidates.length ? sameSubwellCandidates[0].button : candidates[0].button
+    }
+
+    navigateToWellButton(button) {
+        if (!button) return
+
+        const wellId = button.getAttribute('data-well-id')
+        const wellLabel = button.getAttribute('data-well-label')
+
+        this.wellIdValue = parseInt(wellId, 10) || 0
+        this.wellLabelValue = wellLabel || ''
+        this.setCurrentPositionFromButton(button)
+
+        if (this.hasTitleTarget && this.wellLabelValue) {
+            this.titleTarget.textContent = `Well ${this.wellLabelValue} Details`
+        }
+
+        const activeTab = this.activeTab || 'content'
+        this.activateTab(activeTab)
+
+        if (this.hasContentFormTarget) {
+            this.contentFormTarget.innerHTML = `
+          <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+              <span class="visually-hidden">Loading well contents...</span>
+            </div>
+            <div class="text-muted">Loading well contents...</div>
+          </div>
+        `
+        }
+
+        if (this.hasImagesContentTarget) {
+            this.imagesContentTarget.innerHTML = `
+          <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+              <span class="visually-hidden">Loading images...</span>
+            </div>
+            <div class="text-muted">Loading well images...</div>
+          </div>
+        `
+        }
+
+        this.loadContentForm()
+        this.loadImagesInBackground()
+        this.setupPxrdPlaceholder()
+        this.setupScxrdPlaceholder()
+        this.setupCalorimetryPlaceholder()
+        this.setupCustomAttributesPlaceholder()
+
+        switch (activeTab) {
+            case 'pxrd':
+                this.loadPxrdInBackground()
+                break
+            case 'scxrd':
+                this.loadScxrdInBackground()
+                break
+            case 'calorimetry':
+                this.loadCalorimetryInBackground()
+                break
+            case 'custom-attributes':
+                this.loadCustomAttributesInBackground()
+                break
+        }
+    }
+
     // Activate the content tab
     activateContentTab() {
-        const contentTab = document.getElementById('content-tab')
-        const contentPane = document.getElementById('content')
+        this.activateTab('content')
+    }
+
+    activateTab(tabId) {
+        this.activeTab = tabId
+
         const allTabs = document.querySelectorAll('#wellTabs .nav-link')
         const allPanes = document.querySelectorAll('#wellTabContent .tab-pane')
+        const targetTab = document.querySelector(`#wellTabs [aria-controls="${tabId}"]`)
+        const targetPane = document.getElementById(tabId)
 
         // Remove active class from all tabs and panes
         allTabs.forEach(tab => {
@@ -134,11 +323,10 @@ export default class extends Controller {
             pane.classList.remove('show', 'active')
         })
 
-        // Activate content tab
-        if (contentTab && contentPane) {
-            contentTab.classList.add('active')
-            contentTab.setAttribute('aria-selected', 'true')
-            contentPane.classList.add('show', 'active')
+        if (targetTab && targetPane) {
+            targetTab.classList.add('active')
+            targetTab.setAttribute('aria-selected', 'true')
+            targetPane.classList.add('show', 'active')
         }
     }
 
@@ -544,6 +732,7 @@ export default class extends Controller {
     // Handle tab clicks (if needed for lazy loading)
     handleTabClick(event) {
         const tabId = event.currentTarget.getAttribute('aria-controls')
+        this.activeTab = tabId
 
         switch (tabId) {
             case 'images':
