@@ -6,7 +6,7 @@ class SciformationService
 
   BASE_URL = "https://sciformation.liverpool.ac.uk"
   LOGIN_URL = "#{BASE_URL}/login"
-  SEARCH_URL = "#{BASE_URL}/performSearch"
+  SEARCH_URL = "#{BASE_URL}/login?useCase=performSearch"
   COSHH_CACHE_TTL = 12.hours
 
   class AuthenticationError < StandardError; end
@@ -23,46 +23,6 @@ class SciformationService
     @cookies = nil
   end
 
-  # Authenticate and establish a session with Sciformation
-  def authenticate!
-    uri = URI(LOGIN_URL)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
-    http.read_timeout = 30
-    http.open_timeout = 15
-
-    request = Net::HTTP::Post.new(uri)
-    request.set_form_data({
-      "user" => @username,
-      "password" => @password,
-      "preventSaml2" => "true"
-    })
-
-    Rails.logger.info "Authenticating with Sciformation as user: #{@username}"
-
-    begin
-      response = http.request(request)
-
-      if response.code.to_i == 302 || response.code.to_i == 200
-        # Extract cookies from response
-        @cookies = response.get_fields("set-cookie")&.map { |c| c.split(";").first }&.join("; ")
-
-        if @cookies.present?
-          Rails.logger.info "Successfully authenticated with Sciformation"
-          true
-        else
-          raise AuthenticationError, "No session cookies returned from Sciformation"
-        end
-      else
-        raise AuthenticationError, "Authentication failed - HTTP #{response.code}"
-      end
-
-    rescue Net::OpenTimeout, Net::ReadTimeout => e
-      raise AuthenticationError, "Timeout connecting to Sciformation: #{e.message}"
-    rescue => e
-      raise AuthenticationError, "Authentication error: #{e.message}"
-    end
-  end
 
   # Fetch chemicals from a COSHH form code (e.g., "TFE-045")
   def fetch_coshh_chemicals(coshh_code)
@@ -78,7 +38,6 @@ class SciformationService
     cache_hit = true
     sciformation_ids = Rails.cache.fetch(cache_key, expires_in: COSHH_CACHE_TTL) do
       cache_hit = false
-      authenticate! unless @cookies.present?
 
       criteria = {
         "elnReactionComponentCollection.elnReaction.elnLabNotebook.code" => coshh_prefix,
@@ -97,8 +56,6 @@ class SciformationService
 
   # Fetch inventory containers (existing functionality)
   def fetch_inventory(department_id: "124", barcode: nil)
-    authenticate! unless @cookies.present?
-
     if barcode.present?
       criteria = { "barcode" => barcode }
     else
@@ -133,14 +90,15 @@ class SciformationService
     http.open_timeout = 30
 
     request = Net::HTTP::Post.new(uri)
-    request["Cookie"] = @cookies
-
     # Build query string
     query_parts = criteria.keys.each_with_index.map { |_, i| "[#{i}]" }
     query = query_parts.join("+AND+")
 
     # Build form data
     form_data = {
+      "user" => @username,
+      "password" => @password,
+      "preventSaml2" => "true",
       "table" => table,
       "format" => "json",
       "query" => query
