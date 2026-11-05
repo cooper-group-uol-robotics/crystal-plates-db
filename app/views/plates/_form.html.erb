@@ -38,9 +38,11 @@
   <div class="mb-4">
     <label class="form-label fw-bold">Plate Prototype</label>
     <select class="form-select" id="plate_prototype_id" name="plate[plate_prototype_id]" <%= plate.persisted? ? 'disabled' : '' %>>
+      
       <% PlatePrototype.all.each do |prototype| %>
         <option value="<%= prototype.id %>" <%= (plate.plate_prototype_id == prototype.id || (!plate.persisted? && plate.plate_prototype_id.nil? && prototype.id == 1)) ? 'selected' : '' %>><%= prototype.name %></option>
       <% end %>
+      <option value="None" selected="selected">Select An Option </option>
       <option value="">Custom dimensions...</option>
     </select>
     <% if plate.persisted? %>
@@ -228,6 +230,8 @@
       }
 
       const dimensionInputs = dimensionsSection.querySelectorAll('input');
+      const submitButton = prototypeSelect.closest('form')?.querySelector('input[type="submit"], button[type="submit"]');
+      submitButton.disabled = true;
 
       function toggleDimensions() {
         if (prototypeSelect.value) {
@@ -236,6 +240,12 @@
         } else {
           dimensionsSection.classList.remove('opacity-50');
           dimensionInputs.forEach(input => input.disabled = false);
+        }
+
+        if (prototypeSelect.value === 'None') {
+          if (submitButton) submitButton.disabled = true;
+        } else {
+          if (submitButton) submitButton.disabled = false;
         }
       }
 
