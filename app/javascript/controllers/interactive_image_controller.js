@@ -202,7 +202,7 @@ export default class extends Controller {
     const scaleY = this.imageTarget.clientHeight / this.originalHeightValue
     
     const displayX = point.pixel_x * scaleX
-    const displayY = point.pixel_y * scaleY
+    const displayY = (point.pixel_y * scaleY) + 24
     
     marker.style.left = `${displayX - 6}px` // Center the 12px marker
     marker.style.top = `${displayY - 6}px`
