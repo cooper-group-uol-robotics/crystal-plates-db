@@ -118,7 +118,7 @@ export default class extends Controller {
     
     // Round to nearest integer pixel
     const pixelX = Math.round(x)
-    const pixelY = Math.round(y)
+    const pixelY = Math.round(y) -24
     
     // Get selected point type
     const pointType = document.querySelector('input[name="pointType"]:checked')?.value || 'crystal'
