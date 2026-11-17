@@ -118,7 +118,7 @@ export default class extends Controller {
     
     // Round to nearest integer pixel
     const pixelX = Math.round(x)
-    const pixelY = Math.round(y) - 24
+    const pixelY = Math.round(y)
     
     // Get selected point type
     const pointType = document.querySelector('input[name="pointType"]:checked')?.value || 'crystal'
@@ -202,7 +202,7 @@ export default class extends Controller {
     const scaleY = this.imageTarget.clientHeight / this.originalHeightValue
     
     const displayX = point.pixel_x * scaleX
-    const displayY = (point.pixel_y + 24) * scaleY
+    const displayY = (point.pixel_y) * scaleY
     
     marker.style.left = `${displayX - 6}px` // Center the 12px marker
     marker.style.top = `${displayY - 6}px`
