@@ -128,7 +128,7 @@
                 <% begin %>
                   <%= image_tag url_for(@image.file.representation(:medium)), 
                       class: "img-fluid img-thumbnail",
-                      style: "cursor: crosshair; user-select: none;padding:0;border:0;",
+                      style: "cursor: crosshair; user-select: none;",
                       data: { 
                         "interactive-image-target": "image",
                         "action": "click->interactive-image#handleImageClick"
