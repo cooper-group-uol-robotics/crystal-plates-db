@@ -245,6 +245,14 @@ export default class extends Controller {
     }
   }
 
+  addPointAtCentre() {
+    const pixelX = Math.round(this.originalWidthValue / 2)
+    const pixelY = Math.round(this.originalHeightValue / 2)
+    const pointType = document.querySelector('input[name="pointType"]:checked')?.value || "crystal"
+
+    this.createPoint(pixelX, pixelY, pointType)
+  }
+
   updatePointsList() {
     if (!this.hasPointsListTarget) return
     
